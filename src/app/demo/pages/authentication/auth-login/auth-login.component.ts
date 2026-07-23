@@ -59,7 +59,7 @@ export class AuthLoginComponent implements OnInit {
       } else {
         this.toastr.error(resp || 'Usuario o Contraseña inválidos', 'Error de Autenticación');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Login error:', error);
       this.toastr.error('Ha ocurrido un error. Intente más tarde.', 'Error');
     } finally {

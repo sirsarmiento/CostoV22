@@ -43,13 +43,13 @@
                       placeholder="Seleccione producto..."
                       [clearable]="true"
                       [searchable]="true"
-                      [class.is-invalid]="submitted && f.productoId.errors">
+                      [class.is-invalid]="submitted && f['productoId'].errors">
                       @for (p of productosFiltrados; track p.id) {
                         <ng-option [value]="p.id">{{ p.nombre }}</ng-option>
                       }
                     </ng-select>
                     <small class="form-text text-muted">Se muestran productos que no tienen SKU asignado aún.</small>
-                    @if (submitted && f.productoId.errors?.required) {
+                    @if (submitted && f['productoId'].errors?.['required']) {
                       <div class="invalid-feedback d-block">Debe seleccionar un producto.</div>
                     }
                   </div>
@@ -63,12 +63,12 @@
                       placeholder="Seleccione servicio..."
                       [clearable]="true"
                       [searchable]="true"
-                      [class.is-invalid]="submitted && f.nombreServicio.errors">
+                      [class.is-invalid]="submitted && f['nombreServicio'].errors">
                       @for (s of presupuestosServicios; track s.id) {
                         <ng-option [value]="s.descripcion">{{ s.numero }} - {{ s.descripcion }}</ng-option>
                       }
                     </ng-select>
-                    @if (submitted && f.nombreServicio.errors?.required) {
+                    @if (submitted && f['nombreServicio'].errors?.['required']) {
                       <div class="invalid-feedback d-block">Debe seleccionar un servicio.</div>
                     }
                   </div>
@@ -82,12 +82,12 @@
                       placeholder="Seleccione proyecto..."
                       [clearable]="true"
                       [searchable]="true"
-                      [class.is-invalid]="submitted && f.nombreServicio.errors">
+                      [class.is-invalid]="submitted && f['nombreServicio'].errors">
                       @for (p of presupuestosProyectos; track p.id) {
                         <ng-option [value]="p.descripcion">{{ p.numero }} - {{ p.descripcion }}</ng-option>
                       }
                     </ng-select>
-                    @if (submitted && f.nombreServicio.errors?.required) {
+                    @if (submitted && f['nombreServicio'].errors?.['required']) {
                       <div class="invalid-feedback d-block">Debe seleccionar un proyecto.</div>
                     }
                   </div>
@@ -100,12 +100,12 @@
                     placeholder="Seleccione..."
                     [clearable]="false"
                     [searchable]="false"
-                    [class.is-invalid]="submitted && f.tecnologia.errors">
+                    [class.is-invalid]="submitted && f['tecnologia'].errors">
                     @for (tec of opcionesTecnologias; track tec.value) {
                       <ng-option [value]="tec.value">{{ tec.label }}</ng-option>
                     }
                   </ng-select>
-                  @if (submitted && f.tecnologia.errors?.required) {
+                  @if (submitted && f['tecnologia'].errors?.['required']) {
                     <div class="invalid-feedback d-block">Seleccione la tecnología.</div>
                   }
                 </div>
@@ -118,12 +118,12 @@
                       placeholder="Seleccione..."
                       [clearable]="false"
                       [searchable]="false"
-                      [class.is-invalid]="submitted && f.material.errors">
+                      [class.is-invalid]="submitted && f['material'].errors">
                       @for (mat of opcionesMateriales; track mat.value) {
                         <ng-option [value]="mat.value">{{ mat.label }}</ng-option>
                       }
                     </ng-select>
-                    @if (submitted && f.material.errors?.required) {
+                    @if (submitted && f['material'].errors?.['required']) {
                       <div class="invalid-feedback d-block">Seleccione el material.</div>
                     }
                   </div>
@@ -136,12 +136,12 @@
                     placeholder="Seleccione..."
                     [clearable]="false"
                     [searchable]="true"
-                    [class.is-invalid]="submitted && f.familia.errors">
+                    [class.is-invalid]="submitted && f['familia'].errors">
                     @for (fam of familias; track fam.id) {
                       <ng-option [value]="fam.codigo">{{ fam.nombre }} ({{ fam.codigo }})</ng-option>
                     }
                   </ng-select>
-                  @if (submitted && f.familia.errors?.required) {
+                  @if (submitted && f['familia'].errors?.['required']) {
                     <div class="invalid-feedback d-block">Seleccione la familia de productos.</div>
                   }
                 </div>
@@ -154,12 +154,12 @@
                       placeholder="Seleccione..."
                       [clearable]="false"
                       [searchable]="true"
-                      [class.is-invalid]="submitted && f.subfamilia.errors">
+                      [class.is-invalid]="submitted && f['subfamilia'].errors">
                       @for (sub of subfamilias; track sub.id) {
                         <ng-option [value]="sub.codigo">{{ sub.nombre }} ({{ sub.codigo }})</ng-option>
                       }
                     </ng-select>
-                    @if (submitted && f.subfamilia.errors?.required) {
+                    @if (submitted && f['subfamilia'].errors?.['required']) {
                       <div class="invalid-feedback d-block">Seleccione una subfamilia.</div>
                     }
                   </div>

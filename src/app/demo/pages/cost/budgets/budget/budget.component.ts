@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { Budget } from '../../../../../core/models/Cost/budge';
+import { BudgetService } from '../../../../../core/services/cost/budget.service';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -13,6 +14,7 @@ import Swal from 'sweetalert2';
 })
 export class BudgetComponent implements OnInit {
   private router = inject(Router);
+  private budgetService = inject(BudgetService);
   loading = true;
   selectedRow: Budget | null = null;
 
@@ -30,49 +32,6 @@ export class BudgetComponent implements OnInit {
 
   Math = Math;
 
-  // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-  private defaultBudgets: Budget[] = [
-    {
-      id: 1,
-      sku: 'B-CNC-001',
-      clasificacion: 'Servicio',
-      descripcion: 'Servicio Mecanizado Eje Torno',
-      numero: 'B-001',
-      fecha: new Date('2026-07-01'),
-      piezas: [
-        { id: 1, nombre: 'Eje Base', materialTipo: 'Aluminio', gramos: 350, metros: 1.2, horas: 1, minutos: 30, precioMaterial: 15.5, tiempoPostProcesado: 20 }
-      ],
-      productoId: 1,
-      costoOperador: 15.0,
-      costoMaquina: 25.0,
-      tasaFalloGlobal: 5.0,
-      tiempoSetup: 30,
-      margenGanancia: 30,
-      tiempoPostProcesado: 20,
-      activoId: 1
-    },
-    {
-      id: 2,
-      sku: 'B-PLA-002',
-      clasificacion: 'Proyecto',
-      descripcion: 'Proyecto Prototipo Carcasa PLA',
-      numero: 'B-002',
-      fecha: new Date('2026-07-15'),
-      piezas: [
-        { id: 2, nombre: 'Carcasa Principal', materialTipo: 'PLA', gramos: 250, metros: 84.0, horas: 6, minutos: 0, precioMaterial: 8.0, tiempoPostProcesado: 10 }
-      ],
-      productoId: 2,
-      costoOperador: 12.0,
-      costoMaquina: 18.0,
-      tasaFalloGlobal: 3.0,
-      tiempoSetup: 15,
-      margenGanancia: 25,
-      tiempoPostProcesado: 10,
-      activoId: 2
-    }
-  ];
-
-  // constructor is removed and router is injected directly
 
   ngOnInit(): void {
     this.getBudgets();
@@ -80,17 +39,18 @@ export class BudgetComponent implements OnInit {
 
   getBudgets() {
     this.loading = true;
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-    const stored = localStorage.getItem('cost_budgets');
-    if (stored) {
-      this.allBudgets = JSON.parse(stored);
-    } else {
-      this.allBudgets = [...this.defaultBudgets];
-      localStorage.setItem('cost_budgets', JSON.stringify(this.allBudgets));
-    }
-    this.filteredBudgets = [...this.allBudgets];
-    this.applyFilterAndPagination();
-    this.loading = false;
+    this.budgetService.getBudgets().subscribe({
+      next: (data) => {
+        this.allBudgets = data;
+        this.filteredBudgets = [...this.allBudgets];
+        this.applyFilterAndPagination();
+        this.loading = false;
+      },
+      error: (error) => {
+        console.error('Error loading budgets:', error);
+        this.loading = false;
+      }
+    });
   }
 
   onSearchChange() {
@@ -165,13 +125,13 @@ export class BudgetComponent implements OnInit {
   }
 
   onEdit(row: Budget) {
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
+    // Transferir datos al formulario
     localStorage.setItem('cost_edit_budget', JSON.stringify(row));
     this.router.navigate(['/budgets/add-budget']);
   }
 
   openAdd() {
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
+    // Limpiar formulario para nuevo registro
     localStorage.removeItem('cost_edit_budget');
     this.router.navigate(['/budgets/add-budget']);
   }
@@ -185,15 +145,12 @@ export class BudgetComponent implements OnInit {
       denyButtonText: `Cancelar`
     }).then((result) => {
       if (result.isConfirmed) {
-        // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-        const stored = localStorage.getItem('cost_budgets');
-        if (stored) {
-          let list: Budget[] = JSON.parse(stored);
-          list = list.filter(b => b.id !== id);
-          localStorage.setItem('cost_budgets', JSON.stringify(list));
-        }
-        this.allBudgets = this.allBudgets.filter(b => b.id !== id);
-        this.applyFilterAndPagination();
+        this.budgetService.deleteBudget(id).subscribe({
+          next: () => {
+            this.allBudgets = this.allBudgets.filter(b => b.id !== id);
+            this.applyFilterAndPagination();
+          }
+        });
       }
     });
   }

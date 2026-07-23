@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { Config, Machine } from '../../../../../core/models/Cost/config';
+import { ConfigService } from '../../../../../core/services/cost/config.service';
 
 interface GroupedCapacity {
   medida: string;
@@ -23,6 +24,7 @@ interface GroupedCapacity {
 })
 export class ConfigComponent implements OnInit {
   private router = inject(Router);
+  private configService = inject(ConfigService);
 
   loading = true;
   configs: Config[] = [];
@@ -44,63 +46,29 @@ export class ConfigComponent implements OnInit {
 
   Math = Math; // Para usar en la plantilla
 
-  // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-  private defaultConfigs: Config[] = [
-    {
-      id: 1,
-      nombre: 'Empresa Alpha S.A.',
-      tipo: 'Manufactura',
-      sector: 'Metalmecánica',
-      empleados: 45,
-      rif: 'J-12345678-9',
-      periodo: '2026',
-      direccion: 'Zona Industrial I, Calle 4, Local 12',
-      moneda: 'USD',
-      margenGanancia: 30,
-      parametros: [
-        { id: 1, unidad: 'Piezas', tipo: 'Torno CNC', descripcion: 'Mecanizado de piezas de precisión', prodMaxHoras: 50, horasMax: 160, horasUso: 120 },
-        { id: 2, unidad: 'Piezas', tipo: 'Fresadora', descripcion: 'Fresado y desbaste', prodMaxHoras: 30, horasMax: 160, horasUso: 80 },
-        { id: 3, unidad: 'Horas', tipo: 'Compresor Industrial', descripcion: 'Suministro de aire comprimido', prodMaxHoras: 1, horasMax: 200, horasUso: 150 }
-      ]
-    },
-    {
-      id: 2,
-      nombre: 'Servicios Beta C.A.',
-      tipo: 'Servicios',
-      sector: 'Consultoría',
-      empleados: 12,
-      rif: 'J-98765432-1',
-      periodo: '2026',
-      direccion: 'Av. Francisco de Miranda, Torre Delta, Piso 5',
-      moneda: 'VES',
-      margenGanancia: 25,
-      parametros: []
-    }
-  ];
-
   ngOnInit(): void {
     this.getConfigs();
   }
 
   getConfigs() {
     this.loading = true;
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-    const stored = localStorage.getItem('cost_configs');
-    if (stored) {
-      this.configs = JSON.parse(stored);
-    } else {
-      this.configs = [...this.defaultConfigs];
-      localStorage.setItem('cost_configs', JSON.stringify(this.configs));
-    }
-    
-    this.filteredConfigs = [...this.configs];
-    this.applyFilterAndPagination();
-    
-    // Si hay al menos un perfil, lo seleccionamos por defecto
-    if (this.configs.length > 0) {
-      this.selectRow(this.configs[0]);
-    }
-    this.loading = false;
+    this.configService.getConfigs().subscribe({
+      next: (data) => {
+        this.configs = data;
+        this.filteredConfigs = [...this.configs];
+        this.applyFilterAndPagination();
+        
+        // Si hay al menos un perfil, lo seleccionamos por defecto
+        if (this.configs.length > 0) {
+          this.selectRow(this.configs[0]);
+        }
+        this.loading = false;
+      },
+      error: (error) => {
+        console.error('Error loading configs:', error);
+        this.loading = false;
+      }
+    });
   }
 
   selectRow(row: Config) {
@@ -208,13 +176,13 @@ export class ConfigComponent implements OnInit {
   }
 
   onEdit(row: Config) {
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
+    // Transferir datos al formulario
     localStorage.setItem('cost_edit_config', JSON.stringify(row));
     this.router.navigate(['/configs/add-config']);
   }
 
   openAdd() {
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
+    // Limpiar formulario para nuevo registro
     localStorage.removeItem('cost_edit_config');
     this.router.navigate(['/configs/add-config']);
   }

@@ -3,7 +3,9 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { Fixe } from '../../../../../core/models/Cost/fixe';
-import { Product } from '../../../../../core/models/Cost/product';
+import { FixeService } from '../../../../../core/services/cost/fixe.service';
+import { ProductService } from '../../../../../core/services/cost/product.service';
+import { forkJoin } from 'rxjs';
 import Swal from 'sweetalert2';
 
 interface FixeWithProduct extends Fixe {
@@ -18,6 +20,8 @@ interface FixeWithProduct extends Fixe {
 })
 export class FixeComponent implements OnInit {
   private router = inject(Router);
+  private fixeService = inject(FixeService);
+  private productService = inject(ProductService);
 
   loading = true;
   selectedRow: FixeWithProduct | null = null;
@@ -37,33 +41,7 @@ export class FixeComponent implements OnInit {
 
   Math = Math;
 
-  // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-  private defaultFixes: Fixe[] = [
-    {
-      id: 1,
-      tipo: 'Fijo',
-      concepto: 'Alquiler del Taller Mecánico',
-      precio: 1500.0,
-      clasificacion: 'Indirecto',
-      producto: 0
-    },
-    {
-      id: 2,
-      tipo: 'Fijo',
-      concepto: 'Salario Supervisor de Planta',
-      precio: 2200.0,
-      clasificacion: 'Indirecto',
-      producto: 0
-    },
-    {
-      id: 3,
-      tipo: 'Fijo',
-      concepto: 'Mantenimiento Preventivo CNC',
-      precio: 450.0,
-      clasificacion: 'Directo',
-      producto: 1
-    }
-  ];
+  // Ya no necesitamos data por defecto aquí, viene del environment.local.ts vía servicio
 
   ngOnInit(): void {
     this.getCosts();
@@ -72,26 +50,30 @@ export class FixeComponent implements OnInit {
   getCosts() {
     this.loading = true;
     
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-    const storedProds = localStorage.getItem('cost_products');
-    const products: Product[] = storedProds ? JSON.parse(storedProds) : [];
+    forkJoin({
+      products: this.productService.getProducts(),
+      fixes: this.fixeService.getFixes()
+    }).subscribe({
+      next: (data) => {
+        const products = data.products;
+        const fixesList = data.fixes;
 
-    const storedFixes = localStorage.getItem('cost_fixes');
-    const fixesList: Fixe[] = storedFixes ? JSON.parse(storedFixes) : [...this.defaultFixes];
-    if (!storedFixes) {
-      localStorage.setItem('cost_fixes', JSON.stringify(fixesList));
-    }
+        this.allCosts = fixesList.map(c => {
+          const product = products.find(p => p.id === c.producto);
+          return {
+            ...c,
+            productoName: product ? product.nombre : ''
+          };
+        });
 
-    this.allCosts = fixesList.map(c => {
-      const product = products.find(p => p.id === c.producto);
-      return {
-        ...c,
-        productoName: product ? product.nombre : ''
-      };
+        this.applyFilterAndPagination();
+        this.loading = false;
+      },
+      error: () => {
+        this.loading = false;
+        Swal.fire('Error', 'No se pudieron cargar los costos fijos.', 'error');
+      }
     });
-
-    this.applyFilterAndPagination();
-    this.loading = false;
   }
 
   setActiveTab(tab: string) {
@@ -169,13 +151,13 @@ export class FixeComponent implements OnInit {
   }
 
   onEdit(row: Fixe) {
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
+    // Transferir datos al formulario
     localStorage.setItem('cost_edit_fixe', JSON.stringify(row));
     this.router.navigate(['/fixes/add-fixe']);
   }
 
   openAdd() {
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
+    // Limpiar formulario para nuevo registro
     localStorage.removeItem('cost_edit_fixe');
     this.router.navigate(['/fixes/add-fixe']);
   }
@@ -189,15 +171,12 @@ export class FixeComponent implements OnInit {
       denyButtonText: `Cancelar`
     }).then((result) => {
       if (result.isConfirmed) {
-        // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-        const stored = localStorage.getItem('cost_fixes');
-        if (stored) {
-          let list: Fixe[] = JSON.parse(stored);
-          list = list.filter(c => c.id !== id);
-          localStorage.setItem('cost_fixes', JSON.stringify(list));
-        }
-        this.allCosts = this.allCosts.filter(c => c.id !== id);
-        this.applyFilterAndPagination();
+        this.fixeService.deleteFixe(id).subscribe({
+          next: () => {
+            this.allCosts = this.allCosts.filter(c => c.id !== id);
+            this.applyFilterAndPagination();
+          }
+        });
       }
     });
   }

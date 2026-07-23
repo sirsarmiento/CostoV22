@@ -4,6 +4,7 @@ import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators, V
 import { Router, RouterModule } from '@angular/router';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { Asset } from '../../../../../core/models/Cost/asset';
+import { AssetService } from '../../../../../core/services/cost/asset.service';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -15,6 +16,7 @@ import Swal from 'sweetalert2';
 export class AddAssetComponent implements OnInit {
   private formBuilder = inject(FormBuilder);
   private router = inject(Router);
+  private assetService = inject(AssetService);
   form!: FormGroup;
   id: number = 0;
   loading = false;
@@ -23,9 +25,7 @@ export class AddAssetComponent implements OnInit {
   constructor() {
     this.myFormValues();
   }
-  //eliminar la línea siguiente al colocar los servicios
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  get f(): any { return this.form.controls; }
+  get f() { return this.form.controls; }
 
   ngOnInit() {
     this.setValues();
@@ -149,8 +149,8 @@ export class AddAssetComponent implements OnInit {
 
   setupLogicCalcularTotal() {
     const calcular = () => {
-      if (this.f.tipo.value === 'Circulante') {
-        const total = (this.f.cantidad.value || 0) * (this.f.valorUnitario.value || 0);
+      if (this.f['tipo'].value === 'Circulante') {
+        const total = (this.f['cantidad'].value || 0) * (this.f['valorUnitario'].value || 0);
         this.form.get('costoInicial')?.setValue(total, { emitEvent: false });
       }
     };
@@ -194,32 +194,28 @@ export class AddAssetComponent implements OnInit {
       ubicacion: formValues.tipo === 'Circulante' ? formValues.ubicacion : ''
     };
 
-    // TODO: MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-    const stored = localStorage.getItem('cost_assets');
-    let list: Asset[] = stored ? JSON.parse(stored) : [];
+    const request = this.id === 0 
+      ? this.assetService.createAsset(activo)
+      : this.assetService.updateAsset(this.id, activo);
 
-    if (this.id === 0) {
-      const newId = list.length > 0 ? Math.max(...list.map(a => a.id || 0)) + 1 : 1;
-      activo.id = newId;
-      list.push(activo);
-    } else {
-      list = list.map(a => a.id === this.id ? activo : a);
-    }
-
-    localStorage.setItem('cost_assets', JSON.stringify(list));
-    localStorage.removeItem('cost_edit_asset');
-
-    setTimeout(() => {
-      this.loading = false;
-      Swal.fire({
-        title: '¡Guardado!',
-        text: 'Activo guardado exitosamente.',
-        icon: 'success',
-        confirmButtonText: 'Aceptar',
-        confirmButtonColor: '#4680ff'
-      }).then(() => {
-        this.router.navigate(['/assets']);
-      });
-    }, 800);
+    request.subscribe({
+      next: () => {
+        localStorage.removeItem('cost_edit_asset');
+        this.loading = false;
+        Swal.fire({
+          title: '¡Guardado!',
+          text: 'Activo guardado exitosamente.',
+          icon: 'success',
+          confirmButtonText: 'Aceptar',
+          confirmButtonColor: '#4680ff'
+        }).then(() => {
+          this.router.navigate(['/assets']);
+        });
+      },
+      error: () => {
+        this.loading = false;
+        Swal.fire('Error', 'Ha ocurrido un error al guardar el activo.', 'error');
+      }
+    });
   }
 }

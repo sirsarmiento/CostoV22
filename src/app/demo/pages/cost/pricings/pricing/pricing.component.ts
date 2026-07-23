@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -6,7 +6,12 @@ import { NgSelectModule } from '@ng-select/ng-select';
 import { Fixe } from '../../../../../core/models/Cost/fixe';
 import { Product } from '../../../../../core/models/Cost/product';
 import { Asset } from '../../../../../core/models/Cost/asset';
-import { Config } from '../../../../../core/models/Cost/config';
+import { forkJoin } from 'rxjs';
+import { ConfigService } from '../../../../../core/services/cost/config.service';
+import { ProductService } from '../../../../../core/services/cost/product.service';
+import { AssetService } from '../../../../../core/services/cost/asset.service';
+import { FixeService } from '../../../../../core/services/cost/fixe.service';
+
 
 @Component({
   selector: 'app-pricing',
@@ -42,6 +47,11 @@ export class PricingComponent implements OnInit {
   fijosIndirectosProrrateados = 0;
   costosFijosTotalesParaProd = 0;
 
+  private configService = inject(ConfigService);
+  private productService = inject(ProductService);
+  private assetService = inject(AssetService);
+  private fixeService = inject(FixeService);
+
   constructor() { }
 
   ngOnInit(): void {
@@ -50,53 +60,58 @@ export class PricingComponent implements OnInit {
   }
 
   cargarConfiguracionGlobal() {
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-    const stored = localStorage.getItem('cost_configs');
-    const configs: Config[] = stored ? JSON.parse(stored) : [];
-    if (configs.length > 0) {
-      const config = configs[0];
-      this.minMargenGanancia = config.margenGanancia || 0;
-      this.margenDeseado = this.minMargenGanancia;
-      this.calcularPrecioSugerido();
-    }
+    this.configService.getConfigs().subscribe({
+      next: (configs) => {
+        if (configs.length > 0) {
+          const config = configs[0];
+          this.minMargenGanancia = config.margenGanancia || 0;
+          this.margenDeseado = this.minMargenGanancia;
+          this.calcularPrecioSugerido();
+        }
+      },
+      error: (error) => console.error('Error loading config:', error)
+    });
   }
 
   cargarDatosIniciales() {
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-    const storedProducts = localStorage.getItem('cost_products');
-    this.productos = storedProducts ? JSON.parse(storedProducts) : [];
+    forkJoin({
+      products: this.productService.getProducts(),
+      assets: this.assetService.getAssets(),
+      fixes: this.fixeService.getFixes()
+    }).subscribe({
+      next: (data) => {
+        this.productos = data.products;
+        const activos = data.assets;
+        this.allFixes = data.fixes;
 
-    const storedAssets = localStorage.getItem('cost_assets');
-    const activos: Asset[] = storedAssets ? JSON.parse(storedAssets) : [];
+        // Calcular Depreciación Mensual de Activos
+        this.totalDepreciacionMensual = activos.reduce((sum: number, asset: Asset) => {
+          const costo = parseFloat(String(asset.costoInicial)) || 0;
+          const residual = parseFloat(String(asset.valorResidual)) || 0;
+          const vida = parseInt(String(asset.vidaUtil)) || 0;
+          return vida > 0 ? sum + ((costo - residual) / vida / 12) : sum;
+        }, 0);
 
-    const storedFixes = localStorage.getItem('cost_fixes');
-    this.allFixes = storedFixes ? JSON.parse(storedFixes) : [];
+        // Calcular Costos Fijos Indirectos
+        const indirectos = this.allFixes.filter(item => item.clasificacion === 'Indirecto');
+        this.totalFijoIndirecto = indirectos.reduce((total, item) => total + (Number(item.precio) || 0), 0);
 
-    // Calcular Depreciación Mensual de Activos
-    this.totalDepreciacionMensual = activos.reduce((sum: number, asset: Asset) => {
-      const costo = parseFloat(String(asset.costoInicial)) || 0;
-      const residual = parseFloat(String(asset.valorResidual)) || 0;
-      const vida = parseInt(String(asset.vidaUtil)) || 0;
-      return vida > 0 ? sum + ((costo - residual) / vida / 12) : sum;
-    }, 0);
+        // Costos Fijos Totales Operativos (Generales)
+        this.costosFijosTotales = this.totalFijoIndirecto + this.totalDepreciacionMensual;
+        
+        const numProductos = this.productos.length || 1;
+        this.fijosIndirectosProrrateados = this.costosFijosTotales / numProductos;
+        this.costosFijosTotalesParaProd = this.fijosIndirectosProrrateados;
 
-    // Calcular Costos Fijos Indirectos
-    const indirectos = this.allFixes.filter(item => item.clasificacion === 'Indirecto');
-    this.totalFijoIndirecto = indirectos.reduce((total, item) => total + (Number(item.precio) || 0), 0);
-
-    // Costos Fijos Totales Operativos (Generales)
-    this.costosFijosTotales = this.totalFijoIndirecto + this.totalDepreciacionMensual;
-    
-    const numProductos = this.productos.length || 1;
-    this.fijosIndirectosProrrateados = this.costosFijosTotales / numProductos;
-    this.costosFijosTotalesParaProd = this.fijosIndirectosProrrateados;
-
-    if (this.idProdPrecio) {
-      this.onProductoPrecioChange();
-    }
-    if (this.idProdEquilibrio) {
-      this.onProductoEquilibrioChange();
-    }
+        if (this.idProdPrecio) {
+          this.onProductoPrecioChange();
+        }
+        if (this.idProdEquilibrio) {
+          this.onProductoEquilibrioChange();
+        }
+      },
+      error: (error) => console.error('Error loading initial data for pricing:', error)
+    });
   }
 
   onProductoPrecioChange() {

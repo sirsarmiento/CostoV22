@@ -26,17 +26,17 @@
                 placeholder="Seleccione..."
                 [clearable]="false"
                 [searchable]="false"
-                [class.is-invalid]="submitted && f.clasificacion.errors">
+                [class.is-invalid]="submitted && f['clasificacion'].errors">
                 <ng-option value="Proyecto">Proyecto</ng-option>
                 <ng-option value="Servicio">Servicio</ng-option>
                 <ng-option value="Producto">Producto</ng-option>
               </ng-select>
-              @if (submitted && f.clasificacion.errors?.required) {
+              @if (submitted && f['clasificacion'].errors?.['required']) {
                 <div class="invalid-feedback d-block">Seleccione la clasificación</div>
               }
             </div>
 
-            @if (f.clasificacion.value === 'Producto') {
+            @if (f['clasificacion'].value === 'Producto') {
               <div class="col-md-3">
                 <label class="form-label">Seleccione el Producto</label>
                 <ng-select 
@@ -44,12 +44,12 @@
                   placeholder="Seleccione..."
                   [clearable]="false"
                   [searchable]="true"
-                  [class.is-invalid]="submitted && f.productoId.errors">
+                  [class.is-invalid]="submitted && f['productoId'].errors">
                   @for (prod of productosList; track prod.id) {
                     <ng-option [value]="prod.id">{{ prod.nombre }}</ng-option>
                   }
                 </ng-select>
-                @if (submitted && f.productoId.errors?.required) {
+                @if (submitted && f['productoId'].errors?.['required']) {
                   <div class="invalid-feedback d-block">Seleccione un producto</div>
                 }
               </div>
@@ -57,16 +57,16 @@
 
             <div class="col-md-3">
               <label class="form-label">Número de Orden</label>
-              <input type="text" class="form-control" formControlName="numero" maxlength="25" placeholder="Ej: ORD-001" [class.is-invalid]="submitted && f.numero.errors">
-              @if (submitted && f.numero.errors?.required) {
+              <input type="text" class="form-control" formControlName="numero" maxlength="25" placeholder="Ej: ORD-001" [class.is-invalid]="submitted && f['numero'].errors">
+              @if (submitted && f['numero'].errors?.['required']) {
                 <div class="invalid-feedback">Ingrese el número de la orden</div>
               }
             </div>
 
             <div class="col-md-3">
               <label class="form-label">Fecha</label>
-              <input type="date" class="form-control" formControlName="fecha" [class.is-invalid]="submitted && f.fecha.errors">
-              @if (submitted && f.fecha.errors?.required) {
+              <input type="date" class="form-control" formControlName="fecha" [class.is-invalid]="submitted && f['fecha'].errors">
+              @if (submitted && f['fecha'].errors?.['required']) {
                 <div class="invalid-feedback">Seleccione la fecha</div>
               }
             </div>
@@ -76,8 +76,8 @@
           <div class="row g-3 mb-4 pb-3 border-bottom">
             <div class="col-md-8">
               <label class="form-label">Descripción</label>
-              <input type="text" class="form-control" formControlName="descripcion" placeholder="Descripción detallada del presupuesto..." [class.is-invalid]="submitted && f.descripcion.errors">
-              @if (submitted && f.descripcion.errors?.required) {
+              <input type="text" class="form-control" formControlName="descripcion" placeholder="Descripción detallada del presupuesto..." [class.is-invalid]="submitted && f['descripcion'].errors">
+              @if (submitted && f['descripcion'].errors?.['required']) {
                 <div class="invalid-feedback">Ingrese la descripción</div>
               }
             </div>
@@ -112,11 +112,11 @@
             </div>
             <div class="col-md-3">
               <label class="form-label text-sm mb-1 fw-bold text-secondary">Margen Ganancia (%)</label>
-              <input type="number" class="form-control form-control-sm" formControlName="margenGanancia" min="0" max="100" [class.is-invalid]="submitted && f.margenGanancia.errors">
-              @if (f.margenGanancia.errors) {
+              <input type="number" class="form-control form-control-sm" formControlName="margenGanancia" min="0" max="100" [class.is-invalid]="submitted && f['margenGanancia'].errors">
+              @if (f['margenGanancia'].errors) {
                 <div class="invalid-feedback text-xs">
-                  @if (f.margenGanancia.errors.required) { <span>Ingrese el margen</span> }
-                  @if (f.margenGanancia.errors.min) { <span>Mínimo: {{ minMargenGanancia }}%</span> }
+                  @if (f['margenGanancia'].errors['required']) { <span>Ingrese el margen</span> }
+                  @if (f['margenGanancia'].errors['min']) { <span>Mínimo: {{ minMargenGanancia }}%</span> }
                 </div>
               }
             </div>
@@ -147,7 +147,7 @@
                   </ng-select>
                 </div>
 
-                @if (f.materialTipo.value) {
+                @if (f['materialTipo'].value) {
                   <div class="col-md-2">
                     <label class="form-label text-xs mb-1">Subcategoría</label>
                     <ng-select 
@@ -258,7 +258,7 @@
                     <h6 class="fw-bold text-dark mb-3">Estructura de Costes Detallada</h6>
                     
                     <div class="d-flex justify-content-between py-2 border-bottom">
-                      <span class="text-secondary text-sm">Costo de Materiales (con merma del {{ f.tasaFalloGlobal.value }}%):</span>
+                      <span class="text-secondary text-sm">Costo de Materiales (con merma del {{ f['tasaFalloGlobal'].value }}%):</span>
                       <span class="fw-bold text-dark">${{ getTotales().totalCostoMaterial | number:'1.2-2' }}</span>
                     </div>
 

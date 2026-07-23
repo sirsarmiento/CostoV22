@@ -26,11 +26,11 @@
                 placeholder="Seleccione..."
                 [clearable]="false"
                 [searchable]="false"
-                [class.is-invalid]="submitted && f.tipo.errors">
+                [class.is-invalid]="submitted && f['tipo'].errors">
                 <ng-option value="Fijo">Fijo</ng-option>
                 <ng-option value="Variable">Variable</ng-option>
               </ng-select>
-              @if (submitted && f.tipo.errors?.required) {
+              @if (submitted && f['tipo'].errors?.['required']) {
                 <div class="invalid-feedback d-block">Seleccione el Tipo de Costo</div>
               }
             </div>
@@ -43,26 +43,26 @@
                 placeholder="Seleccione..."
                 [clearable]="false"
                 [searchable]="true"
-                [class.is-invalid]="submitted && f.concepto.errors">
+                [class.is-invalid]="submitted && f['concepto'].errors">
                 @for (opcion of conceptosMostrados; track opcion) {
                   <ng-option [value]="opcion">{{ opcion }}</ng-option>
                 }
               </ng-select>
-              @if (submitted && f.concepto.errors?.required) {
+              @if (submitted && f['concepto'].errors?.['required']) {
                 <div class="invalid-feedback d-block">Seleccione el Concepto</div>
               }
             </div>
 
             <!-- Otro Concepto -->
-            @if (f.concepto.value === 'Otro') {
+            @if (f['concepto'].value === 'Otro') {
               <div class="col-md-6">
                 <label class="form-label">Especifique el concepto</label>
                 <input 
                   type="text" 
                   class="form-control" 
                   formControlName="otroConcepto"
-                  [class.is-invalid]="submitted && f.otroConcepto.errors">
-                @if (submitted && f.otroConcepto.errors?.required) {
+                  [class.is-invalid]="submitted && f['otroConcepto'].errors">
+                @if (submitted && f['otroConcepto'].errors?.['required']) {
                   <div class="invalid-feedback">Especifique el concepto</div>
                 }
               </div>
@@ -76,8 +76,8 @@
                 class="form-control" 
                 formControlName="precio" 
                 maxlength="20"
-                [class.is-invalid]="submitted && f.precio.errors">
-              @if (submitted && f.precio.errors?.required) {
+                [class.is-invalid]="submitted && f['precio'].errors">
+              @if (submitted && f['precio'].errors?.['required']) {
                 <div class="invalid-feedback">Ingrese el Precio</div>
               }
             </div>
@@ -90,11 +90,11 @@
                 placeholder="Seleccione..."
                 [clearable]="false"
                 [searchable]="false"
-                [class.is-invalid]="submitted && f.clasificacion.errors">
+                [class.is-invalid]="submitted && f['clasificacion'].errors">
                 <ng-option value="Directo">Directo</ng-option>
                 <ng-option value="Indirecto">Indirecto</ng-option>
               </ng-select>
-              @if (submitted && f.clasificacion.errors?.required) {
+              @if (submitted && f['clasificacion'].errors?.['required']) {
                 <div class="invalid-feedback d-block">Seleccione la Clasificación</div>
               }
             </div>

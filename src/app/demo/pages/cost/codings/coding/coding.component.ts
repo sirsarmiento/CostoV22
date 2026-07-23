@@ -3,23 +3,10 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { Family } from '../../../../../core/models/Cost/family';
+import { SkuCoding } from '../../../../../core/models/Cost/coding';
+import { CodingService } from '../../../../../core/services/cost/coding.service';
 import Swal from 'sweetalert2';
 
-interface SkuCoding {
-  id: number;
-  sku: string;
-  codigo: string;
-  productName: string;
-  categoria: string;
-  tecnologia: string;
-  material: string;
-  familia: string;
-  subfamilia: string;
-  productId: number | null;
-  presupuestoId: number | null;
-  familiaId: number | null;
-  subfamiliaId: number | null;
-}
 
 @Component({
   selector: 'app-coding',
@@ -29,6 +16,7 @@ interface SkuCoding {
 })
 export class CodingComponent implements OnInit {
   private router = inject(Router);
+  private codingService = inject(CodingService);
 
   loading = true;
   selectedRow: SkuCoding | null = null;
@@ -60,59 +48,6 @@ export class CodingComponent implements OnInit {
 
   Math = Math;
 
-  // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-  private defaultCodings: SkuCoding[] = [
-    {
-      id: 1,
-      sku: 'SR-CNC-AC-FM01-S01',
-      codigo: 'SR-CNC-AC-FM01-S01',
-      productName: 'Tornillo CNC Especial M8',
-      categoria: 'SR',
-      tecnologia: 'CNC',
-      material: 'AC',
-      familia: 'FM01',
-      subfamilia: 'S01',
-      productId: 1,
-      presupuestoId: 1,
-      familiaId: 1,
-      subfamiliaId: 1
-    },
-    {
-      id: 2,
-      sku: 'PP-FRE-AL-FM02-001',
-      codigo: 'PP-FRE-AL-FM02-001',
-      productName: 'Eje de Transmisión Aluminio',
-      categoria: 'PP',
-      tecnologia: 'FRE',
-      material: 'AL',
-      familia: 'FM02',
-      subfamilia: '',
-      productId: 2,
-      presupuestoId: 2,
-      familiaId: 2,
-      subfamiliaId: null
-    }
-  ];
-
-  // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-  private defaultFamilies: Family[] = [
-    {
-      id: 1,
-      codigo: 'FM01',
-      nombre: 'Familia Mecanizados',
-      subFamilias: [
-        { id: 1, codigo: 'S01', nombre: 'Subfamilia Torneado' },
-        { id: 2, codigo: 'S02', nombre: 'Subfamilia Fresado' }
-      ]
-    },
-    {
-      id: 2,
-      codigo: 'FM02',
-      nombre: 'Familia Extrusión',
-      subFamilias: []
-    }
-  ];
-
   ngOnInit(): void {
     this.getSKUs();
     this.getFamilies();
@@ -124,32 +59,34 @@ export class CodingComponent implements OnInit {
 
   getSKUs() {
     this.loading = true;
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-    const stored = localStorage.getItem('cost_codings');
-    if (stored) {
-      this.allSKUs = JSON.parse(stored);
-    } else {
-      this.allSKUs = [...this.defaultCodings];
-      localStorage.setItem('cost_codings', JSON.stringify(this.allSKUs));
-    }
-    this.filteredSKUs = [...this.allSKUs];
-    this.applyFilterAndPaginationSKU();
-    this.loading = false;
+    this.codingService.getSKUs().subscribe({
+      next: (data) => {
+        this.allSKUs = data;
+        this.filteredSKUs = [...this.allSKUs];
+        this.applyFilterAndPaginationSKU();
+        this.loading = false;
+      },
+      error: (error) => {
+        console.error('Error loading SKUs:', error);
+        this.loading = false;
+      }
+    });
   }
 
   getFamilies() {
     this.loading = true;
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-    const stored = localStorage.getItem('cost_families');
-    if (stored) {
-      this.allFamilies = JSON.parse(stored);
-    } else {
-      this.allFamilies = [...this.defaultFamilies];
-      localStorage.setItem('cost_families', JSON.stringify(this.allFamilies));
-    }
-    this.filteredFamilies = [...this.allFamilies];
-    this.applyFilterAndPaginationFamily();
-    this.loading = false;
+    this.codingService.getFamilies().subscribe({
+      next: (data) => {
+        this.allFamilies = data;
+        this.filteredFamilies = [...this.allFamilies];
+        this.applyFilterAndPaginationFamily();
+        this.loading = false;
+      },
+      error: (error) => {
+        console.error('Error loading families:', error);
+        this.loading = false;
+      }
+    });
   }
 
   onSearchSKUChange() {
@@ -290,26 +227,26 @@ export class CodingComponent implements OnInit {
 
   // --- Acciones SKU ---
   openAddSKU() {
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
+    // Limpiar formulario para nuevo registro
     localStorage.removeItem('cost_edit_coding');
     this.router.navigate(['/codings/add-coding']);
   }
 
   onEditSKU(row: SkuCoding) {
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
+    // Transferir datos al formulario
     localStorage.setItem('cost_edit_coding', JSON.stringify(row));
     this.router.navigate(['/codings/add-coding']);
   }
 
   // --- Acciones Familia ---
   openAddFamily() {
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
+    // Limpiar formulario para nuevo registro
     localStorage.removeItem('cost_edit_family');
     this.router.navigate(['/codings/add-family']);
   }
 
   onEditFamily(row: Family) {
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
+    // Transferir datos al formulario
     localStorage.setItem('cost_edit_family', JSON.stringify(row));
     this.router.navigate(['/codings/add-family']);
   }

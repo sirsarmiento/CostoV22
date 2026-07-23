@@ -3,7 +3,18 @@ import packageInfo from '../../package.json';
 export const environment = {
   appVersion: packageInfo.version,
   production: true,
-  ttl: 28800000,
+  useMocks: false,
+  mockData: {
+    products: [] as unknown[],
+    fixes: [] as unknown[],
+    configs: [] as unknown[],
+    assets: [] as unknown[],
+    budgets: [] as unknown[],
+    pricings: [] as unknown[],
+    codings: [] as unknown[],
+    families: [] as unknown[],
+    skus: [] as unknown[]
+  },
   name_system: 'COST',
   apiUrl: 'https://bof.pafar.com.ve/public/api',
   apiAuth: 'https://bof.pafar.com.ve/public',
@@ -30,7 +41,7 @@ export const environment = {
     },
     double: {
       validations: {
-        pattern: '^[0-9\.]*$',
+        pattern: '^[0-9.]*$',
       }
     },
     alphanumeric: {
@@ -40,17 +51,17 @@ export const environment = {
     },
     alphanumeric_guion: {
       validations: {
-        pattern: '^[a-zA-Z0-9\-]*$',
+        pattern: '^[a-zA-Z0-9-]*$',
       }
     },
     number_guion: {
       validations: {
-        pattern: '^[0-9\-]*$',
+        pattern: '^[0-9-]*$',
       }
     },
     role_pattern: {
       validations: {
-        pattern: '(ROLE)[A-Z\_]+',
+        pattern: '(ROLE)[A-Z_]+',
       }
     },
     file_extension: ['doc', 'docx', 'pdf', 'xls', 'xlsx', 'png', 'jpg', 'jpge'],

@@ -26,11 +26,11 @@
                 formControlName="codigo" 
                 placeholder="Ej: LUD" 
                 maxlength="3"
-                [class.is-invalid]="submitted && f.codigo.errors">
-              @if (submitted && f.codigo.errors) {
+                [class.is-invalid]="submitted && f['codigo'].errors">
+              @if (submitted && f['codigo'].errors) {
                 <div class="invalid-feedback">
-                  @if (f.codigo.errors.required) { <span>El código es obligatorio.</span> }
-                  @if (f.codigo.errors.maxlength || f.codigo.errors.pattern) { <span>Debe tener máximo 3 letras de la A a la Z.</span> }
+                  @if (f['codigo'].errors['required']) { <span>El código es obligatorio.</span> }
+                  @if (f['codigo'].errors['maxlength'] || f['codigo'].errors['pattern']) { <span>Debe tener máximo 3 letras de la A a la Z.</span> }
                 </div>
               }
             </div>
@@ -42,11 +42,11 @@
                 class="form-control" 
                 formControlName="nombre" 
                 placeholder="Ej: Lúdica Educativo"
-                [class.is-invalid]="submitted && f.nombre.errors">
-              @if (submitted && f.nombre.errors) {
+                [class.is-invalid]="submitted && f['nombre'].errors">
+              @if (submitted && f['nombre'].errors) {
                 <div class="invalid-feedback">
-                  @if (f.nombre.errors.required) { <span>La descripción es obligatoria.</span> }
-                  @if (f.nombre.errors.minlength) { <span>Debe tener al menos 3 letras.</span> }
+                  @if (f['nombre'].errors['required']) { <span>La descripción es obligatoria.</span> }
+                  @if (f['nombre'].errors['minlength']) { <span>Debe tener al menos 3 letras.</span> }
                 </div>
               }
             </div>

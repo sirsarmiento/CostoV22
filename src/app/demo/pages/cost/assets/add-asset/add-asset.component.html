@@ -26,11 +26,11 @@
                 placeholder="Seleccione..."
                 [clearable]="false"
                 [searchable]="false"
-                [class.is-invalid]="submitted && f.tipo.errors">
+                [class.is-invalid]="submitted && f['tipo'].errors">
                 <ng-option value="Fijo">Fijo</ng-option>
                 <ng-option value="Circulante">Circulante</ng-option>
               </ng-select>
-              @if (submitted && f.tipo.errors?.required) {
+              @if (submitted && f['tipo'].errors?.['required']) {
                 <div class="invalid-feedback d-block">Seleccione el tipo de activo</div>
               }
             </div>
@@ -43,14 +43,14 @@
                 class="form-control" 
                 formControlName="nombre" 
                 maxlength="250"
-                [class.is-invalid]="submitted && f.nombre.errors">
-              @if (submitted && f.nombre.errors?.required) {
+                [class.is-invalid]="submitted && f['nombre'].errors">
+              @if (submitted && f['nombre'].errors?.['required']) {
                 <div class="invalid-feedback">Ingrese el nombre del activo</div>
               }
             </div>
 
             <!-- SECCIÓN: Activos Fijos -->
-            @if (f.tipo.value === 'Fijo') {
+            @if (f['tipo'].value === 'Fijo') {
               <div class="col-12 mt-4 pt-3 border-top">
                 <h6 class="mb-3 text-muted">Detalles del Activo Fijo</h6>
                 <div class="row g-3">
@@ -66,7 +66,7 @@
                     </ng-select>
                   </div>
 
-                  @if (f.categoria.value === 'Equipo') {
+                  @if (f['categoria'].value === 'Equipo') {
                     <div class="col-md-4">
                       <label class="form-label">Consumo Máquina (Watts)</label>
                       <input type="number" class="form-control" formControlName="consumoMaquina" min="0">
@@ -107,7 +107,7 @@
             }
 
             <!-- SECCIÓN: Activos Circulantes -->
-            @if (f.tipo.value === 'Circulante') {
+            @if (f['tipo'].value === 'Circulante') {
               <div class="col-12 mt-4 pt-3 border-top">
                 <h6 class="mb-3 text-muted">Detalles del Activo Circulante</h6>
                 <div class="row g-3">

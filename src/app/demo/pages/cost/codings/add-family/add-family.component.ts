@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { Family, Subfamily } from '../../../../../core/models/Cost/family';
+import { CodingService } from '../../../../../core/services/cost/coding.service';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -14,6 +15,7 @@ import Swal from 'sweetalert2';
 export class AddFamilyComponent implements OnInit {
   private formBuilder = inject(FormBuilder);
   private router = inject(Router);
+  private codingService = inject(CodingService);
 
   form!: FormGroup;
   id: number = 0;
@@ -31,9 +33,7 @@ export class AddFamilyComponent implements OnInit {
     this.myFormValues();
   }
 
-  //eliminar la línea siguiente al colocar los servicios
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  get f(): any { return this.form.controls; }
+  get f() { return this.form.controls; }
 
   ngOnInit(): void {
     this.setValues();
@@ -118,26 +118,23 @@ export class AddFamilyComponent implements OnInit {
       subFamilias: this.subfamiliesList
     };
 
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-    const stored = localStorage.getItem('cost_families');
-    let list: Family[] = stored ? JSON.parse(stored) : [];
+    const request = this.id > 0 
+      ? this.codingService.updateFamily(this.id, familyData)
+      : this.codingService.createFamily(familyData);
 
-    if (this.id && this.id > 0) {
-      list = list.map(f => f.id === this.id ? familyData : f);
-      localStorage.setItem('cost_families', JSON.stringify(list));
-      localStorage.removeItem('cost_edit_family');
-      Swal.fire('Éxito', 'Familia actualizada correctamente.', 'success').then(() => {
-        this.router.navigate(['/codings']);
-      });
-    } else {
-      const newId = list.length > 0 ? Math.max(...list.map(f => f.id || 0)) + 1 : 1;
-      familyData.id = newId;
-      list.push(familyData);
-      localStorage.setItem('cost_families', JSON.stringify(list));
-      Swal.fire('Éxito', 'Familia registrada correctamente.', 'success').then(() => {
-        this.router.navigate(['/codings']);
-      });
-    }
-    this.loading = false;
+    request.subscribe({
+      next: () => {
+        if (this.id > 0) localStorage.removeItem('cost_edit_family');
+        this.loading = false;
+        const msg = this.id > 0 ? 'Familia actualizada correctamente.' : 'Familia registrada correctamente.';
+        Swal.fire('Éxito', msg, 'success').then(() => {
+          this.router.navigate(['/codings']);
+        });
+      },
+      error: () => {
+        this.loading = false;
+        Swal.fire('Error', 'Ha ocurrido un error al guardar.', 'error');
+      }
+    });
   }
 }

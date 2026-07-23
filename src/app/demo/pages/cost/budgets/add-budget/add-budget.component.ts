@@ -6,8 +6,12 @@ import { NgSelectModule } from '@ng-select/ng-select';
 import { Budget, Parts } from '../../../../../core/models/Cost/budge';
 import { Asset } from '../../../../../core/models/Cost/asset';
 import { Product } from '../../../../../core/models/Cost/product';
-import { Fixe } from '../../../../../core/models/Cost/fixe';
-import { Config } from '../../../../../core/models/Cost/config';
+import { BudgetService } from '../../../../../core/services/cost/budget.service';
+import { ConfigService } from '../../../../../core/services/cost/config.service';
+import { ProductService } from '../../../../../core/services/cost/product.service';
+import { AssetService } from '../../../../../core/services/cost/asset.service';
+import { FixeService } from '../../../../../core/services/cost/fixe.service';
+import { forkJoin } from 'rxjs';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -19,6 +23,11 @@ import Swal from 'sweetalert2';
 export class AddBudgetComponent implements OnInit {
   private formBuilder = inject(FormBuilder);
   private router = inject(Router);
+  private budgetService = inject(BudgetService);
+  private configService = inject(ConfigService);
+  private productService = inject(ProductService);
+  private assetService = inject(AssetService);
+  private fixeService = inject(FixeService);
   form!: FormGroup;
   id: number = 0;
   loading = false;
@@ -46,59 +55,60 @@ export class AddBudgetComponent implements OnInit {
     this.myFormValues();
   }
 
-  //eliminar la línea siguiente al colocar los servicios
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  get f(): any { return this.form.controls; }
+  get f() { return this.form.controls; }
 
   ngOnInit() {
-    this.cargarConfiguracionGlobal();
-    this.calcularCargaFija();
-    this.cargarDatosCostos();
-    this.getExistingProducts();
-    this.setValues();
-  }
-
-  getExistingProducts() {
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-    const stored = localStorage.getItem('cost_products');
-    this.productosList = stored ? JSON.parse(stored) : [];
-    this.actualizarIndirectoProrrateado();
+    forkJoin({
+      configs: this.configService.getConfigs(),
+      products: this.productService.getProducts(),
+      assets: this.assetService.getAssets(),
+      fixes: this.fixeService.getFixes()
+    }).subscribe(data => {
+      // Configuración global
+      if (data.configs.length > 0) {
+        this.actualizarMinMargenGanancia(data.configs[0].margenGanancia || 0);
+      }
+      
+      // Productos
+      this.productosList = data.products;
+      
+      // Activos (Máquinas y Circulantes)
+      this.maquinasList = data.assets.filter(asset => 
+        asset.tipo?.toLowerCase().trim() === 'fijo' && 
+        asset.categoria?.toLowerCase().trim() === 'maquinaria'
+      );
+      this.activosCirculantes = data.assets.filter(asset => 
+        asset.tipo?.toLowerCase().trim() === 'herramienta' || 
+        asset.tipo?.toLowerCase().trim() === 'circulante' ||
+        asset.tipo === ''
+      );
+      this.categoriasMaterial = [...new Set(
+        this.activosCirculantes.map(a => a.categoria).filter((c): c is string => !!c)
+      )];
+      
+      this.actualizarCostoMaquina();
+      this.actualizarMinMargenGanancia();
+      
+      // Costos y Depreciación
+      this.totalDepreciacionMensual = data.assets.reduce((sum, asset) => {
+        const costo = parseFloat(String(asset.costoInicial)) || 0;
+        const residual = parseFloat(String(asset.valorResidual)) || 0;
+        const vida = parseInt(String(asset.vidaUtil)) || 0;
+        return vida > 0 ? sum + ((costo - residual) / vida / 12) : sum;
+      }, 0);
+      
+      const indirectos = data.fixes.filter(item => item.clasificacion === 'Indirecto');
+      this.totalFijoIndirecto = indirectos.reduce((total, item) => total + (Number(item.precio) || 0), 0);
+      
+      this.actualizarIndirectoProrrateado();
+      
+      // Inicializar formulario con datos de edición si existen
+      this.setValues();
+    });
   }
 
   back() {
     this.router.navigate(['/budgets']);
-  }
-
-  cargarConfiguracionGlobal() {
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-    const stored = localStorage.getItem('cost_configs');
-    const configs: Config[] = stored ? JSON.parse(stored) : [];
-    if (configs.length > 0) {
-      const config = configs[0];
-      this.actualizarMinMargenGanancia(config.margenGanancia || 0);
-    }
-  }
-
-  calcularCargaFija() {
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-    const stored = localStorage.getItem('cost_assets');
-    const assets: Asset[] = stored ? JSON.parse(stored) : [];
-    this.maquinasList = assets.filter((asset: Asset) => 
-      asset.tipo?.toLowerCase().trim() === 'fijo' && 
-      asset.categoria?.toLowerCase().trim() === 'maquinaria'
-    );
-    this.actualizarCostoMaquina();
-    this.actualizarMinMargenGanancia();
-
-    this.activosCirculantes = assets.filter((asset: Asset) => 
-      asset.tipo?.toLowerCase().trim() === 'herramienta' || 
-      asset.tipo?.toLowerCase().trim() === 'circulante' ||
-      asset.tipo === ''
-    );
-
-    this.categoriasMaterial = [...new Set(
-      this.activosCirculantes.map(a => a.categoria).filter((c): c is string => !!c)
-    )];
   }
 
   actualizarCostoMaquina() {
@@ -133,27 +143,6 @@ export class AddBudgetComponent implements OnInit {
     }
   }
 
-  cargarDatosCostos() {
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-    const storedAssets = localStorage.getItem('cost_assets');
-    const activos: Asset[] = storedAssets ? JSON.parse(storedAssets) : [];
-
-    const storedFixes = localStorage.getItem('cost_fixes');
-    const costos: Fixe[] = storedFixes ? JSON.parse(storedFixes) : [];
-
-    this.totalDepreciacionMensual = activos.reduce((sum: number, asset: Asset) => {
-      const costo = parseFloat(String(asset.costoInicial)) || 0;
-      const residual = parseFloat(String(asset.valorResidual)) || 0;
-      const vida = parseInt(String(asset.vidaUtil)) || 0;
-      return vida > 0 ? sum + ((costo - residual) / vida / 12) : sum;
-    }, 0);
-
-    const indirectos = costos.filter((item: Fixe) => item.clasificacion === 'Indirecto');
-    this.totalFijoIndirecto = indirectos.reduce((total: number, item: Fixe) => total + (Number(item.precio) || 0), 0);
-
-    this.actualizarIndirectoProrrateado();
-  }
-
   actualizarIndirectoProrrateado() {
     const numProductos = this.productosList.length || 1;
     this.costoIndirectoProrrateado = this.totalFijoIndirecto / numProductos;
@@ -162,14 +151,14 @@ export class AddBudgetComponent implements OnInit {
 
   addPart() {
     const requiredFields = [
-      { field: this.f.nombre, message: 'el nombre de la pieza' },
-      { field: this.f.materialTipo, message: 'la categoría de material' },
+      { field: this.f['nombre'], message: 'el nombre de la pieza' },
+      { field: this.f['materialTipo'], message: 'la categoría de material' },
       { field: this.form.get('materialId'), message: 'el material (activo circulante)' },
-      { field: this.f.precioMaterial, message: 'el costo de material por gramo' },
-      { field: this.f.gramos, message: 'los gramos' },
-      { field: this.f.metros, message: 'los metros' },
-      { field: this.f.horas, message: 'las horas' },
-      { field: this.f.minutos, message: 'los minutos' }
+      { field: this.f['precioMaterial'], message: 'el costo de material por gramo' },
+      { field: this.f['gramos'], message: 'los gramos' },
+      { field: this.f['metros'], message: 'los metros' },
+      { field: this.f['horas'], message: 'las horas' },
+      { field: this.f['minutos'], message: 'los minutos' }
     ];
 
     for (const { field, message } of requiredFields) {
@@ -179,7 +168,7 @@ export class AddBudgetComponent implements OnInit {
       }
     }
     
-    const nombre = this.f.nombre.value.toString().trim();
+    const nombre = this.f['nombre'].value.toString().trim();
     const exists = this.piezas.some(part => (part.nombre || '').toLowerCase() === nombre.toLowerCase());
 
     if (exists) {
@@ -192,7 +181,7 @@ export class AddBudgetComponent implements OnInit {
 
   onAddPart() {
     const materialId = this.form.get('materialId')?.value;
-    let materialDisplayName = this.f.materialTipo.value;
+    let materialDisplayName = this.f['materialTipo'].value;
     
     if (materialId) {
       const asset = this.activosCirculantes.find(a => a.id == materialId);
@@ -203,13 +192,13 @@ export class AddBudgetComponent implements OnInit {
 
     const newParts = {
       id: this.generateUniqueId(),
-      nombre: this.f.nombre.value.toString().trim().toUpperCase(),
+      nombre: this.f['nombre'].value.toString().trim().toUpperCase(),
       materialTipo: materialDisplayName,
-      precioMaterial: Number(this.f.precioMaterial.value) || 0,
-      gramos: Number(this.f.gramos.value) || 0,
-      metros: Number(this.f.metros.value) || 0, 
-      horas: Number(this.f.horas.value) || 0,
-      minutos: Number(this.f.minutos.value) || 0
+      precioMaterial: Number(this.f['precioMaterial'].value) || 0,
+      gramos: Number(this.f['gramos'].value) || 0,
+      metros: Number(this.f['metros'].value) || 0, 
+      horas: Number(this.f['horas'].value) || 0,
+      minutos: Number(this.f['minutos'].value) || 0
     };
 
     this.piezaCounter++;
@@ -262,16 +251,16 @@ export class AddBudgetComponent implements OnInit {
   }
 
   clearForm() {
-    this.f.nombre.setValue(`PIEZA ${this.piezaCounter}`);
-    this.f.materialTipo.setValue('');
+    this.f['nombre'].setValue(`PIEZA ${this.piezaCounter}`);
+    this.f['materialTipo'].setValue('');
     this.form.get('subcategoria')?.setValue('');
     this.form.get('materialId')?.setValue(null);
     this.form.get('materialId')?.disable();
-    this.f.precioMaterial.setValue('');
-    this.f.gramos.setValue('');
-    this.f.metros.setValue('');
-    this.f.horas.setValue('');
-    this.f.minutos.setValue('');
+    this.f['precioMaterial'].setValue('');
+    this.f['gramos'].setValue('');
+    this.f['metros'].setValue('');
+    this.f['horas'].setValue('');
+    this.f['minutos'].setValue('');
   }
 
   onDelete(row: Parts) {
@@ -284,7 +273,7 @@ export class AddBudgetComponent implements OnInit {
       if (result.isConfirmed) {
         this.piezas = this.piezas.filter(p => p.id !== row.id);
         this.piezaCounter = Math.max(1, this.piezaCounter - 1);
-        this.f.nombre.setValue(`PIEZA ${this.piezaCounter}`);
+        this.f['nombre'].setValue(`PIEZA ${this.piezaCounter}`);
       }
     });
   }
@@ -317,7 +306,7 @@ export class AddBudgetComponent implements OnInit {
 
         this.id = data.id;
         this.piezas = data.piezas || [];
-        this.f.nombre.setValue(`PIEZA ${this.piezas.length + 1}`);
+        this.f['nombre'].setValue(`PIEZA ${this.piezas.length + 1}`);
         this.actualizarCostoMaquina();
         this.actualizarMinMargenGanancia();
       }
@@ -440,8 +429,8 @@ export class AddBudgetComponent implements OnInit {
   onSubmit() {
     this.submitted = true;
 
-    if (this.f.clasificacion.value === 'Producto' && !this.f.productoId?.value) {
-      this.f.productoId?.setErrors({ required: true });
+    if (this.f['clasificacion'].value === 'Producto' && !this.f['productoId']?.value) {
+      this.f['productoId']?.setErrors({ required: true });
     }
 
     if (this.form.invalid) {
@@ -453,48 +442,44 @@ export class AddBudgetComponent implements OnInit {
 
     const budget: Budget = {
       id: this.id > 0 ? this.id : 0,
-      sku: this.id > 0 ? this.f.numero.value : `B-${this.f.clasificacion.value.substring(0, 3).toUpperCase()}-${Math.floor(Math.random() * 900) + 100}`,
-      clasificacion: this.f.clasificacion.value,
-      descripcion: this.f.descripcion.value,
-      numero: this.f.numero.value,
-      fecha: new Date(this.f.fecha.value),
+      sku: this.id > 0 ? this.f['numero'].value : `B-${this.f['clasificacion'].value.substring(0, 3).toUpperCase()}-${Math.floor(Math.random() * 900) + 100}`,
+      clasificacion: this.f['clasificacion'].value,
+      descripcion: this.f['descripcion'].value,
+      numero: this.f['numero'].value,
+      fecha: new Date(this.f['fecha'].value),
       piezas: this.piezas,
-      productoId: this.f.clasificacion.value === 'Producto' ? Number(this.f.productoId.value) : undefined,
-      activoId: Number(this.f.activoId.value) || undefined,
-      tasaFalloGlobal: Number(this.f.tasaFalloGlobal.value) || 0,
-      tiempoSetup: Number(this.f.tiempoSetup.value) || 0,
-      tiempoPostProcesado: Number(this.f.tiempoPostProcesado.value) || 0,
-      margenGanancia: Number(this.f.margenGanancia.value) || 0,
-      costoMaquina: Number(this.f.costoMaquina.value) || 0,
+      productoId: this.f['clasificacion'].value === 'Producto' ? Number(this.f['productoId'].value) : undefined,
+      activoId: Number(this.f['activoId'].value) || undefined,
+      tasaFalloGlobal: Number(this.f['tasaFalloGlobal'].value) || 0,
+      tiempoSetup: Number(this.f['tiempoSetup'].value) || 0,
+      tiempoPostProcesado: Number(this.f['tiempoPostProcesado'].value) || 0,
+      margenGanancia: Number(this.f['margenGanancia'].value) || 0,
+      costoMaquina: Number(this.f['costoMaquina'].value) || 0,
       costoOperador: 0
     };
 
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-    const stored = localStorage.getItem('cost_budgets');
-    let list: Budget[] = stored ? JSON.parse(stored) : [];
+    const request = this.id === 0
+      ? this.budgetService.createBudget(budget)
+      : this.budgetService.updateBudget(this.id, budget);
 
-    if (this.id === 0) {
-      const newId = list.length > 0 ? Math.max(...list.map(b => b.id || 0)) + 1 : 1;
-      budget.id = newId;
-      list.push(budget);
-    } else {
-      list = list.map(b => b.id === this.id ? budget : b);
-    }
-
-    localStorage.setItem('cost_budgets', JSON.stringify(list));
-    localStorage.removeItem('cost_edit_budget');
-
-    setTimeout(() => {
-      this.loading = false;
-      Swal.fire({
-        title: '¡Guardado!',
-        text: 'Presupuesto guardado exitosamente.',
-        icon: 'success',
-        confirmButtonText: 'Aceptar',
-        confirmButtonColor: '#4680ff'
-      }).then(() => {
-        this.router.navigate(['/budgets']);
-      });
-    }, 800);
+    request.subscribe({
+      next: () => {
+        localStorage.removeItem('cost_edit_budget');
+        this.loading = false;
+        Swal.fire({
+          title: '¡Guardado!',
+          text: 'Presupuesto guardado exitosamente.',
+          icon: 'success',
+          confirmButtonText: 'Aceptar',
+          confirmButtonColor: '#4680ff'
+        }).then(() => {
+          this.router.navigate(['/budgets']);
+        });
+      },
+      error: () => {
+        this.loading = false;
+        Swal.fire('Error', 'Ha ocurrido un error al guardar el presupuesto.', 'error');
+      }
+    });
   }
 }

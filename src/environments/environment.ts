@@ -1,4 +1,4 @@
-// This file can be replaced during build by using the `fileReplacements` array.
+ // This file can be replaced during build by using the `fileReplacements` array.
 // `ng build` replaces `environment.ts` with `environment.prod.ts`.
 // The list of file replacements can be found in `angular.json`.
 
@@ -7,6 +7,18 @@ import packageInfo from '../../package.json';
 export const environment = {
   appVersion: packageInfo.version,
   production: false,
+  useMocks: true,
+  mockData: {
+    products: [] as unknown[],
+    fixes: [] as unknown[],
+    configs: [] as unknown[],
+    assets: [] as unknown[],
+    budgets: [] as unknown[],
+    pricings: [] as unknown[],
+    codings: [] as unknown[],
+    families: [] as unknown[],
+    skus: [] as unknown[]
+  },
   name_system: 'COST',
   ttl: 28800000,
   apiAuth: 'http://localhost:8090/backost/public',
@@ -36,7 +48,7 @@ export const environment = {
     },
     double: {
       validations: {
-        pattern: '^[0-9\.]*$',
+        pattern: '^[0-9.]*$',
       }
     },
     alphanumeric: {
@@ -46,17 +58,17 @@ export const environment = {
     },
     alphanumeric_guion: {
       validations: {
-        pattern: '^[a-zA-Z0-9\-]*$',
+        pattern: '^[a-zA-Z0-9-]*$',
       }
     },
     number_guion: {
       validations: {
-        pattern: '^[0-9\-]*$',
+        pattern: '^[0-9-]*$',
       }
     },
     role_pattern: {
       validations: {
-        pattern: '(ROLE)[A-Z\_]+',
+        pattern: '(ROLE)[A-Z_]+',
       }
     },
     file_extension: ['doc', 'docx', 'pdf', 'xls', 'xlsx', 'png', 'jpg', 'jpge'],

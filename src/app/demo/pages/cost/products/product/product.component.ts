@@ -3,7 +3,9 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { Product } from '../../../../../core/models/Cost/product';
-import { Config } from '../../../../../core/models/Cost/config';
+import { ProductService } from '../../../../../core/services/cost/product.service';
+import { ConfigService } from '../../../../../core/services/cost/config.service';
+import { forkJoin } from 'rxjs';
 import Swal from 'sweetalert2';
 
 interface ProductWithProfile extends Product {
@@ -18,6 +20,8 @@ interface ProductWithProfile extends Product {
 })
 export class ProductComponent implements OnInit {
   private router = inject(Router);
+  private productService = inject(ProductService);
+  private configService = inject(ConfigService);
 
   loading = true;
   allProducts: ProductWithProfile[] = [];
@@ -38,29 +42,7 @@ export class ProductComponent implements OnInit {
 
   Math = Math; // Para usar en la plantilla
 
-  // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-  private defaultProducts: Product[] = [
-    {
-      id: 1,
-      nombre: 'Tornillo CNC Especial M8',
-      sku: 'CNC-M8-001',
-      medida: 'Unidades',
-      clasificacion: 'Directo',
-      descripcion: 'Tornillo mecanizado de precisión para ensambles de chasis',
-      perfil: 1,
-      periodo: '2026'
-    },
-    {
-      id: 2,
-      nombre: 'Eje de Transmisión Aluminio',
-      sku: 'EJE-ALU-002',
-      medida: 'Unidades',
-      clasificacion: 'Directo',
-      descripcion: 'Eje de aluminio de alta resistencia fresado',
-      perfil: 1,
-      periodo: '2026'
-    }
-  ];
+  // Ya no necesitamos data por defecto aquí, viene del environment.local.ts vía servicio
 
   ngOnInit(): void {
     this.getProducts();
@@ -69,27 +51,31 @@ export class ProductComponent implements OnInit {
   getProducts() {
     this.loading = true;
     
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-    const storedConfigs = localStorage.getItem('cost_configs');
-    const configs: Config[] = storedConfigs ? JSON.parse(storedConfigs) : [];
+    forkJoin({
+      configs: this.configService.getConfigs(),
+      products: this.productService.getProducts()
+    }).subscribe({
+      next: (data) => {
+        const configs = data.configs;
+        const productsList = data.products;
 
-    const storedProducts = localStorage.getItem('cost_products');
-    const productsList: Product[] = storedProducts ? JSON.parse(storedProducts) : [...this.defaultProducts];
-    if (!storedProducts) {
-      localStorage.setItem('cost_products', JSON.stringify(productsList));
-    }
+        this.allProducts = productsList.map(p => {
+          const config = configs.find(c => c.id === p.perfil);
+          return {
+            ...p,
+            perfilName: config ? config.nombre : 'Sin Empresa'
+          };
+        });
 
-    this.allProducts = productsList.map(p => {
-      const config = configs.find(c => c.id === p.perfil);
-      return {
-        ...p,
-        perfilName: config ? config.nombre : 'Sin Empresa'
-      };
+        this.filteredProducts = [...this.allProducts];
+        this.applyFilterAndPagination();
+        this.loading = false;
+      },
+      error: () => {
+        this.loading = false;
+        Swal.fire('Error', 'No se pudieron cargar los productos.', 'error');
+      }
     });
-
-    this.filteredProducts = [...this.allProducts];
-    this.applyFilterAndPagination();
-    this.loading = false;
   }
 
   onSearchChange() {
@@ -161,13 +147,13 @@ export class ProductComponent implements OnInit {
   }
 
   onEdit(row: Product) {
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
+    // Transferir datos al formulario
     localStorage.setItem('cost_edit_product', JSON.stringify(row));
     this.router.navigate(['/products/add-product']);
   }
 
   openAdd() {
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
+    // Limpiar formulario para nuevo registro
     localStorage.removeItem('cost_edit_product');
     this.router.navigate(['/products/add-product']);
   }
@@ -181,15 +167,12 @@ export class ProductComponent implements OnInit {
       denyButtonText: `Cancelar`
     }).then((result) => {
       if (result.isConfirmed) {
-        // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-        const stored = localStorage.getItem('cost_products');
-        if (stored) {
-          let productsList: Product[] = JSON.parse(stored);
-          productsList = productsList.filter(p => p.id !== id);
-          localStorage.setItem('cost_products', JSON.stringify(productsList));
-        }
-        this.allProducts = this.allProducts.filter(p => p.id !== id);
-        this.applyFilterAndPagination();
+        this.productService.deleteProduct(id).subscribe({
+          next: () => {
+            this.allProducts = this.allProducts.filter(p => p.id !== id);
+            this.applyFilterAndPagination();
+          }
+        });
       }
     });
   }

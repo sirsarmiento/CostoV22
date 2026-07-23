@@ -5,6 +5,8 @@ import { Router, RouterModule } from '@angular/router';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { Product } from '../../../../../core/models/Cost/product';
 import { Config } from '../../../../../core/models/Cost/config';
+import { ProductService } from '../../../../../core/services/cost/product.service';
+import { ConfigService } from '../../../../../core/services/cost/config.service';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -16,6 +18,8 @@ import Swal from 'sweetalert2';
 export class AddProductComponent implements OnInit {
   private formBuilder = inject(FormBuilder);
   private router = inject(Router);
+  private productService = inject(ProductService);
+  private configService = inject(ConfigService);
 
   form!: FormGroup;
   id: number = 0;
@@ -27,9 +31,7 @@ export class AddProductComponent implements OnInit {
     this.myFormValues();
   }
 
-  //eliminar la línea siguiente al colocar los servicios
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  get f(): any { return this.form.controls; }
+  get f() { return this.form.controls; }
 
   ngOnInit() {
     this.loadConfigs();
@@ -52,14 +54,16 @@ export class AddProductComponent implements OnInit {
   }
 
   loadConfigs() {
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-    const stored = localStorage.getItem('cost_configs');
-    this.configs = stored ? JSON.parse(stored) : [];
-    if (this.configs.length > 0 && this.form?.get('perfil')) {
-      if (!this.form.get('perfil')?.value) {
-        this.form.get('perfil')?.setValue(this.configs[0].id);
+    this.configService.getConfigs().subscribe({
+      next: (configs) => {
+        this.configs = configs;
+        if (this.configs.length > 0 && this.form?.get('perfil')) {
+          if (!this.form.get('perfil')?.value) {
+            this.form.get('perfil')?.setValue(this.configs[0].id);
+          }
+        }
       }
-    }
+    });
   }
 
   back() {
@@ -117,32 +121,29 @@ export class AddProductComponent implements OnInit {
       periodo: this.form.get('periodo')?.value
     };
 
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-    const stored = localStorage.getItem('cost_products');
-    let productsList: Product[] = stored ? JSON.parse(stored) : [];
+    const request = this.id === 0 
+      ? this.productService.createProduct(product)
+      : this.productService.updateProduct(this.id, product);
 
-    if (this.id === 0) {
-      const newId = productsList.length > 0 ? Math.max(...productsList.map(p => p.id || 0)) + 1 : 1;
-      product.id = newId;
-      productsList.push(product);
-    } else {
-      productsList = productsList.map(p => p.id === this.id ? product : p);
-    }
-
-    localStorage.setItem('cost_products', JSON.stringify(productsList));
-    localStorage.removeItem('cost_edit_product');
-
-    setTimeout(() => {
-      this.loading = false;
-      Swal.fire({
-        title: '¡Guardado!',
-        text: 'Producto guardado exitosamente.',
-        icon: 'success',
-        confirmButtonText: 'Aceptar',
-        confirmButtonColor: '#4680ff'
-      }).then(() => {
-        this.router.navigate(['/products']);
-      });
-    }, 800);
+    request.subscribe({
+      next: () => {
+        localStorage.removeItem('cost_edit_product');
+        this.loading = false;
+        Swal.fire({
+          title: '¡Guardado!',
+          text: 'Producto guardado exitosamente.',
+          icon: 'success',
+          confirmButtonText: 'Aceptar',
+          confirmButtonColor: '#4680ff'
+        }).then(() => {
+          this.router.navigate(['/products']);
+        });
+      },
+      error: (error) => {
+        this.loading = false;
+        console.error('Error saving product:', error);
+        Swal.fire('Error', 'Ha ocurrido un error al guardar.', 'error');
+      }
+    });
   }
 }

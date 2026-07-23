@@ -4,6 +4,7 @@ import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } 
 import { Router, RouterModule } from '@angular/router';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { CapacityResults, Config, Machine } from '../../../../../core/models/Cost/config';
+import { ConfigService } from '../../../../../core/services/cost/config.service';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -15,6 +16,7 @@ import Swal from 'sweetalert2';
 export class AddConfigComponent implements OnInit {
   private formBuilder = inject(FormBuilder);
   private router = inject(Router);
+  private configService = inject(ConfigService);
 
   selectedRow: Machine | null = null;
   form!: FormGroup;
@@ -36,9 +38,7 @@ export class AddConfigComponent implements OnInit {
     this.myFormValues();
   }
 
-  //eliminar la línea siguiente al colocar los servicios
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  get f(): any { return this.form.controls; }
+  get f() { return this.form.controls; }
 
   ngOnInit() {
     this.setValues();
@@ -54,12 +54,12 @@ export class AddConfigComponent implements OnInit {
 
   addMachine() {
     const requiredFields = [
-      { field: this.f.type_machine, message: 'el tipo de máquina' },
-      { field: this.f.description, message: 'la descripción' },
-      { field: this.f.productMax, message: 'la producción máxima' },
-      { field: this.f.hoursMax, message: 'las horas máximas' },
-      { field: this.f.hoursUse, message: 'las horas de uso' },
-      { field: this.f.medida, message: 'la unidad de medida' }
+      { field: this.f['type_machine'], message: 'el tipo de máquina' },
+      { field: this.f['description'], message: 'la descripción' },
+      { field: this.f['productMax'], message: 'la producción máxima' },
+      { field: this.f['hoursMax'], message: 'las horas máximas' },
+      { field: this.f['hoursUse'], message: 'las horas de uso' },
+      { field: this.f['medida'], message: 'la unidad de medida' }
     ];
 
     for (const { field, message } of requiredFields) {
@@ -72,12 +72,12 @@ export class AddConfigComponent implements OnInit {
 
     const newMachine: Machine = {
       id: this.selectedRow ? this.selectedRow.id : this.generateUniqueMachineId(),
-      tipo: this.f.type_machine.value,
-      descripcion: this.f.description.value,
-      prodMaxHoras: Number(this.f.productMax.value) || 0,
-      horasMax: Number(this.f.hoursMax.value) || 0,
-      horasUso: Number(this.f.hoursUse.value) || 0,
-      unidad: this.f.medida.value
+      tipo: this.f['type_machine'].value,
+      descripcion: this.f['description'].value,
+      prodMaxHoras: Number(this.f['productMax'].value) || 0,
+      horasMax: Number(this.f['hoursMax'].value) || 0,
+      horasUso: Number(this.f['hoursUse'].value) || 0,
+      unidad: this.f['medida'].value
     };
 
     if (newMachine.horasUso > newMachine.horasMax) {
@@ -102,11 +102,11 @@ export class AddConfigComponent implements OnInit {
   }
 
   clearForm() {
-    this.f.type_machine.setValue('');
-    this.f.description.setValue('');
-    this.f.productMax.setValue('');
-    this.f.hoursMax.setValue('');
-    this.f.hoursUse.setValue('');
+    this.f['type_machine'].setValue('');
+    this.f['description'].setValue('');
+    this.f['productMax'].setValue('');
+    this.f['hoursMax'].setValue('');
+    this.f['hoursUse'].setValue('');
   }
 
   refreshList() {
@@ -169,15 +169,15 @@ export class AddConfigComponent implements OnInit {
     if (stored) {
       const data: Config = JSON.parse(stored);
       if (data && data.id && data.id > 0) {
-        this.f.nombre.setValue(data.nombre);
-        this.f.tipo.setValue(data.tipo);
-        this.f.sector.setValue(data.sector);
-        this.f.empleados.setValue(data.empleados);
-        this.f.rif.setValue(data.rif);
-        this.f.periodo.setValue(data.periodo);
-        this.f.direccion.setValue(data.direccion);
-        this.f.moneda.setValue(data.moneda);
-        this.f.minMargenGanancia.setValue(data.margenGanancia || 0);
+        this.f['nombre'].setValue(data.nombre);
+        this.f['tipo'].setValue(data.tipo);
+        this.f['sector'].setValue(data.sector);
+        this.f['empleados'].setValue(data.empleados);
+        this.f['rif'].setValue(data.rif);
+        this.f['periodo'].setValue(data.periodo);
+        this.f['direccion'].setValue(data.direccion);
+        this.f['moneda'].setValue(data.moneda);
+        this.f['minMargenGanancia'].setValue(data.margenGanancia || 0);
         this.machines = data.parametros || [];
         this.id = data.id;
 
@@ -221,54 +221,51 @@ export class AddConfigComponent implements OnInit {
 
     const perfil: Config = {
       id: this.id > 0 ? this.id : 0,
-      nombre: this.f.nombre.value,
-      tipo: this.f.tipo.value,
-      sector: this.f.sector.value,
-      empleados: this.f.empleados.value,
-      rif: this.f.rif.value,
-      periodo: this.f.periodo.value,
-      direccion: this.f.direccion.value,
-      moneda: this.f.moneda.value,
-      margenGanancia: Number(this.f.minMargenGanancia.value) || 0,
+      nombre: this.f['nombre'].value,
+      tipo: this.f['tipo'].value,
+      sector: this.f['sector'].value,
+      empleados: this.f['empleados'].value,
+      rif: this.f['rif'].value,
+      periodo: this.f['periodo'].value,
+      direccion: this.f['direccion'].value,
+      moneda: this.f['moneda'].value,
+      margenGanancia: Number(this.f['minMargenGanancia'].value) || 0,
       parametros: this.machines
     };
 
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-    const stored = localStorage.getItem('cost_configs');
-    let configsList: Config[] = stored ? JSON.parse(stored) : [];
+    const request = this.id === 0 
+      ? this.configService.createConfig(perfil)
+      : this.configService.updateConfig(this.id, perfil);
 
-    if (this.id === 0) {
-      const newId = configsList.length > 0 ? Math.max(...configsList.map(c => c.id || 0)) + 1 : 1;
-      perfil.id = newId;
-      configsList.push(perfil);
-    } else {
-      configsList = configsList.map(c => c.id === this.id ? perfil : c);
-    }
-
-    localStorage.setItem('cost_configs', JSON.stringify(configsList));
-    localStorage.removeItem('cost_edit_config');
-
-    setTimeout(() => {
-      this.loading = false;
-      Swal.fire({
-        title: '¡Guardado!',
-        text: 'Perfil de empresa guardado exitosamente.',
-        icon: 'success',
-        confirmButtonText: 'Aceptar',
-        confirmButtonColor: '#4680ff'
-      }).then(() => {
-        this.router.navigate(['/configs']);
-      });
-    }, 800);
+    request.subscribe({
+      next: () => {
+        localStorage.removeItem('cost_edit_config');
+        this.loading = false;
+        Swal.fire({
+          title: '¡Guardado!',
+          text: 'Perfil de empresa guardado exitosamente.',
+          icon: 'success',
+          confirmButtonText: 'Aceptar',
+          confirmButtonColor: '#4680ff'
+        }).then(() => {
+          this.router.navigate(['/configs']);
+        });
+      },
+      error: (error) => {
+        this.loading = false;
+        console.error('Error saving config:', error);
+        Swal.fire('Error', 'Ha ocurrido un error. Intente más tarde.', 'error');
+      }
+    });
   }
 
   onEdit(row: Machine) {
-    this.f.type_machine.setValue(row.tipo);
-    this.f.description.setValue(row.descripcion);
-    this.f.productMax.setValue(row.prodMaxHoras);
-    this.f.hoursMax.setValue(row.horasMax);
-    this.f.hoursUse.setValue(row.horasUso);
-    this.f.medida.setValue(row.unidad);
+    this.f['type_machine'].setValue(row.tipo);
+    this.f['description'].setValue(row.descripcion);
+    this.f['productMax'].setValue(row.prodMaxHoras);
+    this.f['hoursMax'].setValue(row.horasMax);
+    this.f['hoursUse'].setValue(row.horasUso);
+    this.f['medida'].setValue(row.unidad);
     this.selectedRow = row; 
     window.scrollTo(0, 0);
   }

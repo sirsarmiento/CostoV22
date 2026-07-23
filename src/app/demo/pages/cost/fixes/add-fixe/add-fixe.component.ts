@@ -5,6 +5,8 @@ import { Router, RouterModule } from '@angular/router';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { Fixe } from '../../../../../core/models/Cost/fixe';
 import { Product } from '../../../../../core/models/Cost/product';
+import { FixeService } from '../../../../../core/services/cost/fixe.service';
+import { ProductService } from '../../../../../core/services/cost/product.service';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -16,6 +18,8 @@ import Swal from 'sweetalert2';
 export class AddFixeComponent implements OnInit {
   private formBuilder = inject(FormBuilder);
   private router = inject(Router);
+  private fixeService = inject(FixeService);
+  private productService = inject(ProductService);
 
   form!: FormGroup;
   id: number = 0;
@@ -45,9 +49,7 @@ export class AddFixeComponent implements OnInit {
     this.myFormValues();
   }
 
-  //eliminar la línea siguiente al colocar los servicios
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  get f(): any { return this.form.controls; }
+  get f() { return this.form.controls; }
 
   ngOnInit(): void {
     this.loadProducts();
@@ -81,10 +83,12 @@ export class AddFixeComponent implements OnInit {
   }
 
   loadProducts() {
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-    const stored = localStorage.getItem('cost_products');
-    this.products = stored ? JSON.parse(stored) : [];
-    this.filteredProducts = [...this.products];
+    this.productService.getProducts().subscribe({
+      next: (products) => {
+        this.products = products;
+        this.filteredProducts = [...this.products];
+      }
+    });
   }
 
   back() {
@@ -162,33 +166,29 @@ export class AddFixeComponent implements OnInit {
       producto: Number(productoControl?.value) || 0
     };
 
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-    const stored = localStorage.getItem('cost_fixes');
-    let list: Fixe[] = stored ? JSON.parse(stored) : [];
+    const request = this.id === 0 
+      ? this.fixeService.createFixe(costo)
+      : this.fixeService.updateFixe(this.id, costo);
 
-    if (this.id === 0) {
-      const newId = list.length > 0 ? Math.max(...list.map(c => c.id || 0)) + 1 : 1;
-      costo.id = newId;
-      list.push(costo);
-    } else {
-      list = list.map(c => c.id === this.id ? costo : c);
-    }
-
-    localStorage.setItem('cost_fixes', JSON.stringify(list));
-    localStorage.removeItem('cost_edit_fixe');
-
-    setTimeout(() => {
-      this.loading = false;
-      Swal.fire({
-        title: '¡Guardado!',
-        text: 'Costo guardado exitosamente.',
-        icon: 'success',
-        confirmButtonText: 'Aceptar',
-        confirmButtonColor: '#4680ff'
-      }).then(() => {
-        this.router.navigate(['/fixes']);
-      });
-    }, 800);
+    request.subscribe({
+      next: () => {
+        localStorage.removeItem('cost_edit_fixe');
+        this.loading = false;
+        Swal.fire({
+          title: '¡Guardado!',
+          text: 'Costo guardado exitosamente.',
+          icon: 'success',
+          confirmButtonText: 'Aceptar',
+          confirmButtonColor: '#4680ff'
+        }).then(() => {
+          this.router.navigate(['/fixes']);
+        });
+      },
+      error: () => {
+        this.loading = false;
+        Swal.fire('Error', 'Ha ocurrido un error al guardar el costo.', 'error');
+      }
+    });
   }
 
   filterProducts(event: Event) {

@@ -25,8 +25,8 @@
                 class="form-control" 
                 formControlName="nombre" 
                 maxlength="100" 
-                [class.is-invalid]="submitted && f.nombre.errors">
-              @if (submitted && f.nombre.errors?.required) {
+                [class.is-invalid]="submitted && f['nombre'].errors">
+              @if (submitted && f['nombre'].errors?.['required']) {
                 <div class="invalid-feedback">Ingrese el nombre del producto</div>
               }
             </div>
@@ -38,12 +38,12 @@
                 placeholder="Seleccione..."
                 [clearable]="false"
                 [searchable]="false"
-                [class.is-invalid]="submitted && f.clasificacion.errors">
+                [class.is-invalid]="submitted && f['clasificacion'].errors">
                 <ng-option value="Proyecto">Proyecto</ng-option>
                 <ng-option value="Servicio">Servicio</ng-option>
                 <ng-option value="Actividad">Actividad</ng-option>
               </ng-select>
-              @if (submitted && f.clasificacion.errors?.required) {
+              @if (submitted && f['clasificacion'].errors?.['required']) {
                 <div class="invalid-feedback d-block">Ingrese la Clasificación de Costo</div>
               }
             </div>
@@ -55,7 +55,7 @@
                 placeholder="Seleccione..."
                 [clearable]="false"
                 [searchable]="true"
-                [class.is-invalid]="submitted && f.medida.errors">
+                [class.is-invalid]="submitted && f['medida'].errors">
                 <ng-option value="Metros">Metros</ng-option>
                 <ng-option value="kilos">Kilos</ng-option>
                 <ng-option value="Toneladas">Toneladas</ng-option>
@@ -70,7 +70,7 @@
                 <ng-option value="Kilómetros">Kilómetros</ng-option>
                 <ng-option value="Transacciones">Transacciones - Operaciones</ng-option>
               </ng-select>
-              @if (submitted && f.medida.errors?.required) {
+              @if (submitted && f['medida'].errors?.['required']) {
                 <div class="invalid-feedback d-block">Seleccione la unidad de medida</div>
               }
             </div>
@@ -97,8 +97,8 @@
                 maxlength="1000" 
                 rows="3"
                 placeholder="Descripción del producto" 
-                [class.is-invalid]="submitted && f.descripcion.errors"></textarea>
-              @if (submitted && f.descripcion.errors?.required) {
+                [class.is-invalid]="submitted && f['descripcion'].errors"></textarea>
+              @if (submitted && f['descripcion'].errors?.['required']) {
                 <div class="invalid-feedback">Ingrese la descripción del producto</div>
               }
             </div>

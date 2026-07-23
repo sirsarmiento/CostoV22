@@ -6,6 +6,9 @@ import { NgSelectModule } from '@ng-select/ng-select';
 import { Family, Subfamily } from '../../../../../core/models/Cost/family';
 import { Product } from '../../../../../core/models/Cost/product';
 import { Budget } from '../../../../../core/models/Cost/budge';
+import { CodingService } from '../../../../../core/services/cost/coding.service';
+import { ProductService } from '../../../../../core/services/cost/product.service';
+import { BudgetService } from '../../../../../core/services/cost/budget.service';
 import Swal from 'sweetalert2';
 
 interface SkuCoding {
@@ -34,6 +37,9 @@ interface SkuCoding {
 export class AddCodingComponent implements OnInit {
   private formBuilder = inject(FormBuilder);
   private router = inject(Router);
+  private codingService = inject(CodingService);
+  private productService = inject(ProductService);
+  private budgetService = inject(BudgetService);
 
   form!: FormGroup;
   id: number = 0;
@@ -89,8 +95,7 @@ export class AddCodingComponent implements OnInit {
   }
 
   //eliminar la línea siguiente al colocar los servicios
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  get f(): any { return this.form.controls; }
+  get f() { return this.form.controls; }
 
   get materialesMolde(): FormArray {
     return this.form.get('materialesMolde') as FormArray;
@@ -130,29 +135,27 @@ export class AddCodingComponent implements OnInit {
   }
 
   cargarFamilias() {
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-    const stored = localStorage.getItem('cost_families');
-    this.familias = stored ? JSON.parse(stored) : [];
+    this.codingService.getFamilies().subscribe(fams => {
+      this.familias = fams;
+    });
   }
 
   cargarProductos() {
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-    const stored = localStorage.getItem('cost_products');
-    const allProducts: Product[] = stored ? JSON.parse(stored) : [];
-    this.productos = allProducts.filter((p: Product) => {
-      if (!p.sku) return true;
-      const s = p.sku.trim().toLowerCase();
-      return s === '' || s === 'null' || s === 'sin asignar' || s === 'n/a';
+    this.productService.getProducts().subscribe(prods => {
+      this.productos = prods.filter(p => {
+        if (!p.sku) return true;
+        const s = p.sku.trim().toLowerCase();
+        return s === '' || s === 'null' || s === 'sin asignar' || s === 'n/a';
+      });
+      this.productosFiltrados = [...this.productos];
     });
-    this.productosFiltrados = [...this.productos];
   }
 
   cargarPresupuestos() {
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-    const stored = localStorage.getItem('cost_budgets');
-    const allBudgets: Budget[] = stored ? JSON.parse(stored) : [];
-    this.presupuestosServicios = allBudgets.filter((b: Budget) => b.clasificacion === 'Servicio');
-    this.presupuestosProyectos = allBudgets.filter((b: Budget) => b.clasificacion === 'Proyecto');
+    this.budgetService.getBudgets().subscribe(budgets => {
+      this.presupuestosServicios = budgets.filter(b => b.clasificacion === 'Servicio');
+      this.presupuestosProyectos = budgets.filter(b => b.clasificacion === 'Proyecto');
+    });
   }
 
   onCategoryChange() {
@@ -299,94 +302,99 @@ export class AddCodingComponent implements OnInit {
     const famObj = this.familias.find(f => f.codigo === this.form.value.familia);
     const subObj = this.subfamilias.find(s => s.codigo === this.form.value.subfamilia);
 
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-    const stored = localStorage.getItem('cost_codings');
-    let codingsList: SkuCoding[] = stored ? JSON.parse(stored) : [];
+    // Obtener los SKUs para calcular el correlativo o simplemente editar
+    this.codingService.getSKUs().subscribe({
+      next: (skusList) => {
+        let codingResult: SkuCoding;
 
-    let codingResult: SkuCoding;
-    if (this.id) {
-      // Editar
-      const current = codingsList.find(c => c.id === this.id);
-      codingResult = {
-        id: this.id,
-        sku: current ? current.sku : '',
-        codigo: current ? current.codigo : '',
-        productId: Number(this.form.value.productoId) || null,
-        presupuestoId: presupuestoId,
-        productName: pName,
-        categoria: cat,
-        tecnologia: this.form.value.tecnologia,
-        material: matValue,
-        materialesMolde: payloadMats,
-        familia: this.form.value.familia,
-        subfamilia: this.form.value.subfamilia,
-        familiaId: famObj ? (famObj.id || null) : null,
-        subfamiliaId: subObj ? (subObj.id || null) : null
-      };
+        if (this.id) {
+          // Editar
+          const current = skusList.find(c => c.id === this.id);
+          codingResult = {
+            id: this.id,
+            sku: current ? current.sku : '',
+            codigo: current ? current.codigo : '',
+            productId: Number(this.form.value.productoId) || null,
+            presupuestoId: presupuestoId,
+            productName: pName,
+            categoria: cat,
+            tecnologia: this.form.value.tecnologia,
+            material: matValue,
+            materialesMolde: payloadMats,
+            familia: this.form.value.familia,
+            subfamilia: this.form.value.subfamilia,
+            familiaId: famObj ? (famObj.id || null) : null,
+            subfamiliaId: subObj ? (subObj.id || null) : null
+          };
 
-      codingsList = codingsList.map(c => c.id === this.id ? codingResult : c);
-      localStorage.setItem('cost_codings', JSON.stringify(codingsList));
-      localStorage.removeItem('cost_edit_coding');
+          this.codingService.updateSKU(this.id, codingResult).subscribe({
+            next: () => {
+              localStorage.removeItem('cost_edit_coding');
+              this.loading = false;
+              Swal.fire('Éxito', 'Código actualizado exitosamente.', 'success').then(() => {
+                this.router.navigate(['/codings']);
+              });
+            }
+          });
 
-      Swal.fire('Éxito', 'Código actualizado exitosamente.', 'success').then(() => {
-        this.router.navigate(['/codings']);
-      });
-    } else {
-      // Crear - SKU generation: CAT-TEC-MAT-FAM-SUB-CORRELATIVO
-      const matchingCount = codingsList.filter(c => 
-        c.categoria === cat && 
-        c.tecnologia === this.form.value.tecnologia && 
-        c.material === matValue && 
-        c.familia === this.form.value.familia && 
-        c.subfamilia === this.form.value.subfamilia
-      ).length;
+        } else {
+          // Crear - SKU generation: CAT-TEC-MAT-FAM-SUB-CORRELATIVO
+          const matchingCount = skusList.filter(c => 
+            c.categoria === cat && 
+            c.tecnologia === this.form.value.tecnologia && 
+            c.material === matValue && 
+            c.familia === this.form.value.familia && 
+            c.subfamilia === this.form.value.subfamilia
+          ).length;
 
-      const corrStr = String(matchingCount + 1).padStart(3, '0');
-      const generatedSku = `${cat}-${this.form.value.tecnologia}-${matValue}-${this.form.value.familia}${this.form.value.subfamilia ? '-' + this.form.value.subfamilia : ''}-${corrStr}`;
+          const corrStr = String(matchingCount + 1).padStart(3, '0');
+          const generatedSku = `${cat}-${this.form.value.tecnologia}-${matValue}-${this.form.value.familia}${this.form.value.subfamilia ? '-' + this.form.value.subfamilia : ''}-${corrStr}`;
+          
+          codingResult = {
+            id: 0,
+            sku: generatedSku,
+            codigo: generatedSku,
+            productId: Number(this.form.value.productoId) || null,
+            presupuestoId: presupuestoId,
+            productName: pName,
+            categoria: cat,
+            tecnologia: this.form.value.tecnologia,
+            material: matValue,
+            materialesMolde: payloadMats,
+            familia: this.form.value.familia,
+            subfamilia: this.form.value.subfamilia,
+            familiaId: famObj ? (famObj.id || null) : null,
+            subfamiliaId: subObj ? (subObj.id || null) : null
+          };
 
-      const newId = codingsList.length > 0 ? Math.max(...codingsList.map(c => c.id || 0)) + 1 : 1;
-      
-      codingResult = {
-        id: newId,
-        sku: generatedSku,
-        codigo: generatedSku,
-        productId: Number(this.form.value.productoId) || null,
-        presupuestoId: presupuestoId,
-        productName: pName,
-        categoria: cat,
-        tecnologia: this.form.value.tecnologia,
-        material: matValue,
-        materialesMolde: payloadMats,
-        familia: this.form.value.familia,
-        subfamilia: this.form.value.subfamilia,
-        familiaId: famObj ? (famObj.id || null) : null,
-        subfamiliaId: subObj ? (subObj.id || null) : null
-      };
+          // Update de producto si es PF (Para consistencia local)
+          if (cat === 'PF' && codingResult.productId) {
+            const prod = this.productos.find(p => p.id === codingResult.productId);
+            if (prod) {
+              this.productService.updateProduct(prod.id!, { ...prod, sku: generatedSku }).subscribe();
+            }
+          }
 
-      // Si es de tipo producto fabricado (PF), debemos asociar este SKU al producto también en localStorage
-      if (cat === 'PF' && codingResult.productId) {
-        const storedProds = localStorage.getItem('cost_products');
-        if (storedProds) {
-          let productsList: Product[] = JSON.parse(storedProds);
-          productsList = productsList.map(p => p.id === codingResult.productId ? { ...p, sku: generatedSku } : p);
-          localStorage.setItem('cost_products', JSON.stringify(productsList));
+          this.codingService.createSKU(codingResult).subscribe({
+            next: () => {
+              this.loading = false;
+              Swal.fire({
+                title: 'Código Generado con Éxito',
+                html: `Se ha registrado el SKU: <strong class="text-primary font-monospace">${generatedSku}</strong> para <strong>${pName}</strong>.`,
+                icon: 'success',
+                confirmButtonText: 'Aceptar'
+              }).then(() => {
+                this.router.navigate(['/codings']);
+              });
+            }
+          });
         }
+      },
+      error: () => {
+        this.loading = false;
+        Swal.fire('Error', 'No se pudieron procesar los datos.', 'error');
       }
-
-      codingsList.push(codingResult);
-      localStorage.setItem('cost_codings', JSON.stringify(codingsList));
-
-      Swal.fire({
-        title: 'Código Generado con Éxito',
-        html: `Se ha registrado el SKU: <strong class="text-primary font-monospace">${generatedSku}</strong> para <strong>${pName}</strong>.`,
-        icon: 'success',
-        confirmButtonText: 'Aceptar'
-      }).then(() => {
-        this.router.navigate(['/codings']);
-      });
-    }
-
-    this.loading = false;
+    });
   }
 
   filterProducts(event: Event) {

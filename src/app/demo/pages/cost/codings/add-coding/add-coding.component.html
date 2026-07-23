@@ -1,0 +1,284 @@
+<div class="row mb-4">
+  <div class="col-12">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a routerLink="/codings">Códigos</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ id > 0 ? 'Editar' : 'Generar' }}</li>
+      </ol>
+    </nav>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header bg-light">
+        <h6 class="mb-0 text-primary">Generador de Códigos (SKU)</h6>
+      </div>
+      <div class="card-body">
+        <form [formGroup]="form">
+          <div class="row">
+            <!-- Columna de Campos -->
+            <div class="col-lg-8">
+              <div class="row g-3">
+                <div class="col-12">
+                  <label class="form-label">Categoría (CAT)</label>
+                  <ng-select 
+                    formControlName="categoria"
+                    placeholder="Seleccione..."
+                    [clearable]="false"
+                    [searchable]="false"
+                    (change)="onCategoryChange()">
+                    @for (cat of opcionesCategorias; track cat.value) {
+                      <ng-option [value]="cat.value">{{ cat.label }}</ng-option>
+                    }
+                  </ng-select>
+                </div>
+
+                @if (form.get('categoria')?.value === 'PF') {
+                  <div class="col-12">
+                    <label class="form-label">Seleccionar Producto Existente</label>
+                    <ng-select 
+                      formControlName="productoId"
+                      placeholder="Seleccione producto..."
+                      [clearable]="true"
+                      [searchable]="true"
+                      [class.is-invalid]="submitted && f.productoId.errors">
+                      @for (p of productosFiltrados; track p.id) {
+                        <ng-option [value]="p.id">{{ p.nombre }}</ng-option>
+                      }
+                    </ng-select>
+                    <small class="form-text text-muted">Se muestran productos que no tienen SKU asignado aún.</small>
+                    @if (submitted && f.productoId.errors?.required) {
+                      <div class="invalid-feedback d-block">Debe seleccionar un producto.</div>
+                    }
+                  </div>
+                }
+
+                @if (form.get('categoria')?.value === 'SR') {
+                  <div class="col-12">
+                    <label class="form-label">Seleccionar Servicio</label>
+                    <ng-select 
+                      formControlName="nombreServicio"
+                      placeholder="Seleccione servicio..."
+                      [clearable]="true"
+                      [searchable]="true"
+                      [class.is-invalid]="submitted && f.nombreServicio.errors">
+                      @for (s of presupuestosServicios; track s.id) {
+                        <ng-option [value]="s.descripcion">{{ s.numero }} - {{ s.descripcion }}</ng-option>
+                      }
+                    </ng-select>
+                    @if (submitted && f.nombreServicio.errors?.required) {
+                      <div class="invalid-feedback d-block">Debe seleccionar un servicio.</div>
+                    }
+                  </div>
+                }
+
+                @if (form.get('categoria')?.value === 'PP') {
+                  <div class="col-12">
+                    <label class="form-label">Seleccionar Proyecto Personalizado</label>
+                    <ng-select 
+                      formControlName="nombreServicio"
+                      placeholder="Seleccione proyecto..."
+                      [clearable]="true"
+                      [searchable]="true"
+                      [class.is-invalid]="submitted && f.nombreServicio.errors">
+                      @for (p of presupuestosProyectos; track p.id) {
+                        <ng-option [value]="p.descripcion">{{ p.numero }} - {{ p.descripcion }}</ng-option>
+                      }
+                    </ng-select>
+                    @if (submitted && f.nombreServicio.errors?.required) {
+                      <div class="invalid-feedback d-block">Debe seleccionar un proyecto.</div>
+                    }
+                  </div>
+                }
+
+                <div class="col-md-6">
+                  <label class="form-label">Tecnología (TEC)</label>
+                  <ng-select 
+                    formControlName="tecnologia"
+                    placeholder="Seleccione..."
+                    [clearable]="false"
+                    [searchable]="false"
+                    [class.is-invalid]="submitted && f.tecnologia.errors">
+                    @for (tec of opcionesTecnologias; track tec.value) {
+                      <ng-option [value]="tec.value">{{ tec.label }}</ng-option>
+                    }
+                  </ng-select>
+                  @if (submitted && f.tecnologia.errors?.required) {
+                    <div class="invalid-feedback d-block">Seleccione la tecnología.</div>
+                  }
+                </div>
+
+                @if (form.get('familia')?.value !== 'MLD') {
+                  <div class="col-md-6">
+                    <label class="form-label">Material (MAT)</label>
+                    <ng-select 
+                      formControlName="material"
+                      placeholder="Seleccione..."
+                      [clearable]="false"
+                      [searchable]="false"
+                      [class.is-invalid]="submitted && f.material.errors">
+                      @for (mat of opcionesMateriales; track mat.value) {
+                        <ng-option [value]="mat.value">{{ mat.label }}</ng-option>
+                      }
+                    </ng-select>
+                    @if (submitted && f.material.errors?.required) {
+                      <div class="invalid-feedback d-block">Seleccione el material.</div>
+                    }
+                  </div>
+                }
+
+                <div class="col-md-6">
+                  <label class="form-label">Familia de Productos (FAM)</label>
+                  <ng-select 
+                    formControlName="familia"
+                    placeholder="Seleccione..."
+                    [clearable]="false"
+                    [searchable]="true"
+                    [class.is-invalid]="submitted && f.familia.errors">
+                    @for (fam of familias; track fam.id) {
+                      <ng-option [value]="fam.codigo">{{ fam.nombre }} ({{ fam.codigo }})</ng-option>
+                    }
+                  </ng-select>
+                  @if (submitted && f.familia.errors?.required) {
+                    <div class="invalid-feedback d-block">Seleccione la familia de productos.</div>
+                  }
+                </div>
+
+                @if (subfamilias && subfamilias.length > 0) {
+                  <div class="col-md-6">
+                    <label class="form-label">Subfamilia (SUB)</label>
+                    <ng-select 
+                      formControlName="subfamilia"
+                      placeholder="Seleccione..."
+                      [clearable]="false"
+                      [searchable]="true"
+                      [class.is-invalid]="submitted && f.subfamilia.errors">
+                      @for (sub of subfamilias; track sub.id) {
+                        <ng-option [value]="sub.codigo">{{ sub.nombre }} ({{ sub.codigo }})</ng-option>
+                      }
+                    </ng-select>
+                    @if (submitted && f.subfamilia.errors?.required) {
+                      <div class="invalid-feedback d-block">Seleccione una subfamilia.</div>
+                    }
+                  </div>
+                }
+
+                <!-- Materiales de Molde si es MLD -->
+                @if (form.get('familia')?.value === 'MLD') {
+                  <div class="col-12 mt-3 pt-3 border-top">
+                    <h6 class="mb-3 text-muted">Materiales del Molde</h6>
+                    <div formArrayName="materialesMolde">
+                      @for (m of materialesMolde.controls; let i = $index; track i) {
+                        <div [formGroupName]="i" class="row g-2 mb-2 align-items-end">
+                          <div class="col-md-4">
+                            <label class="form-label text-sm mb-1">Material {{ i + 1 }}</label>
+                            <ng-select 
+                              formControlName="material"
+                              placeholder="Seleccione..."
+                              [clearable]="false"
+                              [searchable]="true">
+                              @for (mat of opcionesMateriales; track mat.value) {
+                                <ng-option [value]="mat.value">{{ mat.label }}</ng-option>
+                              }
+                            </ng-select>
+                          </div>
+                          <div class="col-md-3">
+                            <label class="form-label text-sm mb-1">Cantidad</label>
+                            <input type="number" class="form-control form-control-sm" formControlName="cantidad" placeholder="Ej: 200">
+                          </div>
+                          <div class="col-md-3">
+                            <label class="form-label text-sm mb-1">Unidad</label>
+                            <ng-select 
+                              formControlName="unidad"
+                              placeholder="Seleccione..."
+                              [clearable]="false"
+                              [searchable]="true">
+                              @for (u of opcionesUnidades; track u.value) {
+                                <ng-option [value]="u.value">{{ u.label }}</ng-option>
+                              }
+                            </ng-select>
+                          </div>
+                          <div class="col-md-2 d-flex gap-1 justify-content-end">
+                            @if (materialesMolde.length > 1) {
+                              <button class="btn btn-sm btn-light-danger" type="button" (click)="removeMaterialMolde(i)" title="Eliminar Material">
+                                <i class="ti ti-trash"></i>
+                              </button>
+                            }
+                            @if (i === materialesMolde.length - 1) {
+                              <button class="btn btn-sm btn-light-primary" type="button" (click)="addMaterialMolde()" title="Agregar Material">
+                                <i class="ti ti-plus"></i>
+                              </button>
+                            }
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+
+            <!-- Columna de Previsualización -->
+            <div class="col-lg-4 mt-4 mt-lg-0">
+              <div class="card border h-100 overflow-hidden position-relative shadow-sm" style="background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);">
+                <!-- Background decorative glowing shapes -->
+                <div class="position-absolute rounded-circle bg-primary" style="width: 150px; height: 150px; top: -60px; right: -60px; opacity: 0.1; filter: blur(30px);"></div>
+                <div class="position-absolute rounded-circle bg-success" style="width: 120px; height: 120px; bottom: -50px; left: -50px; opacity: 0.1; filter: blur(30px);"></div>
+
+                <div class="card-body d-flex flex-column justify-content-between text-center position-relative z-1 py-4">
+                  <div class="mb-3">
+                    <h6 class="text-primary d-inline-flex align-items-center gap-2 mb-2 px-3 py-1 bg-white rounded-pill shadow-xs border text-sm fw-bold">
+                      <i class="ti ti-eye fs-5"></i> Previsualización
+                    </h6>
+                  </div>
+                  
+                  <div class="my-auto">
+                    <!-- SKU Card -->
+                    <div class="mb-4 bg-white p-3 rounded-3 border shadow-sm position-relative" style="margin-top: 15px;">
+                      <span class="position-absolute top-0 start-50 translate-middle badge bg-primary px-3 text-xs fw-bold rounded-pill" style="letter-spacing: 0.5px;">
+                        CÓDIGO ASIGNADO (SKU)
+                      </span>
+                      <span class="fs-4 fw-bold text-primary font-monospace d-block pt-2" style="letter-spacing: 1.2px;">
+                        {{ previewCat }}-{{ previewTec }}-{{ previewMat }}-{{ previewFam }}{{ previewSub ? '-' + previewSub : '' }}-{{ previewCorr }}
+                      </span>
+                    </div>
+
+                    <!-- Catálogo Card -->
+                    <div class="bg-white p-3 rounded-3 border shadow-sm position-relative mt-4">
+                      <span class="position-absolute top-0 start-50 translate-middle badge bg-success px-3 text-xs fw-bold rounded-pill" style="letter-spacing: 0.5px;">
+                        CÓDIGO CATÁLOGO
+                      </span>
+                      <span class="fs-4 fw-bold text-success font-monospace d-block pt-2" style="letter-spacing: 1.2px;">
+                        {{ previewFam }}{{ previewSub ? '-' + previewSub : '' }}-{{ previewCorr }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Barcode Graphic footer -->
+                  <div class="mt-4 pt-3 d-flex flex-column align-items-center opacity-75" style="border-top: 1px dashed rgba(100, 116, 139, 0.2) !important;">
+                    <i class="ti ti-barcode text-secondary mb-1" style="font-size: 3rem !important; line-height: 1;"></i>
+                    <span class="text-muted font-monospace" style="font-size: 0.65rem; letter-spacing: 1px;">SISTEMA AUTOMÁTICO DE CODIFICACIÓN</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Botones de Acción -->
+          <div class="row mt-4 pt-3 border-top">
+            <div class="col-12 d-flex justify-content-end gap-2">
+              <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-1" type="button" (click)="back()">
+                <i class="ti ti-rotate-clockwise fs-5"></i> Regresar
+              </button>
+              <button class="btn btn-primary d-inline-flex align-items-center gap-1" type="button" [disabled]="loading" (click)="onSubmit()">
+                <i class="ti ti-device-floppy fs-5"></i> Guardar Código
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

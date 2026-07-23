@@ -1,0 +1,257 @@
+<div class="row mb-4">
+  <div class="col-12">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a routerLink="/codings">Códigos y Familias</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Listado</li>
+      </ol>
+    </nav>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        
+        <!-- Tab Navigator -->
+        <ul class="nav nav-tabs mb-4" id="codingTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button 
+              class="nav-link" 
+              [class.active]="activeTab === 0" 
+              (click)="setActiveTab(0)" 
+              type="button">
+              Historial de Códigos (SKUs)
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button 
+              class="nav-link" 
+              [class.active]="activeTab === 1" 
+              (click)="setActiveTab(1)" 
+              type="button">
+              Familias de Productos
+            </button>
+          </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content" id="codingTabsContent">
+          
+          <!-- TAB 0: Historial de Códigos (SKUs) -->
+          @if (activeTab === 0) {
+            <div class="tab-pane fade show active">
+              <div class="row align-items-center mb-3">
+                <div class="col-md-8 col-sm-6">
+                    <input 
+                      type="text" 
+                      class="form-control" 
+                      placeholder="Buscar por código, nombre, tecnología o material..." 
+                      [(ngModel)]="searchSKU"
+                      (input)="onSearchSKUChange()">
+                </div>
+                <div class="col-md-4 col-sm-6 text-sm-end mt-2 mt-sm-0">
+                  <button class="btn btn-primary d-inline-flex align-items-center gap-2" (click)="openAddSKU()">
+                    <i class="ti ti-plus-circle fs-5"></i> Generar SKU
+                  </button>
+                </div>
+              </div>
+
+              <!-- SKU Table -->
+              <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th style="cursor: pointer;" (click)="sortSKUData('sku')">
+                        Código (SKU) <i class="ti fs-6" [class]="getSortClassSKU('sku')"></i>
+                      </th>
+                      <th style="cursor: pointer;" (click)="sortSKUData('productName')">
+                        Nombre <i class="ti fs-6" [class]="getSortClassSKU('productName')"></i>
+                      </th>
+                      <th style="cursor: pointer;" (click)="sortSKUData('categoria')">
+                        Categoría <i class="ti fs-6" [class]="getSortClassSKU('categoria')"></i>
+                      </th>
+                      <th style="cursor: pointer;" (click)="sortSKUData('tecnologia')">
+                        Tecnología <i class="ti fs-6" [class]="getSortClassSKU('tecnologia')"></i>
+                      </th>
+                      <th style="cursor: pointer;" (click)="sortSKUData('material')">
+                        Material <i class="ti fs-6" [class]="getSortClassSKU('material')"></i>
+                      </th>
+                      <th>Familia / Subfamilia</th>
+                      <th class="text-center">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (row of paginatedSKUs; track row.id) {
+                      <tr 
+                        (click)="selectedRow = selectedRow === row ? null : row"
+                        [class.table-primary]="selectedRow?.id === row.id"
+                        style="cursor: pointer;">
+                        <td class="font-monospace fw-bold">{{ row.sku || row.codigo }}</td>
+                        <td>{{ row.productName || 'No especificado' }}</td>
+                        <td>
+                          <span class="badge bg-light-info text-info">
+                            {{ row.categoria === 'PF' ? 'Producto' : (row.categoria === 'SR' ? 'Servicio' : 'Proyecto') }}
+                          </span>
+                        </td>
+                        <td>{{ getTecnologiaName(row.tecnologia) }}</td>
+                        <td>{{ getMaterialName(row.material) }}</td>
+                        <td>
+                          <div class="text-sm">
+                            <span class="fw-bold">{{ getFamiliaName(row.familia) }}</span>
+                            @if (row.subfamilia) {
+                              <br><small class="text-muted">Sub: {{ getSubfamiliaName(row.familia, row.subfamilia) }}</small>
+                            }
+                          </div>
+                        </td>
+                        <td class="text-center" (click)="$event.stopPropagation()">
+                          <button class="btn btn-sm btn-icon btn-light-primary" (click)="onEditSKU(row)" title="Editar Código">
+                            <i class="ti ti-edit fs-5"></i>
+                          </button>
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="7" class="text-center py-4 text-muted">
+                          No se encontraron códigos generados.
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- SKU Pagination -->
+              @if (filteredSKUs.length > pageSizeSKU) {
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                  <small class="text-muted">
+                    Mostrando {{ (currentPageSKU - 1) * pageSizeSKU + 1 }} a 
+                    {{ Math.min(currentPageSKU * pageSizeSKU, filteredSKUs.length) }} de 
+                    {{ filteredSKUs.length }} códigos
+                  </small>
+                  <nav aria-label="Navegación de páginas">
+                    <ul class="pagination pagination-sm mb-0">
+                      <li class="page-item" [class.disabled]="currentPageSKU === 1">
+                        <button class="page-item page-link" (click)="setPageSKU(currentPageSKU - 1)">Anterior</button>
+                      </li>
+                      @for (p of totalPagesArraySKU; track p) {
+                        <li class="page-item" [class.active]="p === currentPageSKU">
+                          <button class="page-item page-link" (click)="setPageSKU(p)">{{ p }}</button>
+                        </li>
+                      }
+                      <li class="page-item" [class.disabled]="currentPageSKU === totalPagesSKU">
+                        <button class="page-item page-link" (click)="setPageSKU(currentPageSKU + 1)">Siguiente</button>
+                      </li>
+                    </ul>
+                  </nav>
+                </div>
+              }
+            </div>
+          }
+
+          <!-- TAB 1: Familias de Productos -->
+          @if (activeTab === 1) {
+            <div class="tab-pane fade show active">
+              <div class="row align-items-center mb-3">
+                <div class="col-md-8 col-sm-6">
+                    <input 
+                      type="text" 
+                      class="form-control" 
+                      placeholder="Buscar por código o nombre de familia..." 
+                      [(ngModel)]="searchFamily"
+                      (input)="onSearchFamilyChange()">
+                </div>
+                <div class="col-md-4 col-sm-6 text-sm-end mt-2 mt-sm-0">
+                  <button class="btn btn-primary d-inline-flex align-items-center gap-2" (click)="openAddFamily()">
+                    <i class="ti ti-plus-circle fs-5"></i> Agregar Familia
+                  </button>
+                </div>
+              </div>
+
+              <!-- Family Table -->
+              <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th style="cursor: pointer;" (click)="sortFamilyData('codigo')">
+                        Código <i class="ti fs-6" [class]="getSortClassFamily('codigo')"></i>
+                      </th>
+                      <th style="cursor: pointer;" (click)="sortFamilyData('nombre')">
+                        Nombre <i class="ti fs-6" [class]="getSortClassFamily('nombre')"></i>
+                      </th>
+                      <th>Subfamilias (Códigos)</th>
+                      <th class="text-center">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (row of paginatedFamilies; track row.id) {
+                      <tr>
+                        <td class="font-monospace fw-bold">{{ row.codigo }}</td>
+                        <td>{{ row.nombre }}</td>
+                        <td>
+                          @if (row.subFamilias && row.subFamilias.length > 0) {
+                            @for (sub of row.subFamilias; let isLast = $last; track sub.id) {
+                              <span class="badge bg-light-secondary font-monospace me-1">
+                                {{ sub.nombre }} ({{ sub.codigo }})
+                              </span>
+                            }
+                          } @else {
+                            <span class="text-muted text-sm">-</span>
+                          }
+                        </td>
+                        <td class="text-center">
+                          <div class="btn-group btn-group-sm">
+                            <button class="btn btn-icon btn-light-primary" (click)="onEditFamily(row)" title="Editar Familia">
+                              <i class="ti ti-edit fs-5"></i>
+                            </button>
+                            <button class="btn btn-icon btn-light-danger" (click)="onDeleteFamily(row)" title="Eliminar Familia">
+                              <i class="ti ti-trash fs-5"></i>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="4" class="text-center py-4 text-muted">
+                          No se encontraron familias registradas.
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Family Pagination -->
+              @if (filteredFamilies.length > pageSizeFamily) {
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                  <small class="text-muted">
+                    Mostrando {{ (currentPageFamily - 1) * pageSizeFamily + 1 }} a 
+                    {{ Math.min(currentPageFamily * pageSizeFamily, filteredFamilies.length) }} de 
+                    {{ filteredFamilies.length }} familias
+                  </small>
+                  <nav aria-label="Navegación de páginas">
+                    <ul class="pagination pagination-sm mb-0">
+                      <li class="page-item" [class.disabled]="currentPageFamily === 1">
+                        <button class="page-item page-link" (click)="setPageFamily(currentPageFamily - 1)">Anterior</button>
+                      </li>
+                      @for (p of totalPagesArrayFamily; track p) {
+                        <li class="page-item" [class.active]="p === currentPageFamily">
+                          <button class="page-item page-link" (click)="setPageFamily(p)">{{ p }}</button>
+                        </li>
+                      }
+                      <li class="page-item" [class.disabled]="currentPageFamily === totalPagesFamily">
+                        <button class="page-item page-link" (click)="setPageFamily(currentPageFamily + 1)">Siguiente</button>
+                      </li>
+                    </ul>
+                  </nav>
+                </div>
+              }
+            </div>
+          }
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -2,10 +2,10 @@
 export class Budget { //Presupuesto
     id?: number;
     sku?: string;
-    clasificacion: string;
-    descripcion: string;
-    numero: string;
-    fecha: Date;
+    clasificacion!: string;
+    descripcion!: string;
+    numero!: string;
+    fecha!: Date;
     piezas?: Parts[];
     productoId?: number | null;
     costoOperador?: number;
@@ -20,11 +20,11 @@ export class Budget { //Presupuesto
 export class Parts{ //Piezas
     id?: number;
     nombre?: string;
-    materialTipo: string;
-    gramos: number;
-    metros: number;
-    horas: number;
-    minutos: number;
+    materialTipo!: string;
+    gramos!: number;
+    metros!: number;
+    horas!: number;
+    minutos!: number;
     precioMaterial?: number;
     tiempoPostProcesado?: number;
 }

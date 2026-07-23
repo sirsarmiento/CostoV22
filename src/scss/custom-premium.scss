@@ -1,0 +1,429 @@
+/* ==========================================================================
+   Estilos Personalizados
+   ========================================================================== */
+
+/* Variables de Color Armonizadas */
+:root {
+  --cost-primary: #1677ff;          /* Azul Pafar principal */
+  --cost-primary-hover: #0958d9;    /* Azul hover */
+  --cost-primary-light: rgba(22, 119, 255, 0.08);
+  --cost-success: #10b981;          /* Verde Pafar */
+  --cost-success-light: rgba(16, 185, 129, 0.08);
+  --cost-border: rgba(226, 232, 240, 0.8);
+  --cost-shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.03);
+  --cost-shadow-md: 0 10px 30px -10px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.02);
+  --cost-shadow-lg: 0 20px 40px -15px rgba(0, 0, 0, 0.08);
+}
+
+/* Tarjetas Elevadas */
+.card {
+  border: 1px solid var(--cost-border) !important;
+  border-radius: 12px !important;
+  box-shadow: var(--cost-shadow-md) !important;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  overflow: hidden;
+
+  &.card-hover:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--cost-shadow-lg) !important;
+  }
+
+  .card-header {
+    background-color: transparent !important;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.6) !important;
+    padding: 18px 24px !important;
+    font-weight: 600;
+  }
+
+  .card-body {
+    padding: 24px !important;
+  }
+}
+
+/* Botones y Micro-animaciones */
+.btn {
+  border-radius: 8px !important;
+  font-weight: 500 !important;
+  padding: 10px 20px !important;
+  font-size: 0.875rem !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1.5px);
+    box-shadow: 0 4px 12px rgba(22, 119, 255, 0.15);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  /* Botones primarios */
+  &.btn-primary {
+    background-color: var(--cost-primary) !important;
+    border-color: var(--cost-primary) !important;
+
+    &:hover:not(:disabled) {
+      background-color: var(--cost-primary-hover) !important;
+      border-color: var(--cost-primary-hover) !important;
+    }
+  }
+
+  /* Botones de éxito */
+  &.btn-success {
+    background-color: var(--cost-success) !important;
+    border-color: var(--cost-success) !important;
+
+    &:hover:not(:disabled) {
+      background-color: #059669 !important;
+      border-color: #059669 !important;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2) !important;
+    }
+  }
+}
+
+/* Botones con Íconos en Tablas */
+.btn-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 34px !important;
+  height: 34px !important;
+  padding: 0 !important;
+  border-radius: 8px !important;
+  margin: 0 4px !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+
+  &:hover {
+    transform: translateY(-2px) scale(1.05) !important;
+  }
+}
+
+/* Tablas Estilizadas y Limpias */
+.table {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  width: 100% !important;
+
+  thead th {
+    background-color: #f8fafc !important;
+    color: #64748b !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    font-size: 0.75rem !important;
+    letter-spacing: 0.6px !important;
+    padding: 14px 20px !important;
+    border-bottom: 2px solid #e2e8f0 !important;
+    border-top: none !important;
+  }
+
+  tbody td {
+    padding: 14px 20px !important;
+    vertical-align: middle !important;
+    color: #334155 !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    border-top: none !important;
+    font-size: 0.875rem !important;
+  }
+
+  tr {
+    transition: background-color 0.2s ease;
+  }
+
+  &.table-hover tbody tr:hover {
+    background-color: rgba(22, 119, 255, 0.015) !important;
+  }
+}
+
+.form-control, .form-select {
+  border-radius: 8px !important;
+  border: 1px solid #d9d9d9 !important;
+  padding: 10px 14px !important;
+  font-size: 0.875rem !important;
+  transition: all 0.2s ease-in-out !important;
+  background-color: #fff !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+
+  &:hover:not(:focus) {
+    border-color: #bfbfbf !important;
+    background-color: #fafafa !important;
+  }
+
+  &:focus {
+    border-color: var(--cost-primary) !important;
+    box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.12), 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+    outline: none !important;
+    background-color: #fff !important;
+  }
+
+  &::placeholder {
+    color: #bfbfbf;
+  }
+}
+
+/* Campos Pequeños (Small) - Estandarizados a la misma altura de 42px */
+.form-control-sm, .form-select-sm {
+  padding: 10px 14px !important;
+  font-size: 0.875rem !important;
+  border-radius: 8px !important;
+  height: 42px !important;
+  min-height: 42px !important;
+}
+
+.form-select {
+  cursor: pointer !important;
+  padding-right: 36px !important;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%238c8c8c' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e") !important;
+  background-position: right 14px center !important;
+  background-size: 12px 10px !important;
+  background-repeat: no-repeat !important;
+  appearance: none !important;
+}
+
+/* Etiquetas de Estado Modernas */
+.badge {
+  padding: 6px 12px !important;
+  font-weight: 600 !important;
+  font-size: 0.75rem !important;
+  border-radius: 20px !important;
+  letter-spacing: 0.2px !important;
+  display: inline-block !important;
+
+  /* Badge primario (Soft Blue) */
+  &.bg-light-primary {
+    background-color: var(--cost-primary-light) !important;
+    color: var(--cost-primary) !important;
+    border: 1px solid rgba(22, 119, 255, 0.15) !important;
+  }
+
+  /* Badge de éxito (Soft Green) */
+  &.bg-light-success {
+    background-color: var(--cost-success-light) !important;
+    color: var(--cost-success) !important;
+    border: 1px solid rgba(16, 185, 129, 0.15) !important;
+  }
+
+  /* Badge de alerta (Soft Orange) */
+  &.bg-light-warning {
+    background-color: rgba(245, 158, 11, 0.08) !important;
+    color: #d97706 !important;
+    border: 1px solid rgba(245, 158, 11, 0.15) !important;
+  }
+
+  /* Badge de peligro (Soft Red) */
+  &.bg-light-danger {
+    background-color: rgba(239, 68, 68, 0.08) !important;
+    color: #dc2626 !important;
+    border: 1px solid rgba(239, 68, 68, 0.15) !important;
+  }
+}
+
+/* Ajustes de scrollbar globales premium */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(140, 140, 140, 0.2);
+  border-radius: 10px;
+  
+  &:hover {
+    background: rgba(140, 140, 140, 0.4);
+  }
+}
+
+/* Ajustes de grupos de entrada (Input Groups) con bordes fluidos */
+.input-group {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  
+  .form-control {
+    border-top-right-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    flex: 1 1 auto !important;
+    width: 1% !important;
+  }
+  
+  .input-group-text {
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+    border-top-right-radius: 8px !important;
+    border-bottom-right-radius: 8px !important;
+    background-color: #f8fafc !important;
+    border: 1px solid #d9d9d9 !important;
+    border-left: none !important;
+    font-size: 0.875rem !important;
+    color: #64748b !important;
+    padding: 10px 14px !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+}
+
+/* ==========================================================================
+   Sobreescrituras para @ng-select/ng-select
+   ========================================================================== */
+.ng-select {
+  padding: 0 !important;
+  border: none !important;
+  background-color: transparent !important;
+  font-size: 0.875rem !important;
+
+  .ng-select-container {
+    background-color: #fff !important;
+    border: 1px solid #d9d9d9 !important;
+    border-radius: 8px !important;
+    min-height: 42px !important;
+    height: 42px !important;
+    padding: 0 10px !important;
+    transition: all 0.2s ease-in-out !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+    display: flex !important;
+    align-items: center !important;
+
+    &:hover {
+      border-color: #bfbfbf !important;
+      background-color: #fafafa !important;
+    }
+
+    .ng-value-container {
+      padding: 0 !important;
+      align-items: center !important;
+
+      .ng-placeholder {
+        color: #bfbfbf !important;
+      }
+    }
+  }
+
+  /* Focus and Opened States */
+  &.ng-select-focused:not(.ng-select-opened) > .ng-select-container {
+    border-color: var(--cost-primary) !important;
+    background-color: #fff !important;
+    box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.12), 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  }
+
+  &.ng-select-opened > .ng-select-container {
+    border-color: var(--cost-primary) !important;
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    background-color: #fff !important;
+    box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.12), 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  }
+
+  /* Clear and Arrow Buttons */
+  .ng-clear-wrapper {
+    align-self: center !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  .ng-arrow-wrapper {
+    align-self: center !important;
+    display: flex !important;
+    align-items: center !important;
+    width: 14px !important;
+    padding-right: 5px !important;
+
+    .ng-arrow {
+      border: none !important;
+      width: 10px !important;
+      height: 10px !important;
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%238c8c8c' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e") !important;
+      background-size: contain !important;
+      background-repeat: no-repeat !important;
+      transform: translateY(-1px) !important;
+      transition: transform 0.2s ease !important;
+    }
+  }
+
+  &.ng-select-opened .ng-arrow-wrapper .ng-arrow {
+    transform: rotate(180deg) translateY(1px) !important;
+  }
+
+  /* Dropdown Panel (Lista de Opciones) */
+  .ng-dropdown-panel {
+    background-color: #fff !important;
+    border: 1px solid var(--cost-border) !important;
+    border-top: none !important;
+    border-bottom-left-radius: 8px !important;
+    border-bottom-right-radius: 8px !important;
+    box-shadow: var(--cost-shadow-lg) !important;
+    margin-top: 0px !important;
+
+    .ng-dropdown-panel-items {
+      padding: 4px 0 !important;
+      max-height: 240px !important;
+      overflow-y: auto !important;
+      border-bottom-left-radius: 8px !important;
+      border-bottom-right-radius: 8px !important;
+
+      .ng-option {
+        padding: 10px 16px !important;
+        font-size: 0.875rem !important;
+        color: #334155 !important;
+        transition: background-color 0.15s ease, color 0.15s ease !important;
+
+        &.ng-option-marked {
+          background-color: rgba(22, 119, 255, 0.04) !important;
+          color: var(--cost-primary) !important;
+        }
+
+        &.ng-option-selected {
+          background-color: var(--cost-primary-light) !important;
+          color: var(--cost-primary) !important;
+          font-weight: 600 !important;
+        }
+      }
+    }
+  }
+}
+
+/* Versión compacta (Small) para ng-select - Estandarizada a 42px */
+.ng-select.ng-select-sm {
+  font-size: 0.875rem !important;
+
+  .ng-select-container {
+    min-height: 42px !important;
+    height: 42px !important;
+    padding: 0 12px !important;
+    border-radius: 8px !important;
+
+    .ng-value-container {
+      padding: 0 !important;
+    }
+  }
+
+  .ng-clear-wrapper {
+    margin-right: 2px !important;
+  }
+
+  .ng-arrow-wrapper {
+    width: 10px !important;
+    padding-right: 0 !important;
+
+    .ng-arrow {
+      width: 8px !important;
+      height: 8px !important;
+    }
+  }
+
+  .ng-dropdown-panel {
+    border-bottom-left-radius: 8px !important;
+    border-bottom-right-radius: 8px !important;
+
+    .ng-dropdown-panel-items {
+      border-bottom-left-radius: 8px !important;
+      border-bottom-right-radius: 8px !important;
+      max-height: 240px !important;
+      overflow-y: auto !important;
+
+      .ng-option {
+        padding: 10px 16px !important;
+        font-size: 0.875rem !important;
+      }
+    }
+  }
+}

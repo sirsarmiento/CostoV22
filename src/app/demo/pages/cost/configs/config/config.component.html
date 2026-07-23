@@ -1,0 +1,182 @@
+<div class="row mb-4">
+  <div class="col-sm-6">
+    <h5 class="mb-0">Perfiles de Costo</h5>
+  </div>
+  <div class="col-sm-6 text-sm-end mt-2 mt-sm-0">
+    <button class="btn btn-primary d-inline-flex align-items-center gap-2" (click)="openAdd()">
+      <i class="ti ti-plus-circle fs-5"></i> Agregar Perfil
+    </button>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <!-- Filtro de Búsqueda -->
+        <div class="row mb-3">
+          <div class="col-md-4">
+            <input 
+              type="text" 
+              class="form-control" 
+              placeholder="Buscar por nombre o RIF..." 
+              [(ngModel)]="searchTerm"
+              (input)="onSearchChange()">
+          </div>
+        </div>
+
+        <!-- Tabla de Perfiles -->
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th style="cursor: pointer;" (click)="sortData('nombre')">
+                  Nombre <i class="ti fs-6" [class]="getSortClass('nombre')"></i>
+                </th>
+                <th style="cursor: pointer;" (click)="sortData('rif')">
+                  RIF <i class="ti fs-6" [class]="getSortClass('rif')"></i>
+                </th>
+                <th style="cursor: pointer;" (click)="sortData('tipo')">
+                  Tipo <i class="ti fs-6" [class]="getSortClass('tipo')"></i>
+                </th>
+                <th style="cursor: pointer;" (click)="sortData('sector')">
+                  Sector <i class="ti fs-6" [class]="getSortClass('sector')"></i>
+                </th>
+                <th style="cursor: pointer;" (click)="sortData('empleados')">
+                  # Empleados <i class="ti fs-6" [class]="getSortClass('empleados')"></i>
+                </th>
+                <th class="text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of paginatedConfigs; track row.id) {
+                <tr 
+                  (click)="selectRow(row)" 
+                  [class.table-primary]="selectedRow?.id === row.id" 
+                  style="cursor: pointer;">
+                  <td>{{ row.nombre }}</td>
+                  <td>{{ row.rif }}</td>
+                  <td>{{ row.tipo }}</td>
+                  <td>{{ row.sector }}</td>
+                  <td>{{ row.empleados }}</td>
+                  <td class="text-center" (click)="$event.stopPropagation()">
+                    <button 
+                      class="btn btn-sm btn-icon btn-light-primary" 
+                      (click)="onEdit(row)" 
+                      title="Editar">
+                      <i class="ti ti-edit fs-5"></i>
+                    </button>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="6" class="text-center py-4 text-muted">
+                    No se encontraron perfiles que coincidan con la búsqueda.
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Paginación Simple -->
+        @if (filteredConfigs.length > pageSize) {
+          <div class="d-flex justify-content-between align-items-center mt-3">
+            <small class="text-muted">
+              Mostrando {{ (currentPage - 1) * pageSize + 1 }} a 
+              {{ Math.min(currentPage * pageSize, filteredConfigs.length) }} de 
+              {{ filteredConfigs.length }} perfiles
+            </small>
+            <nav aria-label="Navegación de páginas">
+              <ul class="pagination pagination-sm mb-0">
+                <li class="page-item" [class.disabled]="currentPage === 1">
+                  <button class="page-item page-link" (click)="setPage(currentPage - 1)">Anterior</button>
+                </li>
+                @for (p of totalPagesArray; track p) {
+                  <li class="page-item" [class.active]="p === currentPage">
+                    <button class="page-item page-link" (click)="setPage(p)">{{ p }}</button>
+                  </li>
+                }
+                <li class="page-item" [class.disabled]="currentPage === totalPages">
+                  <button class="page-item page-link" (click)="setPage(currentPage + 1)">Siguiente</button>
+                </li>
+              </ul>
+            </nav>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Detalle de Parámetros Operativos si hay una fila seleccionada -->
+@if (selectedRow && selectedRow.parametros && selectedRow.parametros.length > 0) {
+  <div class="row mt-4">
+    <div class="col-12">
+      <hr class="my-4">
+      <h5 class="mb-3 text-primary d-flex align-items-center gap-2">
+        <i class="ti ti-settings fs-4"></i> Parámetros Operativos de: {{ selectedRow.nombre }}
+      </h5>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-12">
+      @for (group of groupedCapacities; track group.medida) {
+        <div class="card mb-4 border-start border-primary border-3">
+          <div class="card-header bg-light">
+            <h6 class="mb-0 text-primary">Unidad de Medida: {{ group.medida }}</h6>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Tipo</th>
+                    <th>Descripción</th>
+                    <th>Capacidad (Máx/H)</th>
+                    <th>Horas Disponibles</th>
+                    <th>Horas Planificadas</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (m of group.machines; track m.id) {
+                    <tr>
+                      <td>{{ m.tipo }}</td>
+                      <td>{{ m.descripcion }}</td>
+                      <td>{{ m.prodMaxHoras }} {{ group.medida }}</td>
+                      <td>{{ m.horasMax }}h</td>
+                      <td>{{ m.horasUso }}h</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Resumen de Capacidades -->
+            <div class="bg-light p-3 border-top">
+              <div class="row text-center gy-2">
+                <div class="col-6 col-md-3">
+                  <span class="text-muted d-block text-sm">Capacidad Instalada</span>
+                  <strong>{{ group.capacities.installedCapacity }} {{ group.medida }}</strong>
+                </div>
+                <div class="col-6 col-md-3">
+                  <span class="text-muted d-block text-sm">Capacidad de Producción</span>
+                  <strong>{{ group.capacities.productionCapacity }} {{ group.medida }}</strong>
+                </div>
+                <div class="col-6 col-md-3">
+                  <span class="text-muted d-block text-sm">Capacidad Ociosa</span>
+                  <strong>{{ group.capacities.idleCapacity }} {{ group.medida }}</strong>
+                </div>
+                <div class="col-6 col-md-3">
+                  <span class="text-muted d-block text-sm">% Utilización</span>
+                  <strong class="text-success">{{ group.capacities.utilizationPercentage }}%</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+}

@@ -19,15 +19,16 @@ export interface NavigationItem {
 }
 
 export const NavigationItems: NavigationItem[] = [
+  // INICIO
   {
-    id: 'dashboard',
-    title: 'Dashboard',
+    id: 'inicio',
+    title: 'INICIO',
     type: 'group',
     icon: 'icon-navigation',
     children: [
       {
-        id: 'default',
-        title: 'Default',
+        id: 'dashboard',
+        title: 'Dashboard',
         type: 'item',
         classes: 'nav-item',
         url: '/dashboard/default',
@@ -36,6 +37,92 @@ export const NavigationItems: NavigationItem[] = [
       }
     ]
   },
+
+  // ADMIN
+  {
+    id: 'admin',
+    title: 'ADMIN',
+    type: 'group',
+    icon: 'icon-navigation',
+    children: [
+      {
+        id: 'configs',
+        title: 'Perfil',
+        type: 'item',
+        classes: 'nav-item',
+        url: '/configs',
+        icon: 'setting',
+        breadcrumbs: false
+      },
+      // Usuarios y Roles de seguridad se colocarán después cuando se migren los archivos
+      {
+        id: 'codings',
+        title: 'Codigos',
+        type: 'item',
+        classes: 'nav-item',
+        url: '/codings',
+        icon: 'barcode',
+        breadcrumbs: false
+      }
+    ]
+  },
+
+  // MODULOS
+  {
+    id: 'modulos',
+    title: 'MODULOS',
+    type: 'group',
+    icon: 'icon-navigation',
+    children: [
+      {
+        id: 'products',
+        title: 'Productos',
+        type: 'item',
+        classes: 'nav-item',
+        url: '/products',
+        icon: 'gold',
+        breadcrumbs: false
+      },
+      {
+        id: 'fixes',
+        title: 'Costos',
+        type: 'item',
+        classes: 'nav-item',
+        url: '/fixes',
+        icon: 'dollar',
+        breadcrumbs: false
+      },
+      {
+        id: 'assets',
+        title: 'Activos',
+        type: 'item',
+        classes: 'nav-item',
+        url: '/assets',
+        icon: 'database',
+        breadcrumbs: false
+      },
+      {
+        id: 'pricings',
+        title: 'Precios',
+        type: 'item',
+        classes: 'nav-item',
+        url: '/pricings',
+        icon: 'calculator',
+        breadcrumbs: false
+      },
+      {
+        id: 'budgets',
+        title: 'Presupuestos',
+        type: 'item',
+        classes: 'nav-item',
+        url: '/budgets',
+        icon: 'audit',
+        breadcrumbs: false
+      }
+    ]
+  }
+
+  /* Comentados por ahora
   {
     id: 'authentication',
     title: 'Authentication',
@@ -87,7 +174,6 @@ export const NavigationItems: NavigationItem[] = [
       }
     ]
   },
-
   {
     id: 'other',
     title: 'Other',
@@ -104,4 +190,5 @@ export const NavigationItems: NavigationItem[] = [
       }
     ]
   }
+  */
 ];

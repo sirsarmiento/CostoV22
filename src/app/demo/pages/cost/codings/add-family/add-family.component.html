@@ -1,0 +1,154 @@
+<div class="row mb-4">
+  <div class="col-12">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a routerLink="/codings">Familias</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ id > 0 ? 'Editar' : 'Crear' }}</li>
+      </ol>
+    </nav>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header bg-light">
+        <h6 class="mb-0 text-primary">Definición de Familia de Productos</h6>
+      </div>
+      <div class="card-body">
+        <form [formGroup]="form">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label">Código de Familia (1 a 3 caracteres)</label>
+              <input 
+                type="text" 
+                class="form-control text-uppercase font-monospace fw-bold" 
+                formControlName="codigo" 
+                placeholder="Ej: LUD" 
+                maxlength="3"
+                [class.is-invalid]="submitted && f.codigo.errors">
+              @if (submitted && f.codigo.errors) {
+                <div class="invalid-feedback">
+                  @if (f.codigo.errors.required) { <span>El código es obligatorio.</span> }
+                  @if (f.codigo.errors.maxlength || f.codigo.errors.pattern) { <span>Debe tener máximo 3 letras de la A a la Z.</span> }
+                </div>
+              }
+            </div>
+
+            <div class="col-md-8">
+              <label class="form-label">Nombre / Descripción de la Familia</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                formControlName="nombre" 
+                placeholder="Ej: Lúdica Educativo"
+                [class.is-invalid]="submitted && f.nombre.errors">
+              @if (submitted && f.nombre.errors) {
+                <div class="invalid-feedback">
+                  @if (f.nombre.errors.required) { <span>La descripción es obligatoria.</span> }
+                  @if (f.nombre.errors.minlength) { <span>Debe tener al menos 3 letras.</span> }
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Sección de Subfamilias -->
+          <div class="row mt-4 pt-3 border-top">
+            <div class="col-12">
+              <h6 class="mb-3 text-muted">Subfamilias de la Familia</h6>
+            </div>
+
+            <!-- Formulario Inline Subfamilia -->
+            <div class="col-md-3">
+              <label class="form-label text-sm">Código Subfamilia</label>
+              <input 
+                type="text" 
+                class="form-control form-control-sm text-uppercase font-monospace fw-bold" 
+                [(ngModel)]="subCode" 
+                [ngModelOptions]="{standalone: true}" 
+                placeholder="Ej: JUE" 
+                maxlength="3">
+            </div>
+
+            <div class="col-md-8 col-sm-10">
+              <label class="form-label text-sm">Nombre de la Subfamilia</label>
+              <input 
+                type="text" 
+                class="form-control form-control-sm" 
+                [(ngModel)]="subDesc" 
+                [ngModelOptions]="{standalone: true}" 
+                placeholder="Ej: Juegos de Mesa">
+            </div>
+
+            <div class="col-md-1 mt-auto">
+              <label class="form-label d-none d-md-block">&nbsp;</label>
+              <button class="btn btn-sm btn-primary d-inline-flex align-items-center justify-content-center w-100" style="height: 42px;" type="button" (click)="addSubfamily()" title="Agregar Subfamilia">
+                <i class="ti ti-plus"></i>
+              </button>
+            </div>
+
+            <!-- Alerta de Error de Subfamilia -->
+            @if (subError) {
+              <div class="col-12 mt-2">
+                <div class="alert alert-danger p-2 mb-0 d-flex align-items-center gap-2" style="font-size: 0.85rem;">
+                  <i class="ti ti-alert-triangle fs-5"></i>
+                  <span>{{ subError }}</span>
+                </div>
+              </div>
+            }
+          </div>
+
+          <!-- Listado de Subfamilias Agregadas -->
+          @if (subfamiliesList && subfamiliesList.length > 0) {
+            <div class="row mt-4">
+              <div class="col-12">
+                <h6 class="mb-2 text-muted text-sm">Listado de Subfamilias ({{ subfamiliesList.length }})</h6>
+                <div class="table-responsive">
+                  <table class="table table-hover table-sm align-middle mb-0 border">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Código</th>
+                        <th>Nombre</th>
+                        <th class="text-end">Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (sub of subfamiliesList; let i = $index; track sub.codigo) {
+                        <tr>
+                          <td class="font-monospace fw-bold">{{ sub.codigo }}</td>
+                          <td>{{ sub.nombre }}</td>
+                          <td class="text-end">
+                            <button class="btn btn-sm btn-icon btn-light-danger" type="button" (click)="removeSubfamily(i)" title="Eliminar Subfamilia">
+                              <i class="ti ti-trash"></i>
+                            </button>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          } @else {
+            <div class="row mt-2 text-muted text-xs ms-1">
+              * No hay subfamilias registradas para esta familia aún.
+            </div>
+          }
+
+          <!-- Botones de Acción -->
+          <div class="row mt-4 pt-3 border-top">
+            <div class="col-12 d-flex justify-content-end gap-2">
+              <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-1" type="button" (click)="back()">
+                <i class="ti ti-rotate-clockwise fs-5"></i> Regresar
+              </button>
+              <button class="btn btn-primary d-inline-flex align-items-center gap-1" type="button" [disabled]="loading" (click)="onSubmit()">
+                <i class="ti ti-device-floppy fs-5"></i> Guardar Familia
+              </button>
+            </div>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

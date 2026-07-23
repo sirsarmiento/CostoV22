@@ -1,0 +1,337 @@
+<div class="row mb-4">
+  <div class="col-12">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a routerLink="/budgets">Presupuestos</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ id > 0 ? 'Editar' : 'Crear' }}</li>
+      </ol>
+    </nav>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-light">
+        <h6 class="mb-0 text-primary">Generar Presupuesto con Análisis de Estructura de Costos</h6>
+      </div>
+      <div class="card-body">
+        <form [formGroup]="form">
+          <!-- DATOS BÁSICOS -->
+          <div class="row g-3 mb-4 pb-3 border-bottom">
+            <div class="col-md-3">
+              <label class="form-label">Clasificación</label>
+              <ng-select 
+                formControlName="clasificacion"
+                placeholder="Seleccione..."
+                [clearable]="false"
+                [searchable]="false"
+                [class.is-invalid]="submitted && f.clasificacion.errors">
+                <ng-option value="Proyecto">Proyecto</ng-option>
+                <ng-option value="Servicio">Servicio</ng-option>
+                <ng-option value="Producto">Producto</ng-option>
+              </ng-select>
+              @if (submitted && f.clasificacion.errors?.required) {
+                <div class="invalid-feedback d-block">Seleccione la clasificación</div>
+              }
+            </div>
+
+            @if (f.clasificacion.value === 'Producto') {
+              <div class="col-md-3">
+                <label class="form-label">Seleccione el Producto</label>
+                <ng-select 
+                  formControlName="productoId"
+                  placeholder="Seleccione..."
+                  [clearable]="false"
+                  [searchable]="true"
+                  [class.is-invalid]="submitted && f.productoId.errors">
+                  @for (prod of productosList; track prod.id) {
+                    <ng-option [value]="prod.id">{{ prod.nombre }}</ng-option>
+                  }
+                </ng-select>
+                @if (submitted && f.productoId.errors?.required) {
+                  <div class="invalid-feedback d-block">Seleccione un producto</div>
+                }
+              </div>
+            }
+
+            <div class="col-md-3">
+              <label class="form-label">Número de Orden</label>
+              <input type="text" class="form-control" formControlName="numero" maxlength="25" placeholder="Ej: ORD-001" [class.is-invalid]="submitted && f.numero.errors">
+              @if (submitted && f.numero.errors?.required) {
+                <div class="invalid-feedback">Ingrese el número de la orden</div>
+              }
+            </div>
+
+            <div class="col-md-3">
+              <label class="form-label">Fecha</label>
+              <input type="date" class="form-control" formControlName="fecha" [class.is-invalid]="submitted && f.fecha.errors">
+              @if (submitted && f.fecha.errors?.required) {
+                <div class="invalid-feedback">Seleccione la fecha</div>
+              }
+            </div>
+          </div>
+
+          <!-- DESCRIPCIÓN Y MÁQUINA -->
+          <div class="row g-3 mb-4 pb-3 border-bottom">
+            <div class="col-md-8">
+              <label class="form-label">Descripción</label>
+              <input type="text" class="form-control" formControlName="descripcion" placeholder="Descripción detallada del presupuesto..." [class.is-invalid]="submitted && f.descripcion.errors">
+              @if (submitted && f.descripcion.errors?.required) {
+                <div class="invalid-feedback">Ingrese la descripción</div>
+              }
+            </div>
+            
+            <div class="col-md-4">
+              <label class="form-label">Seleccionar Máquina</label>
+              <ng-select 
+                formControlName="activoId"
+                placeholder="-- Sin máquina --"
+                [clearable]="true"
+                [searchable]="true">
+                @for (maq of maquinasList; track maq.id) {
+                  <ng-option [value]="maq.id">{{ maq.nombre }}</ng-option>
+                }
+              </ng-select>
+            </div>
+          </div>
+
+          <!-- COSTOS GENERALES Y CONFIGURACIÓN GLOBAL -->
+          <div class="row g-3 mb-4 pb-3 border-bottom bg-light p-2 rounded">
+            <div class="col-md-3">
+              <label class="form-label text-sm mb-1 fw-bold text-secondary">Tasa de Fallo (%)</label>
+              <input type="number" class="form-control form-control-sm" formControlName="tasaFalloGlobal" min="0" max="100">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label text-sm mb-1 fw-bold text-secondary">Prep/Slicing (min)</label>
+              <input type="number" class="form-control form-control-sm" formControlName="tiempoSetup" min="0">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label text-sm mb-1 fw-bold text-secondary">Post-procesado (min)</label>
+              <input type="number" class="form-control form-control-sm" formControlName="tiempoPostProcesado" min="0">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label text-sm mb-1 fw-bold text-secondary">Margen Ganancia (%)</label>
+              <input type="number" class="form-control form-control-sm" formControlName="margenGanancia" min="0" max="100" [class.is-invalid]="submitted && f.margenGanancia.errors">
+              @if (f.margenGanancia.errors) {
+                <div class="invalid-feedback text-xs">
+                  @if (f.margenGanancia.errors.required) { <span>Ingrese el margen</span> }
+                  @if (f.margenGanancia.errors.min) { <span>Mínimo: {{ minMargenGanancia }}%</span> }
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- FORMULARIO DE AGREGAR PIEZA -->
+          <div class="card bg-light border-0 mb-4">
+            <div class="card-body py-3">
+              <h6 class="mb-3 text-muted text-sm fw-bold"><i class="ti ti-plus"></i> Agregar Pieza / Componente</h6>
+              
+              <div class="row g-2 align-items-end">
+                <div class="col-md-3">
+                  <label class="form-label text-xs mb-1">Nombre Pieza</label>
+                  <input type="text" class="form-control form-control-sm" formControlName="nombre">
+                </div>
+
+                <div class="col-md-2">
+                  <label class="form-label text-xs mb-1">Categoría</label>
+                  <ng-select 
+                    formControlName="materialTipo"
+                    placeholder="Seleccione..."
+                    [clearable]="false"
+                    [searchable]="true"
+                    class="ng-select-sm">
+                    @for (cat of categoriasMaterial; track cat) {
+                      <ng-option [value]="cat">{{ cat }}</ng-option>
+                    }
+                  </ng-select>
+                </div>
+
+                @if (f.materialTipo.value) {
+                  <div class="col-md-2">
+                    <label class="form-label text-xs mb-1">Subcategoría</label>
+                    <ng-select 
+                      formControlName="subcategoria"
+                      placeholder="-- Todas --"
+                      [clearable]="true"
+                      [searchable]="true"
+                      class="ng-select-sm">
+                      @for (sub of subcategoriasMaterial; track sub) {
+                        <ng-option [value]="sub">{{ sub }}</ng-option>
+                      }
+                    </ng-select>
+                  </div>
+
+                  <div class="col-md-3">
+                    <label class="form-label text-xs mb-1">Material (Activo)</label>
+                    <ng-select 
+                      formControlName="materialId"
+                      placeholder="Seleccione..."
+                      [clearable]="false"
+                      [searchable]="true"
+                      class="ng-select-sm">
+                      @for (m of materialesFiltrados; track m.id) {
+                        <ng-option [value]="m.id">{{ m.nombre }}</ng-option>
+                      }
+                    </ng-select>
+                  </div>
+                }
+
+                <div class="col-md-1 col-sm-3">
+                  <label class="form-label text-xs mb-1">Gramos</label>
+                  <input type="number" class="form-control form-control-sm" formControlName="gramos">
+                </div>
+
+                <div class="col-md-1 col-sm-3">
+                  <label class="form-label text-xs mb-1">Metros</label>
+                  <input type="number" class="form-control form-control-sm" formControlName="metros">
+                </div>
+
+                <div class="col-md-1 col-sm-3">
+                  <label class="form-label text-xs mb-1">Horas</label>
+                  <input type="number" class="form-control form-control-sm" formControlName="horas">
+                </div>
+
+                <div class="col-md-1 col-sm-3">
+                  <label class="form-label text-xs mb-1">Minutos</label>
+                  <input type="number" class="form-control form-control-sm" formControlName="minutos">
+                </div>
+
+                <div class="col-md-1 col-sm-12">
+                  <button class="btn btn-sm btn-primary w-100 d-inline-flex align-items-center justify-content-center" style="height: 42px;" type="button" (click)="addPart()" title="Agregar Pieza">
+                    <i class="ti ti-plus fs-5"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TABLA DE PIEZAS DETALLADA -->
+          @if (piezas.length > 0) {
+            <div class="table-responsive mb-4 border rounded">
+              <table class="table table-hover table-sm align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Material</th>
+                    <th>Costo Mat./g</th>
+                    <th>Gramos</th>
+                    <th>Metros</th>
+                    <th>Horas</th>
+                    <th>Minutos</th>
+                    <th class="text-end">Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of piezas; track row.id) {
+                    <tr>
+                      <td class="fw-bold">{{ row.nombre }}</td>
+                      <td>{{ row.materialTipo }}</td>
+                      <td>{{ row.precioMaterial | currency:'USD' }}</td>
+                      <td>{{ row.gramos | number:'1.1-2' }}</td>
+                      <td>{{ row.metros | number:'1.1-2' }} m</td>
+                      <td>{{ row.horas }} h</td>
+                      <td>{{ row.minutos }} m</td>
+                      <td class="text-end">
+                        <button class="btn btn-sm btn-icon btn-light-danger" type="button" (click)="onDelete(row)" title="Eliminar Pieza">
+                          <i class="ti ti-trash"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <div class="alert alert-light text-center py-4 border mb-4 text-muted text-sm">
+              <i class="ti ti-info-circle fs-4 mb-2 d-block"></i> No hay piezas agregadas para este presupuesto aún.
+            </div>
+          }
+
+          <!-- RESUMEN DE COSTOS -->
+          @if (piezas.length > 0) {
+            <div class="row g-4 mb-4">
+              <!-- Desglose de coste base -->
+              <div class="col-lg-7">
+                <div class="card border border-light shadow-none bg-light-secondary h-100">
+                  <div class="card-body">
+                    <h6 class="fw-bold text-dark mb-3">Estructura de Costes Detallada</h6>
+                    
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                      <span class="text-secondary text-sm">Costo de Materiales (con merma del {{ f.tasaFalloGlobal.value }}%):</span>
+                      <span class="fw-bold text-dark">${{ getTotales().totalCostoMaterial | number:'1.2-2' }}</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                      <span class="text-secondary text-sm">Costo Operativo Máquina:</span>
+                      <span class="fw-bold text-dark">${{ getTotales().totalCostoMaquina | number:'1.2-2' }}</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                      <span class="text-secondary text-sm">Costo Indirecto Prorrateado:</span>
+                      <span class="fw-bold text-dark">${{ getTotales().costoIndirectoAsignado | number:'1.2-2' }}</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                      <span class="text-secondary text-sm">Depreciación Prorrateada:</span>
+                      <span class="fw-bold text-dark">${{ getTotales().depreciacionAsignada | number:'1.2-2' }}</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between pt-3 text-md">
+                      <span class="fw-bold text-dark">Costo Total Base:</span>
+                      <span class="fw-bold text-primary fs-5">${{ getTotales().costoTotalBase | number:'1.2-2' }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tarjeta de Precio Sugerido Gradient -->
+              <div class="col-lg-5">
+                <div class="card bg-primary text-white border-0 h-100 position-relative overflow-hidden" style="border-radius: 12px;">
+                  <div class="card-body d-flex flex-column justify-content-between p-4" style="z-index: 2; background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);">
+                    <div>
+                      <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="text-uppercase text-white-50 fw-bold text-xs" style="letter-spacing: 1px;">PRECIO SUGERIDO</span>
+                        <i class="ti ti-wallet fs-4 opacity-75"></i>
+                      </div>
+                      <h2 class="fw-bold text-white mb-2 fs-2">
+                        ${{ getTotales().precioSugerido | number:'1.2-2' }}
+                      </h2>
+                      <p class="text-white-50 text-xs mb-0">
+                        Calculado aplicando un <strong>{{ form.get('margenGanancia')?.value }}%</strong> de margen sobre el costo total base.
+                      </p>
+                    </div>
+
+                    <div class="mt-4 pt-3 text-white-50 text-xs border-top" style="border-top-color: rgba(255, 255, 255, 0.15) !important;">
+                      <div class="d-flex justify-content-between mb-1">
+                        <span>Costo Base:</span>
+                        <span class="text-white">${{ getTotales().costoTotalBase | number:'1.2-2' }}</span>
+                      </div>
+                      <div class="d-flex justify-content-between">
+                        <span>Ganancia Estimada:</span>
+                        <span class="text-white">${{ (getTotales().precioSugerido - getTotales().costoTotalBase) | number:'1.2-2' }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          }
+
+          <!-- Botones de Acción -->
+          <div class="row mt-4 pt-3 border-top">
+            <div class="col-12 d-flex justify-content-end gap-2">
+              <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-1" type="button" (click)="back()">
+                <i class="ti ti-rotate-clockwise fs-5"></i> Regresar
+              </button>
+              <button class="btn btn-primary d-inline-flex align-items-center gap-1" type="button" [disabled]="loading" (click)="onSubmit()">
+                <i class="ti ti-device-floppy fs-5"></i> Guardar Presupuesto
+              </button>
+            </div>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

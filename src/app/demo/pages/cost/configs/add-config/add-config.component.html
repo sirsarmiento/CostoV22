@@ -1,0 +1,369 @@
+<div class="row mb-4">
+  <div class="col-12">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a routerLink="/configs">Perfiles</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ id > 0 ? 'Editar' : 'Crear' }}</li>
+      </ol>
+    </nav>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <form [formGroup]="form">
+          <!-- Navegación de Pestañas Bootstrap -->
+          <ul class="nav nav-tabs mb-4" id="configTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button 
+                class="nav-link" 
+                [class.active]="activeTab === 'perfil'" 
+                (click)="setActiveTab('perfil')" 
+                type="button">
+                Perfil de la Empresa
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button 
+                class="nav-link" 
+                [class.active]="activeTab === 'operativos'" 
+                (click)="setActiveTab('operativos')" 
+                type="button">
+                Parámetros Operativos
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button 
+                class="nav-link" 
+                [class.active]="activeTab === 'ventas'" 
+                (click)="setActiveTab('ventas')" 
+                type="button">
+                Parámetros de Venta
+              </button>
+            </li>
+          </ul>
+
+          <!-- Contenido de las Pestañas -->
+          <div class="tab-content" id="configTabsContent">
+            <!-- PESTAÑA: Perfil de la Empresa -->
+            @if (activeTab === 'perfil') {
+              <div class="tab-pane fade show active">
+                <div class="row g-3">
+                  <div class="col-12">
+                    <label class="form-label">Nombre</label>
+                    <input 
+                      type="text" 
+                      class="form-control" 
+                      formControlName="nombre" 
+                      maxlength="100"
+                      [class.is-invalid]="submitted && f.nombre.errors">
+                    @if (submitted && f.nombre.errors?.required) {
+                      <div class="invalid-feedback">Ingrese nombre del perfil</div>
+                    }
+                  </div>
+
+                  <div class="col-md-4">
+                    <label class="form-label">Tipo de Empresa</label>
+                    <ng-select 
+                      formControlName="tipo"
+                      placeholder="Seleccione..."
+                      [clearable]="false"
+                      [searchable]="false"
+                      [class.is-invalid]="submitted && f.tipo.errors">
+                      <ng-option value="Pyme">Pyme</ng-option>
+                      <ng-option value="Grande">Grande</ng-option>
+                    </ng-select>
+                    @if (submitted && f.tipo.errors?.required) {
+                      <div class="invalid-feedback d-block">Seleccione el tipo de empresa</div>
+                    }
+                  </div>
+
+                  <div class="col-md-4">
+                    <label class="form-label">Sector</label>
+                    <input 
+                      type="text" 
+                      class="form-control" 
+                      formControlName="sector" 
+                      maxlength="100"
+                      placeholder="Sector al que pertenece"
+                      [class.is-invalid]="submitted && f.sector.errors">
+                    @if (submitted && f.sector.errors?.required) {
+                      <div class="invalid-feedback">Ingrese el sector al que pertenece</div>
+                    }
+                  </div>
+
+                  <div class="col-md-4">
+                    <label class="form-label">Nro. Empleados</label>
+                    <input 
+                      type="number" 
+                      class="form-control" 
+                      formControlName="empleados"
+                      placeholder="# empleados"
+                      [class.is-invalid]="submitted && f.empleados.errors">
+                    @if (submitted && f.empleados.errors?.required) {
+                      <div class="invalid-feedback">Ingrese la cantidad de empleados</div>
+                    }
+                  </div>
+
+                  <div class="col-md-4">
+                    <label class="form-label">RIF / ID Fiscal</label>
+                    <input 
+                      type="text" 
+                      class="form-control" 
+                      formControlName="rif" 
+                      maxlength="25"
+                      placeholder="RIF / ID Fiscal"
+                      [class.is-invalid]="submitted && f.rif.errors">
+                    @if (submitted && f.rif.errors?.required) {
+                      <div class="invalid-feedback">Ingrese el RIF de la empresa</div>
+                    }
+                  </div>
+
+                  <div class="col-md-4">
+                    <label class="form-label">Período Contable</label>
+                    <ng-select 
+                      formControlName="periodo"
+                      placeholder="Seleccione..."
+                      [clearable]="false"
+                      [searchable]="false"
+                      [class.is-invalid]="submitted && f.periodo.errors">
+                      <ng-option value="Mensual">Mensual</ng-option>
+                      <ng-option value="Trimestral">Trimestral</ng-option>
+                      <ng-option value="Semestral">Semestral</ng-option>
+                      <ng-option value="Anual">Anual</ng-option>
+                    </ng-select>
+                    @if (submitted && f.periodo.errors?.required) {
+                      <div class="invalid-feedback d-block">Seleccione el período contable</div>
+                    }
+                  </div>
+
+                  <div class="col-md-4">
+                    <label class="form-label">Moneda de Operación</label>
+                    <ng-select 
+                      formControlName="moneda"
+                      placeholder="Seleccione..."
+                      [clearable]="false"
+                      [searchable]="false"
+                      [class.is-invalid]="submitted && f.moneda.errors">
+                      <ng-option value="Bs">Bolívares</ng-option>
+                      <ng-option value="Dólares">Dólares</ng-option>
+                      <ng-option value="Euro">Euro</ng-option>
+                    </ng-select>
+                    @if (submitted && f.moneda.errors?.required) {
+                      <div class="invalid-feedback d-block">Seleccione la moneda de operación</div>
+                    }
+                  </div>
+
+                  <div class="col-12">
+                    <label class="form-label">Dirección Fiscal</label>
+                    <textarea 
+                      class="form-control" 
+                      formControlName="direccion" 
+                      maxlength="1000" 
+                      rows="3"
+                      placeholder="Dirección Fiscal"
+                      [class.is-invalid]="submitted && f.direccion.errors"></textarea>
+                    @if (submitted && f.direccion.errors?.required) {
+                      <div class="invalid-feedback">Ingrese la Dirección Fiscal</div>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+
+            <!-- PESTAÑA: Parámetros Operativos -->
+            @if (activeTab === 'operativos') {
+              <div class="tab-pane fade show active">
+                <div class="card bg-light-secondary border-0 mb-4">
+                  <div class="card-body">
+                    <h6 class="mb-3">{{ selectedRow ? 'Editar Máquina / Parámetro' : 'Agregar Máquina / Parámetro' }}</h6>
+                    <div class="row g-3 align-items-end">
+                      <div class="col-md-3">
+                        <label class="form-label">Unidad de Medida</label>
+                        <ng-select 
+                          formControlName="medida"
+                          placeholder="Seleccione..."
+                          [clearable]="false"
+                          [searchable]="true">
+                          <ng-option value="Metros">Metros</ng-option>
+                          <ng-option value="kilos">Kilos</ng-option>
+                          <ng-option value="Toneladas">Toneladas</ng-option>
+                          <ng-option value="Gramos">Gramos</ng-option>
+                          <ng-option value="Litros">Litros</ng-option>
+                          <ng-option value="Unidades">Unidades</ng-option>
+                          <ng-option value="Paquetes">Paquetes</ng-option>
+                          <ng-option value="Cajas">Cajas</ng-option>
+                          <ng-option value="Bultos">Bultos</ng-option>
+                          <ng-option value="Horas máquina">Horas máquina</ng-option>
+                          <ng-option value="Horas hombres">Horas hombres</ng-option>
+                          <ng-option value="Turnos">Turnos</ng-option>
+                          <ng-option value="Kilómetros">Kilómetros</ng-option>
+                          <ng-option value="Transacciones">Transacciones - Operaciones</ng-option>
+                        </ng-select>
+                      </div>
+
+                      <div class="col-md-3">
+                        <label class="form-label">Tipo</label>
+                        <input type="text" class="form-control text-uppercase" formControlName="type_machine" maxlength="50" placeholder="Ej: Torno, CNC">
+                      </div>
+
+                      <div class="col-md-4">
+                        <label class="form-label">Descripción</label>
+                        <input type="text" class="form-control text-uppercase" formControlName="description" maxlength="100" placeholder="Ej: Operaciones mecánicas básicas">
+                      </div>
+
+                      <div class="col-md-3">
+                        <label class="form-label">Producción Máx / Hora</label>
+                        <div class="input-group">
+                          <input type="number" class="form-control" formControlName="productMax" placeholder="Ej: 50">
+                          @if (f.medida.value) {
+                            <span class="input-group-text">/ {{ f.medida.value }}</span>
+                          }
+                        </div>
+                      </div>
+
+                      <div class="col-md-3">
+                        <label class="form-label">Horas Máximas</label>
+                        <input type="number" class="form-control" formControlName="hoursMax" placeholder="Ej: 160">
+                      </div>
+
+                      <div class="col-md-3">
+                        <label class="form-label">Horas de Uso</label>
+                        <input type="number" class="form-control" formControlName="hoursUse" placeholder="Ej: 120">
+                      </div>
+
+                      <div class="col-md-1">
+                        <label class="form-label d-none d-md-block">&nbsp;</label>
+                        <div class="d-flex gap-1 flex-nowrap">
+                          <button class="btn btn-primary d-inline-flex align-items-center justify-content-center w-100" style="height: 42px;" type="button" (click)="addMachine()" title="Guardar Ítem">
+                            <i class="ti ti-plus fs-5"></i>
+                          </button>
+                          @if (selectedRow) {
+                            <button class="btn btn-warning d-inline-flex align-items-center justify-content-center" style="height: 42px; width: 42px; min-width: 42px;" type="button" (click)="cancelEdit()" title="Cancelar edición">
+                              <i class="ti ti-x fs-5"></i>
+                            </button>
+                          }
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Tablas agrupadas por unidad de medida -->
+                @for (group of groupedCapacities; track group.medida) {
+                  <div class="card mb-4 border shadow-none">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
+                      <h6 class="mb-0 text-primary">Unidad de Medida: {{ group.medida }}</h6>
+                    </div>
+                    <div class="card-body p-0">
+                      <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                          <thead class="table-light">
+                            <tr>
+                              <th>Tipo</th>
+                              <th>Descripción</th>
+                              <th>Prod. Máx/Hora</th>
+                              <th>Horas Máx</th>
+                              <th>Horas Uso</th>
+                              <th class="text-center">Acciones</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            @for (m of group.machines; track m.id) {
+                              <tr>
+                                <td>{{ m.tipo }}</td>
+                                <td>{{ m.descripcion }}</td>
+                                <td>{{ m.prodMaxHoras }} {{ group.medida }}</td>
+                                <td>{{ m.horasMax }}h</td>
+                                <td>{{ m.horasUso }}h</td>
+                                <td class="text-center">
+                                  <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-icon btn-light-primary" type="button" (click)="onEdit(m)" title="Editar">
+                                      <i class="ti ti-edit fs-5"></i>
+                                    </button>
+                                    <button class="btn btn-icon btn-light-danger" type="button" (click)="onDeleteMachine(m)" title="Eliminar">
+                                      <i class="ti ti-trash fs-5"></i>
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <!-- Resumen de capacidades por grupo -->
+                      <div class="bg-light p-3 border-top">
+                        <div class="row text-center gy-2">
+                          <div class="col-6 col-md-3">
+                            <span class="text-muted d-block text-xs">Capacidad Instalada</span>
+                            <strong>{{ group.capacities.installedCapacity }} {{ group.medida }}</strong>
+                          </div>
+                          <div class="col-6 col-md-3">
+                            <span class="text-muted d-block text-xs">Capacidad de Producción</span>
+                            <strong>{{ group.capacities.productionCapacity }} {{ group.medida }}</strong>
+                          </div>
+                          <div class="col-6 col-md-3">
+                            <span class="text-muted d-block text-xs">Capacidad Ociosa</span>
+                            <strong>{{ group.capacities.idleCapacity }} {{ group.medida }}</strong>
+                          </div>
+                          <div class="col-6 col-md-3">
+                            <span class="text-muted d-block text-xs">Utilización</span>
+                            <strong class="text-success">{{ group.capacities.utilizationPercentage }}%</strong>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+
+            <!-- PESTAÑA: Parámetros de Venta -->
+            @if (activeTab === 'ventas') {
+              <div class="tab-pane fade show active">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label">Min. Margen Ganancia Global (%)</label>
+                    <div class="input-group">
+                      <input 
+                        type="number" 
+                        class="form-control" 
+                        formControlName="minMargenGanancia" 
+                        min="0" 
+                        max="100"
+                        placeholder="Ej: 30"
+                        [class.is-invalid]="submitted && f.minMargenGanancia.errors">
+                      <span class="input-group-text">%</span>
+                    </div>
+                    @if (submitted && f.minMargenGanancia.errors) {
+                      <div class="invalid-feedback d-block">
+                        @if (f.minMargenGanancia.errors.min) { <span>Debe ser mayor o igual a 0</span> }
+                        @if (f.minMargenGanancia.errors.max) { <span>Debe ser menor o igual a 100</span> }
+                      </div>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+
+          <!-- Botones de Acción Formulario -->
+          <div class="row mt-4 pt-3 border-top">
+            <div class="col-12 d-flex justify-content-end gap-2">
+              <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-1" type="button" (click)="back()">
+                <i class="ti ti-rotate-clockwise fs-5"></i> Cancelar / Regresar
+              </button>
+              <button class="btn btn-primary d-inline-flex align-items-center gap-1" type="button" [disabled]="loading" (click)="onSubmit()">
+                <i class="ti ti-device-floppy fs-5"></i> Guardar Perfil
+              </button>
+            </div>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

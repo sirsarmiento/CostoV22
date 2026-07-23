@@ -7,6 +7,13 @@ File: style.css
 =========================================================================
 =================================================================================== */
 
+// local fonts & icons
+@import 'scss/fonts/tabler-icons.min.css';
+@import 'scss/fonts/inter/inter.css';
+
+// ng-select default styling theme
+@import '../node_modules/@ng-select/ng-select/themes/default.theme.css';
+
 // main framework
 @import '../node_modules/bootstrap/scss/functions';
 @import '../node_modules/bootstrap/scss/variables';
@@ -36,3 +43,6 @@ File: style.css
 @import 'scss/themes/layouts/footer/footer.scss';
 
 @import 'scss/themes/preset-style.scss';
+
+// Premium customization layer
+@import 'scss/custom-premium.scss';

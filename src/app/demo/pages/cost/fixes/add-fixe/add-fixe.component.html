@@ -1,0 +1,134 @@
+<div class="row mb-4">
+  <div class="col-12">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a routerLink="/fixes">Costos</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ id > 0 ? 'Editar' : 'Crear' }}</li>
+      </ol>
+    </nav>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header bg-light">
+        <h6 class="mb-0 text-primary">Definición de Costo (Fijo / Variable)</h6>
+      </div>
+      <div class="card-body">
+        <form [formGroup]="form">
+          <div class="row g-3">
+            <!-- Tipo de Costo -->
+            <div class="col-md-6">
+              <label class="form-label">Tipo</label>
+              <ng-select 
+                formControlName="tipo"
+                placeholder="Seleccione..."
+                [clearable]="false"
+                [searchable]="false"
+                [class.is-invalid]="submitted && f.tipo.errors">
+                <ng-option value="Fijo">Fijo</ng-option>
+                <ng-option value="Variable">Variable</ng-option>
+              </ng-select>
+              @if (submitted && f.tipo.errors?.required) {
+                <div class="invalid-feedback d-block">Seleccione el Tipo de Costo</div>
+              }
+            </div>
+
+            <!-- Concepto -->
+            <div class="col-md-6">
+              <label class="form-label">Concepto</label>
+              <ng-select 
+                formControlName="concepto"
+                placeholder="Seleccione..."
+                [clearable]="false"
+                [searchable]="true"
+                [class.is-invalid]="submitted && f.concepto.errors">
+                @for (opcion of conceptosMostrados; track opcion) {
+                  <ng-option [value]="opcion">{{ opcion }}</ng-option>
+                }
+              </ng-select>
+              @if (submitted && f.concepto.errors?.required) {
+                <div class="invalid-feedback d-block">Seleccione el Concepto</div>
+              }
+            </div>
+
+            <!-- Otro Concepto -->
+            @if (f.concepto.value === 'Otro') {
+              <div class="col-md-6">
+                <label class="form-label">Especifique el concepto</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  formControlName="otroConcepto"
+                  [class.is-invalid]="submitted && f.otroConcepto.errors">
+                @if (submitted && f.otroConcepto.errors?.required) {
+                  <div class="invalid-feedback">Especifique el concepto</div>
+                }
+              </div>
+            }
+
+            <!-- Precio -->
+            <div class="col-md-6">
+              <label class="form-label">Precio</label>
+              <input 
+                type="number" 
+                class="form-control" 
+                formControlName="precio" 
+                maxlength="20"
+                [class.is-invalid]="submitted && f.precio.errors">
+              @if (submitted && f.precio.errors?.required) {
+                <div class="invalid-feedback">Ingrese el Precio</div>
+              }
+            </div>
+
+            <!-- Clasificación -->
+            <div class="col-md-6">
+              <label class="form-label">Clasificación</label>
+              <ng-select 
+                formControlName="clasificacion"
+                placeholder="Seleccione..."
+                [clearable]="false"
+                [searchable]="false"
+                [class.is-invalid]="submitted && f.clasificacion.errors">
+                <ng-option value="Directo">Directo</ng-option>
+                <ng-option value="Indirecto">Indirecto</ng-option>
+              </ng-select>
+              @if (submitted && f.clasificacion.errors?.required) {
+                <div class="invalid-feedback d-block">Seleccione la Clasificación</div>
+              }
+            </div>
+
+            <!-- Producto (Sólo si es Directo) -->
+            @if (shouldShowProductoField()) {
+              <div class="col-md-6">
+                <label class="form-label">Producto</label>
+                <ng-select 
+                  formControlName="producto"
+                  placeholder="Seleccione producto..."
+                  [clearable]="true"
+                  [searchable]="true">
+                  @for (p of filteredProducts; track p.id) {
+                    <ng-option [value]="p.id">{{ p.nombre }}</ng-option>
+                  }
+                </ng-select>
+              </div>
+            }
+          </div>
+
+          <!-- Botones de Acción -->
+          <div class="row mt-4 pt-3 border-top">
+            <div class="col-12 d-flex justify-content-end gap-2">
+              <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-1" type="button" (click)="back()">
+                <i class="ti ti-rotate-clockwise fs-5"></i> Regresar
+              </button>
+              <button class="btn btn-primary d-inline-flex align-items-center gap-1" type="button" [disabled]="loading" (click)="onSubmit()">
+                <i class="ti ti-device-floppy fs-5"></i> Guardar Costo
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

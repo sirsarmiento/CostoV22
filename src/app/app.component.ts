@@ -12,6 +12,5 @@ import { SpinnerComponent } from './theme/shared/components/spinner/spinner.comp
   imports: [RouterOutlet, SpinnerComponent]
 })
 export class AppComponent {
-  // public props
-  title = 'Costo Angular V22';
+  title = 'COST';
 }

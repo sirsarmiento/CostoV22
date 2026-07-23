@@ -20,7 +20,14 @@ import {
   FontSizeOutline,
   ProfileOutline,
   BgColorsOutline,
-  AntDesignOutline
+  AntDesignOutline,
+  SettingOutline,
+  GoldOutline,
+  BarcodeOutline,
+  DollarOutline,
+  DatabaseOutline,
+  AuditOutline,
+  CalculatorOutline
 } from '@ant-design/icons-angular/icons';
 import { NgScrollbarModule } from 'ngx-scrollbar';
 
@@ -59,7 +66,14 @@ export class NavContentComponent implements OnInit {
         BgColorsOutline,
         AntDesignOutline,
         ChromeOutline,
-        QuestionOutline
+        QuestionOutline,
+        SettingOutline,
+        GoldOutline,
+        BarcodeOutline,
+        DollarOutline,
+        DatabaseOutline,
+        AuditOutline,
+        CalculatorOutline
       ]
     );
     this.navigations = NavigationItems;

@@ -1,0 +1,135 @@
+<div class="row mb-4">
+  <div class="col-12">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a routerLink="/products">Productos</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ id > 0 ? 'Editar' : 'Crear' }}</li>
+      </ol>
+    </nav>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header bg-light">
+        <h6 class="mb-0 text-primary">Definición de Producto / Servicio</h6>
+      </div>
+      <div class="card-body">
+        <form [formGroup]="form">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">Nombre del producto</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                formControlName="nombre" 
+                maxlength="100" 
+                [class.is-invalid]="submitted && f.nombre.errors">
+              @if (submitted && f.nombre.errors?.required) {
+                <div class="invalid-feedback">Ingrese el nombre del producto</div>
+              }
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Clasificación de Costo</label>
+              <ng-select 
+                formControlName="clasificacion"
+                placeholder="Seleccione..."
+                [clearable]="false"
+                [searchable]="false"
+                [class.is-invalid]="submitted && f.clasificacion.errors">
+                <ng-option value="Proyecto">Proyecto</ng-option>
+                <ng-option value="Servicio">Servicio</ng-option>
+                <ng-option value="Actividad">Actividad</ng-option>
+              </ng-select>
+              @if (submitted && f.clasificacion.errors?.required) {
+                <div class="invalid-feedback d-block">Ingrese la Clasificación de Costo</div>
+              }
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Unidad de Medida</label>
+              <ng-select 
+                formControlName="medida"
+                placeholder="Seleccione..."
+                [clearable]="false"
+                [searchable]="true"
+                [class.is-invalid]="submitted && f.medida.errors">
+                <ng-option value="Metros">Metros</ng-option>
+                <ng-option value="kilos">Kilos</ng-option>
+                <ng-option value="Toneladas">Toneladas</ng-option>
+                <ng-option value="Gramos">Gramos</ng-option>
+                <ng-option value="Unidades">Unidades</ng-option>
+                <ng-option value="Paquetes">Paquetes</ng-option>
+                <ng-option value="Cajas">Cajas</ng-option>
+                <ng-option value="Bultos">Bultos</ng-option>
+                <ng-option value="Horas máquina">Horas máquina</ng-option>
+                <ng-option value="Horas hombres">Horas hombres</ng-option>
+                <ng-option value="Turnos">Turnos</ng-option>
+                <ng-option value="Kilómetros">Kilómetros</ng-option>
+                <ng-option value="Transacciones">Transacciones - Operaciones</ng-option>
+              </ng-select>
+              @if (submitted && f.medida.errors?.required) {
+                <div class="invalid-feedback d-block">Seleccione la unidad de medida</div>
+              }
+            </div>
+
+            @if (shouldShowPeriodoField()) {
+              <div class="col-md-4">
+                <label class="form-label">Periodo</label>
+                <ng-select 
+                  formControlName="periodo"
+                  placeholder="Seleccione..."
+                  [clearable]="false"
+                  [searchable]="false">
+                  <ng-option value="Diario">Diario</ng-option>
+                  <ng-option value="Mensual">Mensual</ng-option>
+                </ng-select>
+              </div>
+            }
+
+            <div class="col-12">
+              <label class="form-label">Descripción</label>
+              <textarea 
+                class="form-control" 
+                formControlName="descripcion" 
+                maxlength="1000" 
+                rows="3"
+                placeholder="Descripción del producto" 
+                [class.is-invalid]="submitted && f.descripcion.errors"></textarea>
+              @if (submitted && f.descripcion.errors?.required) {
+                <div class="invalid-feedback">Ingrese la descripción del producto</div>
+              }
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Empresa</label>
+              <ng-select 
+                formControlName="perfil"
+                placeholder="Seleccione empresa..."
+                [clearable]="false"
+                [searchable]="true">
+                @for (p of configs; track p.id) {
+                  <ng-option [value]="p.id">{{ p.nombre }}</ng-option>
+                }
+              </ng-select>
+            </div>
+          </div>
+
+          <!-- Botones de Acción -->
+          <div class="row mt-4 pt-3 border-top">
+            <div class="col-12 d-flex justify-content-end gap-2">
+              <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-1" type="button" (click)="back()">
+                <i class="ti ti-rotate-clockwise fs-5"></i> Cancelar / Regresar
+              </button>
+              <button class="btn btn-primary d-inline-flex align-items-center gap-1" type="button" [disabled]="loading" (click)="onSubmit()">
+                <i class="ti ti-device-floppy fs-5"></i> Guardar Producto
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,125 @@
+<div class="row mb-4">
+  <div class="col-sm-6">
+    <h5 class="mb-0">Productos</h5>
+  </div>
+  <div class="col-sm-6 text-sm-end mt-2 mt-sm-0">
+    <button class="btn btn-primary d-inline-flex align-items-center gap-2" (click)="openAdd()">
+      <i class="ti ti-plus-circle fs-5"></i> Agregar Producto
+    </button>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <!-- Filtro de Búsqueda -->
+        <div class="row mb-3">
+          <div class="col-md-4">
+            <input 
+              type="text" 
+              class="form-control" 
+              placeholder="Buscar por nombre, SKU o clasificación..." 
+              [(ngModel)]="searchTerm"
+              (input)="onSearchChange()">
+          </div>
+        </div>
+
+        <!-- Tabla de Productos -->
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th style="cursor: pointer;" (click)="sortData('nombre')">
+                  Nombre <i class="ti fs-6" [class]="getSortClass('nombre')"></i>
+                </th>
+                <th style="cursor: pointer;" (click)="sortData('sku')">
+                  SKU <i class="ti fs-6" [class]="getSortClass('sku')"></i>
+                </th>
+                <th style="cursor: pointer;" (click)="sortData('medida')">
+                  Medida <i class="ti fs-6" [class]="getSortClass('medida')"></i>
+                </th>
+                <th style="cursor: pointer;" (click)="sortData('clasificacion')">
+                  Clasificación <i class="ti fs-6" [class]="getSortClass('clasificacion')"></i>
+                </th>
+                <th style="cursor: pointer;" (click)="sortData('perfilName')">
+                  Empresa <i class="ti fs-6" [class]="getSortClass('perfilName')"></i>
+                </th>
+                <th class="text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of paginatedProducts; track row.id) {
+                <tr 
+                  (click)="selectedRow = selectedRow === row ? null : row"
+                  [class.table-primary]="selectedRow?.id === row.id"
+                  style="cursor: pointer;">
+                  <td>{{ row.nombre }}</td>
+                  <td>{{ row.sku }}</td>
+                  <td>{{ row.medida }}</td>
+                  <td>
+                    <span 
+                      class="badge" 
+                      [class.bg-light-success]="row.clasificacion === 'Directo'"
+                      [class.bg-light-warning]="row.clasificacion !== 'Directo'">
+                      {{ row.clasificacion }}
+                    </span>
+                  </td>
+                  <td>{{ row.perfilName }}</td>
+                  <td class="text-center" (click)="$event.stopPropagation()">
+                    <div class="btn-group btn-group-sm">
+                      <button 
+                        class="btn btn-icon btn-light-primary" 
+                        (click)="onEdit(row)" 
+                        title="Editar">
+                        <i class="ti ti-edit fs-5"></i>
+                      </button>
+                      <button 
+                        class="btn btn-icon btn-light-danger" 
+                        (click)="onDelete(row.id, row.nombre)" 
+                        title="Eliminar">
+                        <i class="ti ti-trash fs-5"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="6" class="text-center py-4 text-muted">
+                    No se encontraron productos que coincidan con la búsqueda.
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Paginación Simple -->
+        @if (filteredProducts.length > pageSize) {
+          <div class="d-flex justify-content-between align-items-center mt-3">
+            <small class="text-muted">
+              Mostrando {{ (currentPage - 1) * pageSize + 1 }} a 
+              {{ Math.min(currentPage * pageSize, filteredProducts.length) }} de 
+              {{ filteredProducts.length }} productos
+            </small>
+            <nav aria-label="Navegación de páginas">
+              <ul class="pagination pagination-sm mb-0">
+                <li class="page-item" [class.disabled]="currentPage === 1">
+                  <button class="page-item page-link" (click)="setPage(currentPage - 1)">Anterior</button>
+                </li>
+                @for (p of totalPagesArray; track p) {
+                  <li class="page-item" [class.active]="p === currentPage">
+                    <button class="page-item page-link" (click)="setPage(p)">{{ p }}</button>
+                  </li>
+                }
+                <li class="page-item" [class.disabled]="currentPage === totalPages">
+                  <button class="page-item page-link" (click)="setPage(currentPage + 1)">Siguiente</button>
+                </li>
+              </ul>
+            </nav>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -15,6 +15,7 @@ export class AssetComponent implements OnInit {
   private router = inject(Router);
   private assetService = inject(AssetService);
 
+  private cdr = inject(ChangeDetectorRef);
   loading = true;
   selectedRow: Asset | null = null;
   activeTab = 'fijo'; // fijo or circulante
@@ -73,7 +74,9 @@ export class AssetComponent implements OnInit {
         });
 
         this.applyFilterAndPagination();
+       
         this.loading = false;
+        setTimeout(() => this.cdr.detectChanges(), 50);
       },
       error: (error) => {
         console.error('Error loading assets:', error);
@@ -117,8 +120,8 @@ export class AssetComponent implements OnInit {
       let valA = a[prop];
       let valB = b[prop];
       
-      if (typeof valA === 'string') valA = valA.toLowerCase();
-      if (typeof valB === 'string') valB = valB.toLowerCase();
+      if (valA && typeof valA === "string") valA = valA.toLowerCase();
+      if (valB && typeof valB === "string") valB = valB.toLowerCase();
 
       // Handle Dates
       if (valA instanceof Date && valB instanceof Date) {
@@ -154,6 +157,11 @@ export class AssetComponent implements OnInit {
   setPage(page: number) {
     if (page < 1 || page > this.totalPages) return;
     this.currentPage = page;
+    this.applyFilterAndPagination();
+  }
+
+  onPageSizeChange() {
+    this.currentPage = 1;
     this.applyFilterAndPagination();
   }
 

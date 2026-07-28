@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -15,6 +15,7 @@ import Swal from 'sweetalert2';
 export class BudgetComponent implements OnInit {
   private router = inject(Router);
   private budgetService = inject(BudgetService);
+  private cdr = inject(ChangeDetectorRef);
   loading = true;
   selectedRow: Budget | null = null;
 
@@ -44,7 +45,9 @@ export class BudgetComponent implements OnInit {
         this.allBudgets = data;
         this.filteredBudgets = [...this.allBudgets];
         this.applyFilterAndPagination();
+       
         this.loading = false;
+        setTimeout(() => this.cdr.detectChanges(), 50);
       },
       error: (error) => {
         console.error('Error loading budgets:', error);
@@ -106,6 +109,11 @@ export class BudgetComponent implements OnInit {
   setPage(page: number) {
     if (page < 1 || page > this.totalPages) return;
     this.currentPage = page;
+    this.applyFilterAndPagination();
+  }
+
+  onPageSizeChange() {
+    this.currentPage = 1;
     this.applyFilterAndPagination();
   }
 

@@ -3,7 +3,7 @@
     <h5 class="mb-0">Control de Activos</h5>
   </div>
   <div class="col-sm-6 text-sm-end mt-2 mt-sm-0">
-    <button class="btn btn-primary d-inline-flex align-items-center gap-2" (click)="openAdd()">
+    <button class="btn btn-primary d-inline-flex align-items-center gap-2" [routerLink]="['/cost/assets/add']">
       <i class="ti ti-plus-circle fs-5"></i> Agregar Activo
     </button>
   </div>
@@ -17,180 +17,137 @@
         <!-- Tabs -->
         <ul class="nav nav-tabs mb-4" id="assetTabs" role="tablist">
           <li class="nav-item" role="presentation">
-            <button 
-              class="nav-link" 
-              [class.active]="activeTab === 'fijo'" 
-              (click)="setActiveTab('fijo')" 
-              type="button">
-              Activos Fijos
-            </button>
+            <button class="nav-link" [class.active]="activeTab === 'fijo'" (click)="setActiveTab('fijo')" type="button">Activos Fijos</button>
           </li>
           <li class="nav-item" role="presentation">
-            <button 
-              class="nav-link" 
-              [class.active]="activeTab === 'circulante'" 
-              (click)="setActiveTab('circulante')" 
-              type="button">
-              Activos Circulantes
-            </button>
+            <button class="nav-link" [class.active]="activeTab === 'circulante'" (click)="setActiveTab('circulante')" type="button">Activos Circulantes</button>
           </li>
         </ul>
 
         <!-- Search Bar -->
         <div class="row mb-3">
           <div class="col-md-4">
-            <input 
-              type="text" 
-              class="form-control" 
-              placeholder="Buscar activos..." 
-              [(ngModel)]="searchTerm"
-              (input)="onSearchChange()">
+            <input type="text" class="form-control" placeholder="Buscar activos..." [(ngModel)]="searchTerm" (input)="onSearchChange()">
           </div>
         </div>
 
         @if (activeTab === 'fijo') {
           <!-- TABLA: Activos Fijos -->
-          <div class="table-responsive">
+          <div class="table-responsive mb-3">
             <table class="table table-hover align-middle mb-0">
               <thead class="table-light">
                 <tr>
-                  <th style="cursor: pointer;" (click)="sortData('nombre')">
-                    Nombre <i class="ti fs-6" [class]="getSortClass('nombre')"></i>
-                  </th>
-                  <th style="cursor: pointer;" (click)="sortData('costoInicial')">
-                    Costo Inicial <i class="ti fs-6" [class]="getSortClass('costoInicial')"></i>
-                  </th>
-                  <th style="cursor: pointer;" (click)="sortData('valorResidual')">
-                    Val. Residual <i class="ti fs-6" [class]="getSortClass('valorResidual')"></i>
-                  </th>
-                  <th style="cursor: pointer;" (click)="sortData('vidaUtil')">
-                    Vida Útil <i class="ti fs-6" [class]="getSortClass('vidaUtil')"></i>
-                  </th>
-                  <th style="cursor: pointer;" (click)="sortData('fechaCompra')">
-                    Compra <i class="ti fs-6" [class]="getSortClass('fechaCompra')"></i>
-                  </th>
+                  <th class="ps-4" style="cursor: pointer;" (click)="sortData('nombre')">Nombre <i class="ti fs-6" [class]="getSortClass('nombre')"></i></th>
+                  <th style="cursor: pointer;" (click)="sortData('costoInicial')">Costo Inicial <i class="ti fs-6" [class]="getSortClass('costoInicial')"></i></th>
+                  <th style="cursor: pointer;" (click)="sortData('valorResidual')">Val. Residual <i class="ti fs-6" [class]="getSortClass('valorResidual')"></i></th>
+                  <th style="cursor: pointer;" (click)="sortData('vidaUtil')">Vida Útil <i class="ti fs-6" [class]="getSortClass('vidaUtil')"></i></th>
+                  <th style="cursor: pointer;" (click)="sortData('fechaCompra')">Compra <i class="ti fs-6" [class]="getSortClass('fechaCompra')"></i></th>
                   <th>Dep. Mensual</th>
                   <th>Dep. Anual</th>
-                  <th class="text-center">Acciones</th>
+                  <th class="text-center pe-4">Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 @for (row of paginatedAssets; track row.id) {
                   <tr>
-                    <td>{{ row.nombre }}</td>
+                    <td class="ps-4">{{ row.nombre }}</td>
                     <td class="fw-bold">{{ row.costoInicial | number: '1.2-2' }}</td>
                     <td>{{ row.valorResidual | number: '1.2-2' }}</td>
                     <td>{{ row.vidaUtil }} años</td>
                     <td>{{ row.fechaCompra | date: 'dd-MM-yyyy' }}</td>
                     <td class="text-danger fw-bold">{{ row.depMensual | number: '1.2-2' }}</td>
                     <td>{{ row.depAnual | number: '1.2-2' }}</td>
-                    <td class="text-center">
+                    <td class="text-center pe-4">
                       <button class="btn btn-sm btn-icon btn-light-primary" (click)="onEdit(row)" title="Editar">
                         <i class="ti ti-edit fs-5"></i>
                       </button>
                     </td>
                   </tr>
                 } @empty {
-                  <tr>
-                    <td colspan="8" class="text-center py-4 text-muted">
-                      No se encontraron activos fijos.
-                    </td>
-                  </tr>
+                  <tr><td colspan="8" class="text-center py-4 text-muted">No se encontraron activos fijos.</td></tr>
                 }
               </tbody>
             </table>
           </div>
 
-          <!-- Total Depreciación Mensual -->
+          <!-- Total Depreciación Mensual (Franja gris completa) -->
           @if (filteredAssets.length > 0) {
-            <div class="alert alert-info mt-3 mb-0 py-2 d-inline-block">
-              <h6 class="mb-0">Total Depreciación Mensual: 
-                <strong class="text-primary fs-5 ms-2">{{ totalFijos | number: '1.2-2' }}</strong>
-              </h6>
+            <div class="bg-light rounded p-3 d-flex justify-content-between align-items-center mb-4 border">
+              <span class="text-muted fw-medium">Total Depreciación Mensual:</span>
+              <strong class="text-danger fs-4">${{ totalFijos | number: '1.2-2' }}</strong>
             </div>
           }
         }
 
         @if (activeTab === 'circulante') {
           <!-- TABLA: Activos Circulantes -->
-          <div class="table-responsive">
+          <div class="table-responsive mb-3">
             <table class="table table-hover align-middle mb-0">
               <thead class="table-light">
                 <tr>
-                  <th style="cursor: pointer;" (click)="sortData('nombre')">
-                    Nombre <i class="ti fs-6" [class]="getSortClass('nombre')"></i>
-                  </th>
+                  <th class="ps-4" style="cursor: pointer;" (click)="sortData('nombre')">Nombre <i class="ti fs-6" [class]="getSortClass('nombre')"></i></th>
                   <th>Descripción</th>
                   <th>Ubicación</th>
                   <th>Cant. / Unidad</th>
-                  <th style="cursor: pointer;" (click)="sortData('valorUnitario')">
-                    Val. Unitario <i class="ti fs-6" [class]="getSortClass('valorUnitario')"></i>
-                  </th>
-                  <th style="cursor: pointer;" (click)="sortData('costoInicial')">
-                    Valor Total <i class="ti fs-6" [class]="getSortClass('costoInicial')"></i>
-                  </th>
-                  <th class="text-center">Acciones</th>
+                  <th style="cursor: pointer;" (click)="sortData('valorUnitario')">Val. Unitario <i class="ti fs-6" [class]="getSortClass('valorUnitario')"></i></th>
+                  <th style="cursor: pointer;" (click)="sortData('costoInicial')">Valor Total <i class="ti fs-6" [class]="getSortClass('costoInicial')"></i></th>
+                  <th class="text-center pe-4">Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 @for (row of paginatedAssets; track row.id) {
                   <tr>
-                    <td>{{ row.nombre }}</td>
+                    <td class="ps-4">{{ row.nombre }}</td>
                     <td>{{ row.descripcion }}</td>
-                    <td><span class="badge bg-light text-dark">{{ row.ubicacion }}</span></td>
+                    <td>{{ row.ubicacion }}</td>
                     <td>{{ row.cantidad }} {{ row.unidadMedida }}</td>
-                    <td>{{ row.valorUnitario | number: '1.2-2' }} US$</td>
-                    <td class="fw-bold">{{ row.costoInicial | number: '1.2-2' }}</td>
-                    <td class="text-center">
+                    <td>{{ row.valorUnitario | number: '1.2-2' }}</td>
+                    <td class="text-primary fw-bold">{{ row.costoInicial | number: '1.2-2' }}</td>
+                    <td class="text-center pe-4">
                       <button class="btn btn-sm btn-icon btn-light-primary" (click)="onEdit(row)" title="Editar">
                         <i class="ti ti-edit fs-5"></i>
                       </button>
                     </td>
                   </tr>
                 } @empty {
-                  <tr>
-                    <td colspan="7" class="text-center py-4 text-muted">
-                      No se encontraron activos circulantes.
-                    </td>
-                  </tr>
+                  <tr><td colspan="7" class="text-center py-4 text-muted">No se encontraron activos circulantes.</td></tr>
                 }
               </tbody>
             </table>
           </div>
 
-          <!-- Total Circulantes -->
+          <!-- Total Activos Circulantes (Franja gris completa) -->
           @if (filteredAssets.length > 0) {
-            <div class="alert alert-info mt-3 mb-0 py-2 d-inline-block">
-              <h6 class="mb-0">Total Activos Circulantes: 
-                <strong class="text-primary fs-5 ms-2">{{ totalCirculantes | number: '1.2-2' }}</strong>
-              </h6>
+            <div class="bg-light rounded p-3 d-flex justify-content-between align-items-center mb-4 border">
+              <span class="text-muted fw-medium">Total Activos Circulantes:</span>
+              <strong class="text-primary fs-4">${{ totalCirculantes | number: '1.2-2' }}</strong>
             </div>
           }
         }
 
         <!-- Paginación Común -->
-        @if (filteredAssets.length > pageSize) {
-          <div class="d-flex justify-content-between align-items-center mt-3">
-            <small class="text-muted">
-              Mostrando {{ (currentPage - 1) * pageSize + 1 }} a 
-              {{ Math.min(currentPage * pageSize, filteredAssets.length) }} de 
-              {{ filteredAssets.length }} activos
-            </small>
-            <nav aria-label="Navegación de páginas">
-              <ul class="pagination pagination-sm mb-0">
-                <li class="page-item" [class.disabled]="currentPage === 1">
-                  <button class="page-item page-link" (click)="setPage(currentPage - 1)">Anterior</button>
-                </li>
-                @for (p of totalPagesArray; track p) {
-                  <li class="page-item" [class.active]="p === currentPage">
-                    <button class="page-item page-link" (click)="setPage(p)">{{ p }}</button>
-                  </li>
-                }
-                <li class="page-item" [class.disabled]="currentPage === totalPages">
-                  <button class="page-item page-link" (click)="setPage(currentPage + 1)">Siguiente</button>
-                </li>
-              </ul>
-            </nav>
+        @if (filteredAssets.length > 0) {
+          <div class="d-flex flex-column flex-md-row justify-content-end align-items-center pt-3 border-top gap-4 text-muted" style="font-size: 0.875rem;">
+            <div class="d-flex align-items-center gap-2">
+              <span>Filas por página:</span>
+              <select class="form-select form-select-sm border-0 shadow-none bg-light fw-medium" style="width: 70px; cursor: pointer;" [(ngModel)]="pageSize" (change)="onPageSizeChange()">
+                <option [ngValue]="5">5</option>
+                <option [ngValue]="10">10</option>
+                <option [ngValue]="20">20</option>
+                <option [ngValue]="50">50</option>
+              </select>
+            </div>
+            <span>
+              {{ (currentPage - 1) * pageSize + 1 }} - {{ Math.min(currentPage * pageSize, filteredAssets ? filteredAssets.length : 0) }} de {{ filteredAssets ? filteredAssets.length : 0 }}
+            </span>
+            <div class="d-flex align-items-center gap-2">
+              <button class="btn btn-sm btn-icon rounded-pill btn-light shadow-sm" [disabled]="currentPage === 1" (click)="setPage(currentPage - 1)" title="Anterior">
+                <i class="ti ti-chevron-left fs-5"></i>
+              </button>
+              <button class="btn btn-sm btn-icon rounded-pill btn-light shadow-sm" [disabled]="currentPage === totalPages" (click)="setPage(currentPage + 1)" title="Siguiente">
+                <i class="ti ti-chevron-right fs-5"></i>
+              </button>
+            </div>
           </div>
         }
 

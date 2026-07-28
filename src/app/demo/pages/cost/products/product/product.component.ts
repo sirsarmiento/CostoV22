@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -23,6 +23,7 @@ export class ProductComponent implements OnInit {
   private productService = inject(ProductService);
   private configService = inject(ConfigService);
 
+  private cdr = inject(ChangeDetectorRef);
   loading = true;
   allProducts: ProductWithProfile[] = [];
   filteredProducts: ProductWithProfile[] = [];
@@ -69,7 +70,9 @@ export class ProductComponent implements OnInit {
 
         this.filteredProducts = [...this.allProducts];
         this.applyFilterAndPagination();
+       
         this.loading = false;
+        setTimeout(() => this.cdr.detectChanges(), 50);
       },
       error: () => {
         this.loading = false;
@@ -102,8 +105,8 @@ export class ProductComponent implements OnInit {
       let valA = a[prop];
       let valB = b[prop];
       
-      if (typeof valA === 'string') valA = valA.toLowerCase();
-      if (typeof valB === 'string') valB = valB.toLowerCase();
+      if (valA && typeof valA === "string") valA = valA.toLowerCase();
+      if (valB && typeof valB === "string") valB = valB.toLowerCase();
 
       if (valA === null || valA === undefined) return this.sortAscending ? 1 : -1;
       if (valB === null || valB === undefined) return this.sortAscending ? -1 : 1;
@@ -128,6 +131,11 @@ export class ProductComponent implements OnInit {
   setPage(page: number) {
     if (page < 1 || page > this.totalPages) return;
     this.currentPage = page;
+    this.applyFilterAndPagination();
+  }
+
+  onPageSizeChange() {
+    this.currentPage = 1;
     this.applyFilterAndPagination();
   }
 

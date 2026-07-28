@@ -21,7 +21,7 @@ export class userObservable {
     country!: SelectOption;
     state!: SelectOption;
     city!: SelectOption;
-    roles?: any;
+    roles?: unknown;
 }
 
 export class User {
@@ -29,7 +29,7 @@ export class User {
     id!: number;
     username!: string;
     token?: string;
-    roles?: any[];
+    roles?: unknown[];
     firstName!: string;
     secondName!: string;
     lastName!: string;
@@ -39,27 +39,27 @@ export class User {
     position!: SelectOption;
 
     positionId!: string;
-    phones!: any[];
-    birthDate!: any;
+    phones!: unknown[];
+    birthDate!: unknown;
     documentType!: string;
     documentNumber!: string;
     status!: SelectOption;
     avatar!: string;
     createAt!: Date;
     updateAt!: Date;
-    instrumentsPending!: Array<any>;
+    instrumentsPending!: Array<unknown>;
     optionsMenu!: Array<MenuItem>;
     sex!: string;
     address!: string;
     country!: SelectOption;
     state!: SelectOption;
     city!: SelectOption;
-    socialNetwork!: Array<any>;
+    socialNetwork!: Array<unknown>;
     answered!: boolean;
     hoursDedication!: string;
     nameInputHours!: string;
-    freeDays!: any; // range of dates
-    totalFreeDays!: any;
+    freeDays!: unknown; // range of dates
+    totalFreeDays!: unknown;
     company!: Company;
     password!: string;
     idestructura!: number;
@@ -117,7 +117,7 @@ export class User {
     }
 
     public static mapForPost(user: User) {
-        let userMap: any = {};
+        const userMap: Record<string, unknown> = {};
         console.log(user);
         if (!user.id) {
             Object.assign(userMap, { username: user.email })
@@ -149,11 +149,12 @@ export class User {
         return userMap;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     static mapFromObject(userObj: any): User | undefined {
         if (!userObj)
-            return;
+            return undefined;
 
-        let userMap = new User();
+        const userMap = new User();
         if (!userObj.id) {
             Object.assign(userMap, { username: userObj.email })
         }
@@ -193,7 +194,7 @@ export class User {
     }
 
     public static mapForEditProfile(user: User) {
-        let userMap: any = {};
+        const userMap: Record<string, unknown> = {};
         Object.assign(userMap, { id: user.id });
         Object.assign(userMap, { idStatus: parseInt(user.status.value) });
 
@@ -209,25 +210,29 @@ export class User {
     }
 
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private static getPhonesUser(userPhones: any[]) {
-        let phones;
-        phones = userPhones.map((item: any) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const phones = userPhones.map((item: any) => {
             return { numero: item.numero };
         });
         return phones;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private static getRolesUser(userRoles: any[]) {
-        let roles;
-        roles = userRoles.map((item: string) => {
+        const roles = userRoles.map((item: string) => {
             return { rol: item };
         });
         return roles;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private static getNetworkUser(networks: any[]) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const arrayNetwork: any[] = [];
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         networks.forEach((net: any) => {
             arrayNetwork.push({
                 tipo: parseInt(net.idTipo),

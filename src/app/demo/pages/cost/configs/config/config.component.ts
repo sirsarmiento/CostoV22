@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -26,6 +26,7 @@ export class ConfigComponent implements OnInit {
   private router = inject(Router);
   private configService = inject(ConfigService);
 
+  private cdr = inject(ChangeDetectorRef);
   loading = true;
   configs: Config[] = [];
   filteredConfigs: Config[] = [];
@@ -63,6 +64,7 @@ export class ConfigComponent implements OnInit {
           this.selectRow(this.configs[0]);
         }
         this.loading = false;
+        setTimeout(() => this.cdr.detectChanges(), 50);
       },
       error: (error) => {
         console.error('Error loading configs:', error);
@@ -131,8 +133,8 @@ export class ConfigComponent implements OnInit {
       let valA = a[prop];
       let valB = b[prop];
       
-      if (typeof valA === 'string') valA = valA.toLowerCase();
-      if (typeof valB === 'string') valB = valB.toLowerCase();
+      if (valA && typeof valA === "string") valA = valA.toLowerCase();
+      if (valB && typeof valB === "string") valB = valB.toLowerCase();
 
       if (valA === null || valA === undefined) return this.sortAscending ? 1 : -1;
       if (valB === null || valB === undefined) return this.sortAscending ? -1 : 1;
@@ -157,6 +159,11 @@ export class ConfigComponent implements OnInit {
   setPage(page: number) {
     if (page < 1 || page > this.totalPages) return;
     this.currentPage = page;
+    this.applyFilterAndPagination();
+  }
+
+  onPageSizeChange() {
+    this.currentPage = 1;
     this.applyFilterAndPagination();
   }
 

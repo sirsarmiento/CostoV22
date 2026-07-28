@@ -46,3 +46,23 @@ File: style.css
 
 // Premium customization layer
 @import 'scss/custom-premium.scss';
+
+/* Override table-sm to be ultra-compact */
+.table-sm > :not(caption) > * > * {
+  padding: 0.1rem 0.25rem !important;
+  font-size: 0.85rem;
+}
+
+/* Global scroll for responsive tables */
+.table-responsive {
+  max-height: 65vh;
+  overflow-y: auto;
+}
+
+/* Sticky headers for global tables */
+.table-responsive thead,
+.table-responsive .table-light {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}

@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -18,6 +18,7 @@ export class CodingComponent implements OnInit {
   private router = inject(Router);
   private codingService = inject(CodingService);
 
+  private cdr = inject(ChangeDetectorRef);
   loading = true;
   selectedRow: SkuCoding | null = null;
   activeTab = 0;
@@ -65,6 +66,7 @@ export class CodingComponent implements OnInit {
         this.filteredSKUs = [...this.allSKUs];
         this.applyFilterAndPaginationSKU();
         this.loading = false;
+        setTimeout(() => this.cdr.detectChanges(), 50);
       },
       error: (error) => {
         console.error('Error loading SKUs:', error);
@@ -81,6 +83,7 @@ export class CodingComponent implements OnInit {
         this.filteredFamilies = [...this.allFamilies];
         this.applyFilterAndPaginationFamily();
         this.loading = false;
+        setTimeout(() => this.cdr.detectChanges(), 50);
       },
       error: (error) => {
         console.error('Error loading families:', error);
@@ -114,8 +117,8 @@ export class CodingComponent implements OnInit {
       let valA = a[prop];
       let valB = b[prop];
       
-      if (typeof valA === 'string') valA = valA.toLowerCase();
-      if (typeof valB === 'string') valB = valB.toLowerCase();
+      if (valA && typeof valA === "string") valA = valA.toLowerCase();
+      if (valB && typeof valB === "string") valB = valB.toLowerCase();
 
       if (valA === null || valA === undefined) return this.sortAscendingSKU ? 1 : -1;
       if (valB === null || valB === undefined) return this.sortAscendingSKU ? -1 : 1;
@@ -140,6 +143,11 @@ export class CodingComponent implements OnInit {
   setPageSKU(page: number) {
     if (page < 1 || page > this.totalPagesSKU) return;
     this.currentPageSKU = page;
+    this.applyFilterAndPaginationSKU();
+  }
+
+  onPageSizeChangeSKU() {
+    this.currentPageSKU = 1;
     this.applyFilterAndPaginationSKU();
   }
 
@@ -181,8 +189,8 @@ export class CodingComponent implements OnInit {
       let valA = a[prop];
       let valB = b[prop];
       
-      if (typeof valA === 'string') valA = valA.toLowerCase();
-      if (typeof valB === 'string') valB = valB.toLowerCase();
+      if (valA && typeof valA === "string") valA = valA.toLowerCase();
+      if (valB && typeof valB === "string") valB = valB.toLowerCase();
 
       if (valA === null || valA === undefined) return this.sortAscendingFamily ? 1 : -1;
       if (valB === null || valB === undefined) return this.sortAscendingFamily ? -1 : 1;
@@ -207,6 +215,11 @@ export class CodingComponent implements OnInit {
   setPageFamily(page: number) {
     if (page < 1 || page > this.totalPagesFamily) return;
     this.currentPageFamily = page;
+    this.applyFilterAndPaginationFamily();
+  }
+
+  onPageSizeChangeFamily() {
+    this.currentPageFamily = 1;
     this.applyFilterAndPaginationFamily();
   }
 

@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
+import { map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { Config } from '../../models/Cost/config';
 
@@ -9,7 +10,7 @@ import { Config } from '../../models/Cost/config';
 })
 export class ConfigService {
   private http = inject(HttpClient);
-  private url = `${environment.apiUrl}/configs`;
+  private url = `${environment.apiUrl}/perfil`;
 
   private getMockConfigs(): Config[] {
     const stored = localStorage.getItem('cost_configs');
@@ -25,7 +26,7 @@ export class ConfigService {
     if (environment.useMocks) {
       return of(this.getMockConfigs());
     }
-    return this.http.get<Config[]>(this.url);
+    return this.http.get<any>(this.url).pipe(map((res: any) => res.data ? res.data : res));
   }
 
   createConfig(config: Config): Observable<Config> {
@@ -51,7 +52,9 @@ export class ConfigService {
       }
       return of(config); // Si no se encuentra, retornamos igual para evitar errores
     }
-    return this.http.put<Config>(`${this.url}/${id}`, config);
+    const payload = { ...config } as any;
+    delete payload.id;
+    return this.http.put<Config>(`${this.url}/${id}`, payload);
   }
 
   deleteConfig(id: number): Observable<void> {

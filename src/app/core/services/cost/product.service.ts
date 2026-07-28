@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
+import { map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { Product } from '../../models/Cost/product';
 
@@ -9,7 +10,7 @@ import { Product } from '../../models/Cost/product';
 })
 export class ProductService {
   private http = inject(HttpClient);
-  private url = `${environment.apiUrl}/products`;
+  private url = `${environment.apiUrl}/productos`;
 
   private getMockProducts(): Product[] {
     const stored = localStorage.getItem('cost_products');
@@ -25,7 +26,7 @@ export class ProductService {
     if (environment.useMocks) {
       return of(this.getMockProducts());
     }
-    return this.http.get<Product[]>(this.url);
+    return this.http.get<any>(this.url).pipe(map((res: any) => res.data ? res.data : res));
   }
 
   createProduct(product: Product): Observable<Product> {
@@ -51,7 +52,9 @@ export class ProductService {
       }
       return of(product);
     }
-    return this.http.put<Product>(`${this.url}/${id}`, product);
+    const payload = { ...product } as any;
+    delete payload.id;
+    return this.http.put<Product>(`${this.url}/${id}`, payload);
   }
 
   deleteProduct(id: number): Observable<void> {

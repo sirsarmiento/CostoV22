@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
+import { map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { Asset } from '../../models/Cost/asset';
 
@@ -9,7 +10,7 @@ import { Asset } from '../../models/Cost/asset';
 })
 export class AssetService {
   private http = inject(HttpClient);
-  private url = `${environment.apiUrl}/assets`;
+  private url = `${environment.apiUrl}/activos`;
 
   private getMockAssets(): Asset[] {
     const stored = localStorage.getItem('cost_assets');
@@ -25,7 +26,7 @@ export class AssetService {
     if (environment.useMocks) {
       return of(this.getMockAssets());
     }
-    return this.http.get<Asset[]>(this.url);
+    return this.http.get<any>(this.url).pipe(map((res: any) => res.data ? res.data : res));
   }
 
   createAsset(asset: Asset): Observable<Asset> {
@@ -51,7 +52,9 @@ export class AssetService {
       }
       return of(asset);
     }
-    return this.http.put<Asset>(`${this.url}/${id}`, asset);
+    const payload = { ...asset } as any;
+    delete payload.id;
+    return this.http.put<Asset>(`${this.url}/${id}`, payload);
   }
 
   deleteAsset(id: number): Observable<void> {

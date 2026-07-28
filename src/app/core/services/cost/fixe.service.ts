@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
+import { map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { Fixe } from '../../models/Cost/fixe';
 
@@ -9,7 +10,7 @@ import { Fixe } from '../../models/Cost/fixe';
 })
 export class FixeService {
   private http = inject(HttpClient);
-  private url = `${environment.apiUrl}/fixes`;
+  private url = `${environment.apiUrl}/costos`;
 
   private getMockFixes(): Fixe[] {
     const stored = localStorage.getItem('cost_fixes');
@@ -21,7 +22,7 @@ export class FixeService {
 
   getFixes(): Observable<Fixe[]> {
     if (environment.useMocks) return of(this.getMockFixes());
-    return this.http.get<Fixe[]>(this.url);
+    return this.http.get<any>(this.url).pipe(map((res: any) => res.data ? res.data : res));
   }
 
   createFixe(fixe: Fixe): Observable<Fixe> {
@@ -47,7 +48,9 @@ export class FixeService {
       }
       return of(fixe);
     }
-    return this.http.put<Fixe>(`${this.url}/${id}`, fixe);
+    const payload = { ...fixe } as any;
+    delete payload.id;
+    return this.http.put<Fixe>(`${this.url}/${id}`, payload);
   }
 
   deleteFixe(id: number): Observable<void> {

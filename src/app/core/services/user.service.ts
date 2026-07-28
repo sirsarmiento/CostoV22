@@ -50,7 +50,8 @@ export class UserService extends HttpService {
      * Get info of user
      */
   async getInfoUser() {
-    const resp = await firstValueFrom(this.get(environment.apiUrl, '/user/info/detalle'));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const resp: any = await firstValueFrom(this.get(environment.apiUrl, '/user/info/detalle'));
     const user = new User();
     user.id = resp[0].id;
     user.token = this.authService.currentUser?.token;
@@ -68,14 +69,14 @@ export class UserService extends HttpService {
     user.avatar = resp[0].foto;
     user.createAt = resp[0].createAt;
     user.updateAt = resp[0].updateAt;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     user.roles = resp[0].roles.map((itemRol: any) => {
       return itemRol.rol;
     })
 
     //this.permissionsService.loadPermissions(user.roles) // Add by Sir for getting permissions
-    var datauserresorce = '';
+    let datauserresorce = '';
 
-    var datauserresorce = '';
     //var repotsAct = resp[0].roles.filter((item) => item.rol == 'ROLE_STAEXPED_REPORTS');
 
     //if (repotsAct.length != 0) {
@@ -95,6 +96,7 @@ export class UserService extends HttpService {
     user.city = new SelectOption(resp[0].ciudad?.id, resp[0].ciudad.Nombre);
 
     if (resp[0].redes) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       user.socialNetwork = resp[0].redes.map((item: any) => {
         return { idTipo: item.idTipo, label: null, networkDir: item.red }
       });

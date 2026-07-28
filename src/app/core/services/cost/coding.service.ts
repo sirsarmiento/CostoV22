@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
+import { map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { SkuCoding } from '../../models/Cost/coding';
 import { Family } from '../../models/Cost/family';
@@ -10,8 +11,8 @@ import { Family } from '../../models/Cost/family';
 })
 export class CodingService {
   private http = inject(HttpClient);
-  private skuUrl = `${environment.apiUrl}/skus`;
-  private familyUrl = `${environment.apiUrl}/families`;
+  private skuUrl = `${environment.apiUrl}/codigos`;
+  private familyUrl = `${environment.apiUrl}/familia`;
 
   // --- MOCK GETTERS ---
   private getMockSKUs(): SkuCoding[] {
@@ -33,7 +34,7 @@ export class CodingService {
   // --- SKUs CRUD ---
   getSKUs(): Observable<SkuCoding[]> {
     if (environment.useMocks) return of(this.getMockSKUs());
-    return this.http.get<SkuCoding[]>(this.skuUrl);
+    return this.http.get<any>(this.skuUrl).pipe(map((res: any) => res.data ? res.data : res));
   }
 
   createSKU(sku: SkuCoding): Observable<SkuCoding> {
@@ -59,7 +60,9 @@ export class CodingService {
       }
       return of(sku);
     }
-    return this.http.put<SkuCoding>(`${this.skuUrl}/${id}`, sku);
+    const payload = { ...sku } as any;
+    delete payload.id;
+    return this.http.put<SkuCoding>(`${this.skuUrl}/${id}`, payload);
   }
 
   deleteSKU(id: number): Observable<void> {
@@ -75,7 +78,7 @@ export class CodingService {
   // --- FAMILIES CRUD ---
   getFamilies(): Observable<Family[]> {
     if (environment.useMocks) return of(this.getMockFamilies());
-    return this.http.get<Family[]>(this.familyUrl);
+    return this.http.get<any>(this.familyUrl).pipe(map((res: any) => res.data ? res.data : res));
   }
 
   createFamily(family: Family): Observable<Family> {
@@ -101,7 +104,9 @@ export class CodingService {
       }
       return of(family);
     }
-    return this.http.put<Family>(`${this.familyUrl}/${id}`, family);
+    const payload = { ...family } as any;
+    delete payload.id;
+    return this.http.put<Family>(`${this.familyUrl}/${id}`, payload);
   }
 
   deleteFamily(id: number): Observable<void> {

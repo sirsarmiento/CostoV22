@@ -1,7 +1,7 @@
 import { environment } from './../../../environments/environment';
 import { HttpService } from './http.service';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+
+import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject, firstValueFrom, } from 'rxjs';
 
 import { ToastrService } from 'ngx-toastr';
@@ -15,10 +15,7 @@ export class AuthService extends HttpService {
   private userSource: BehaviorSubject<User | null> = new BehaviorSubject<User | null>(null);
   asObservable = this.userSource.asObservable();
 
-  constructor(protected override http: HttpClient,
-    private toastrService: ToastrService) {
-    super(http);
-  }
+  private toastrService = inject(ToastrService);
 
   /**
    * Get current user from local
@@ -73,13 +70,15 @@ export class AuthService extends HttpService {
   async login(username: string, password: string): Promise<User | string> {
 
     try {
-      const resp = await firstValueFrom(this.post(environment.apiUrl, '/login_check', { username, password }));
+      const resp = await firstValueFrom(this.post<{ token: string }>(environment.apiUrl, '/login_check', { username, password }));
       const user = new User();
       user.token = resp.token;
       this.saveUserInLocalstorage(user);
       return user;
-    } catch (error: any) {
-      if (error.error.code == 401) {
+    } catch (e) { 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const error = e as any;
+      if (error.error?.code == 401) {
         return 'Usuario / Password inválido.' as string;
       }
       return 'Ha ocurrido un error. Intente más tarde.' as string;
@@ -112,11 +111,13 @@ export class AuthService extends HttpService {
    * @param email 
    * @returns 
    */
-  async initRecoverPass(email: string): Promise<any> {
+  async initRecoverPass(email: string): Promise<void> {
     try {
-      const resp = await firstValueFrom(this.post(environment.apiUrl, '/account/recovery-password', { email }));
+      await firstValueFrom(this.post(environment.apiUrl, '/account/recovery-password', { email }));
       this.toastrService.success('', 'Le fué enviado un email con éxito para que restablezca su password.');
-    } catch (error: any) {
+    } catch (e) { 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const error = e as any;
 
       if (error.status == 404) {
         this.toastrService.error('', 'No existe el correo electrónico.');
@@ -133,12 +134,14 @@ export class AuthService extends HttpService {
    * @param data 
    * @returns 
    */
-  async resetPass(data: any): Promise<any> {
+  async resetPass(data: unknown): Promise<boolean> {
     try {
       await firstValueFrom(this.post(environment.apiUrl, '/user/changepassword/perfil', data));
       this.toastrService.success('', 'Su password fué restablecido con éxito.');
       return true;
-    } catch (error: any) {
+    } catch (e) { 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const error = e as any;
       console.log(error)
       if (error.status == 409) {
         this.toastrService.error('', 'El tiempo establecido para restablecer password ha caducado. Inicie nuevamente el proceso.');

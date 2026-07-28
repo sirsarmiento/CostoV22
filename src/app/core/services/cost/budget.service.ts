@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
+import { map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { Budget } from '../../models/Cost/budge';
 
@@ -9,7 +10,7 @@ import { Budget } from '../../models/Cost/budge';
 })
 export class BudgetService {
   private http = inject(HttpClient);
-  private url = `${environment.apiUrl}/budgets`;
+  private url = `${environment.apiUrl}/presupuestos`;
 
   private getMockBudgets(): Budget[] {
     const stored = localStorage.getItem('cost_budgets');
@@ -25,7 +26,7 @@ export class BudgetService {
     if (environment.useMocks) {
       return of(this.getMockBudgets());
     }
-    return this.http.get<Budget[]>(this.url);
+    return this.http.get<any>(this.url).pipe(map((res: any) => res.data ? res.data : res));
   }
 
   createBudget(budget: Budget): Observable<Budget> {
@@ -51,7 +52,9 @@ export class BudgetService {
       }
       return of(budget);
     }
-    return this.http.put<Budget>(`${this.url}/${id}`, budget);
+    const payload = { ...budget } as any;
+    delete payload.id;
+    return this.http.put<Budget>(`${this.url}/${id}`, payload);
   }
 
   deleteBudget(id: number): Observable<void> {

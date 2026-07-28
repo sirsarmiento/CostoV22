@@ -7,7 +7,7 @@ import packageInfo from '../../package.json';
 export const environment = {
   appVersion: packageInfo.version,
   production: false,
-  useMocks: true,
+  useMocks: false,
   mockData: {
     products: [] as unknown[],
     fixes: [] as unknown[],
@@ -21,10 +21,10 @@ export const environment = {
   },
   name_system: 'COST',
   ttl: 28800000,
-  apiAuth: 'http://localhost:8090/backost/public',
-  apiUrl: 'http://localhost:8090/backost/public/api',
-  //apiUrl: 'https://bof.pafar.com.ve/public/api',
-  //apiAuth: 'https://bof.pafar.com.ve/public',
+  // apiAuth: 'http://localhost:8090/backost/public',
+  // apiUrl: 'http://localhost:8090/backost/public/api',
+  apiUrl: 'https://bofficecosto.pafar.com.ve/public/api',
+  apiAuth: 'https://bofficecosto.pafar.com.ve/public',
   appUrl: 'http://localhost:4200',
   wsserver: "https://wsplatformstage.pafar.com.ve",
   localstorage: {

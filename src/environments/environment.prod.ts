@@ -16,9 +16,9 @@ export const environment = {
     skus: [] as unknown[]
   },
   name_system: 'COST',
-  apiUrl: 'https://bof.pafar.com.ve/public/api',
-  apiAuth: 'https://bof.pafar.com.ve/public',
-  appUrl: 'https://bof.pafar.com.ve/',
+  apiUrl: 'https://bofficecosto.pafar.com.ve/public/api',
+  apiAuth: 'https://bofficecosto.pafar.com.ve/public',
+  appUrl: 'https://bofficecosto.pafar.com.ve/',
   wsserver: "https://wsplatformprod.pafar.com.ve",
   localstorage: {
     userKey: 'cusr'

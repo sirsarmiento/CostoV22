@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { BaseService } from './base.service';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -9,17 +9,16 @@ import { Observable } from 'rxjs';
 })
 export class HttpService extends BaseService {
 
-  constructor(protected http: HttpClient) {
-    super();
-  }
+  protected http = inject(HttpClient);
   /**
    * Execute the GET request to the PeyGold API.
    * @param url Url context.
    * @param options Request options.
    */
-  get(baseUrl: string, url: string, options?: any): Observable<any> {
+  get<T = unknown>(baseUrl: string, url: string, options?: unknown): Observable<T> {
     url = baseUrl + url;
-    return this.http.get(url, options);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return this.http.get<T>(url, options as any) as Observable<T>;
   }
 
   /**
@@ -28,9 +27,10 @@ export class HttpService extends BaseService {
    * @param data payload.
    * @param options Request options.
    */
-  post(baseUrl: string, url: string, data?: any, options?: any): Observable<any> {
+  post<T = unknown>(baseUrl: string, url: string, data?: unknown, options?: unknown): Observable<T> {
     url = baseUrl + url;
-    return this.http.post(url, data, options);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return this.http.post<T>(url, data, options as any) as Observable<T>;
   }
 
   /**
@@ -39,14 +39,16 @@ export class HttpService extends BaseService {
    * @param data payload.
    * @param options Request options.
    */
-  put(baseUrl: string, url: string, data?: any, options?: any): Observable<any> {
+  put<T = unknown>(baseUrl: string, url: string, data?: unknown, options?: unknown): Observable<T> {
     url = baseUrl + url;
-    return this.http.put(url, data, options);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return this.http.put<T>(url, data, options as any) as Observable<T>;
   }
 
-  delete(baseUrl: string, url: string, data?: any): Observable<any> {
+  delete<T = unknown>(baseUrl: string, url: string, data?: unknown): Observable<T> {
     url = baseUrl + url;
-    return this.http.delete(url, data);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return this.http.delete<T>(url, data as any) as Observable<T>;
   }
 
   /**

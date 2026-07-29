@@ -50,20 +50,27 @@ export class AddAssetComponent implements OnInit {
           }
         }
 
+        // Limpiar tipo y categoría para que coincidan con los selectores estrictos
+        const rawTipo = (data.tipo || '').toString().trim();
+        const tipoLimpio = rawTipo ? (rawTipo.charAt(0).toUpperCase() + rawTipo.slice(1).toLowerCase()) : 'Fijo';
+        
+        const rawCat = (data.categoria || '').toString().trim();
+        const catLimpia = rawCat ? (rawCat.charAt(0).toUpperCase() + rawCat.slice(1).toLowerCase()) : 'Mobiliario';
+
         this.form.patchValue({
           nombre: data.nombre,
           costoInicial: data.costoInicial,
           valorResidual: data.valorResidual,
           vidaUtil: data.vidaUtil,
           fechaCompra: dateVal,
-          tipo: data.tipo,
+          tipo: tipoLimpio,
           cantidad: data.cantidad,
           unidadMedida: data.unidadMedida,
           presentacion: data.presentacion,
           descripcion: data.descripcion,
           ubicacion: data.ubicacion,
           valorUnitario: data.valorUnitario,
-          categoria: data.categoria,
+          categoria: catLimpia,
           subcategoria: data.subcategoria,
           consumoMaquina: data.consumoMaquina,
           tarifa: data.tarifa,
@@ -71,10 +78,12 @@ export class AddAssetComponent implements OnInit {
         });
 
         this.id = data.id;
-        this.actualizarValidaciones(data.tipo);
+        this.actualizarValidaciones(tipoLimpio);
       }
     }
   }
+
+  isSwitchingType = false;
 
   myFormValues() {
     this.form = this.formBuilder.group({
@@ -100,12 +109,14 @@ export class AddAssetComponent implements OnInit {
     });
 
     this.form.get('tipo')?.valueChanges.subscribe(tipo => {
+      this.isSwitchingType = true;
       if (tipo === 'Circulante' && this.form.get('categoria')?.value === 'Mobiliario') {
         this.form.get('categoria')?.setValue('');
       } else if (tipo === 'Fijo' && !this.form.get('categoria')?.value) {
         this.form.get('categoria')?.setValue('Mobiliario');
       }
       this.actualizarValidaciones(tipo);
+      this.isSwitchingType = false;
     });
 
     this.form.get('categoria')?.valueChanges.subscribe(() => {
@@ -147,7 +158,14 @@ export class AddAssetComponent implements OnInit {
     });
   }
 
+  private originalCostoInicial: number | null = null;
+
   setupLogicCalcularTotal() {
+    // Inicializar bolsillo con el valor actual si es Fijo
+    if (this.form.get('tipo')?.value === 'Fijo') {
+      this.originalCostoInicial = this.form.get('costoInicial')?.value;
+    }
+
     const calcular = () => {
       if (this.f['tipo'].value === 'Circulante') {
         const total = (this.f['cantidad'].value || 0) * (this.f['valorUnitario'].value || 0);
@@ -157,6 +175,24 @@ export class AddAssetComponent implements OnInit {
 
     this.form.get('cantidad')?.valueChanges.subscribe(calcular);
     this.form.get('valorUnitario')?.valueChanges.subscribe(calcular);
+    
+    // El bolsillo siempre guarda lo último que se escribió manualmente en Fijo, ignorando falsos positivos
+    this.form.get('costoInicial')?.valueChanges.subscribe(val => {
+      if (this.form.get('tipo')?.value === 'Fijo' && !this.isSwitchingType) {
+        this.originalCostoInicial = val;
+      }
+    });
+    
+    this.form.get('tipo')?.valueChanges.subscribe((tipo) => {
+      if (tipo === 'Circulante') {
+        calcular();
+      } else if (tipo === 'Fijo') {
+        // Devolver el valor del bolsillo a la vista
+        if (this.originalCostoInicial !== null && this.originalCostoInicial !== undefined) {
+          this.form.get('costoInicial')?.setValue(this.originalCostoInicial, { emitEvent: false });
+        }
+      }
+    });
   }
 
   onSubmit() {

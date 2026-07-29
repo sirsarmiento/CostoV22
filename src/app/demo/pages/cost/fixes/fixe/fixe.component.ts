@@ -183,6 +183,7 @@ export class FixeComponent implements OnInit {
           next: () => {
             this.allCosts = this.allCosts.filter(c => c.id !== id);
             this.applyFilterAndPagination();
+            setTimeout(() => this.cdr.detectChanges(), 10);
           }
         });
       }

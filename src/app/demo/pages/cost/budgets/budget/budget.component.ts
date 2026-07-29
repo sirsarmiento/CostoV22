@@ -157,6 +157,7 @@ export class BudgetComponent implements OnInit {
           next: () => {
             this.allBudgets = this.allBudgets.filter(b => b.id !== id);
             this.applyFilterAndPagination();
+            setTimeout(() => this.cdr.detectChanges(), 10);
           }
         });
       }

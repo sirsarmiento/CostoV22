@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -20,6 +20,7 @@ export class AddProductComponent implements OnInit {
   private router = inject(Router);
   private productService = inject(ProductService);
   private configService = inject(ConfigService);
+  private cdr = inject(ChangeDetectorRef);
 
   form!: FormGroup;
   id: number = 0;
@@ -62,6 +63,7 @@ export class AddProductComponent implements OnInit {
             this.form.get('perfil')?.setValue(this.configs[0].id);
           }
         }
+        setTimeout(() => this.cdr.detectChanges(), 50);
       }
     });
   }
@@ -81,7 +83,11 @@ export class AddProductComponent implements OnInit {
         this.form.get('sku')?.setValue(data.sku);
         this.form.get('clasificacion')?.setValue(data.clasificacion);
         this.form.get('descripcion')?.setValue(data.descripcion);
-        this.form.get('perfil')?.setValue(data.perfil);
+        
+        // Extraer el ID puro si viene como objeto o como string
+        const perfilId = typeof data.perfil === 'object' ? (data.perfil as { id?: number })?.id : Number(data.perfil);
+        this.form.get('perfil')?.setValue(perfilId || null);
+        
         this.form.get('periodo')?.setValue(data.periodo);
         this.id = data.id;
       }

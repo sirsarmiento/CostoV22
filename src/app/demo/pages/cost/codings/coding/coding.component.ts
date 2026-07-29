@@ -296,18 +296,28 @@ export class CodingComponent implements OnInit {
     return map[code] ? `${map[code]} (${code})` : code;
   }
 
-  getFamiliaName(familiaObjOrCode: string | { codigo: string } | null | undefined): string {
+  getFamiliaName(familiaObjOrCode: string | { codigo?: string, nombre?: string } | null | undefined): string {
     if (!familiaObjOrCode) return '';
+    // Si el backend ya nos mandó el nombre, lo usamos directo
+    if (typeof familiaObjOrCode === 'object' && familiaObjOrCode.nombre) {
+      return familiaObjOrCode.nombre;
+    }
+    // Lógica de respaldo por si acaso manda un código
     const code = typeof familiaObjOrCode === 'string' ? familiaObjOrCode : familiaObjOrCode.codigo;
     const family = this.allFamilies.find(f => f.codigo === code);
-    return family ? `${family.nombre} (${code})` : code;
+    return family ? `${family.nombre} (${code})` : (code || '');
   }
 
   getSubfamiliaName(
-    familiaObjOrCode: string | { codigo: string } | null | undefined,
-    subfamiliaObjOrCode: string | { codigo: string } | null | undefined
+    familiaObjOrCode: string | { codigo?: string, nombre?: string } | null | undefined, 
+    subfamiliaObjOrCode: string | { codigo?: string, nombre?: string } | null | undefined
   ): string {
     if (!subfamiliaObjOrCode) return 'N/A';
+    // Si el backend ya nos mandó el nombre, lo usamos directo
+    if (typeof subfamiliaObjOrCode === 'object' && subfamiliaObjOrCode.nombre) {
+      return subfamiliaObjOrCode.nombre;
+    }
+    // Lógica de respaldo
     const famCode = typeof familiaObjOrCode === 'string' ? familiaObjOrCode : familiaObjOrCode?.codigo;
     const subCode = typeof subfamiliaObjOrCode === 'string' ? subfamiliaObjOrCode : subfamiliaObjOrCode?.codigo;
 

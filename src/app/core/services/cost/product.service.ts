@@ -26,7 +26,9 @@ export class ProductService {
     if (environment.useMocks) {
       return of(this.getMockProducts());
     }
-    return this.http.get<any>(this.url).pipe(map((res: any) => res.data ? res.data : res));
+    return this.http.get<{ data?: Product[] } | Product[]>(this.url).pipe(
+      map(res => (Array.isArray(res) ? res : res.data) || [])
+    );
   }
 
   createProduct(product: Product): Observable<Product> {
@@ -38,7 +40,9 @@ export class ProductService {
       localStorage.setItem('cost_products', JSON.stringify(products));
       return of(newProduct);
     }
-    return this.http.post<Product>(this.url, product);
+    const payload: Partial<Product> = { ...product };
+    delete payload.id;
+    return this.http.post<Product>(`${environment.apiUrl}/producto`, payload);
   }
 
   updateProduct(id: number, product: Product): Observable<Product> {
@@ -52,9 +56,9 @@ export class ProductService {
       }
       return of(product);
     }
-    const payload = { ...product } as any;
+    const payload: Partial<Product> = { ...product };
     delete payload.id;
-    return this.http.put<Product>(`${this.url}/${id}`, payload);
+    return this.http.put<Product>(`${environment.apiUrl}/producto/${id}`, payload);
   }
 
   deleteProduct(id: number): Observable<void> {
@@ -64,6 +68,6 @@ export class ProductService {
       localStorage.setItem('cost_products', JSON.stringify(products));
       return of(undefined);
     }
-    return this.http.delete<void>(`${this.url}/${id}`);
+    return this.http.delete<void>(`${environment.apiUrl}/product/${id}`);
   }
 }

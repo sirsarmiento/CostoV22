@@ -107,12 +107,12 @@
               <label class="form-label">Empresa</label>
               <ng-select 
                 formControlName="perfil"
+                [items]="configs"
+                bindLabel="nombre"
+                bindValue="id"
                 placeholder="Seleccione empresa..."
                 [clearable]="false"
                 [searchable]="true">
-                @for (p of configs; track p.id) {
-                  <ng-option [value]="p.id">{{ p.nombre }}</ng-option>
-                }
               </ng-select>
             </div>
           </div>

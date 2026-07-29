@@ -26,7 +26,9 @@ export class BudgetService {
     if (environment.useMocks) {
       return of(this.getMockBudgets());
     }
-    return this.http.get<any>(this.url).pipe(map((res: any) => res.data ? res.data : res));
+    return this.http.get<{ data?: Budget[] } | Budget[]>(this.url).pipe(
+      map(res => (Array.isArray(res) ? res : res.data) || [])
+    );
   }
 
   createBudget(budget: Budget): Observable<Budget> {
@@ -38,7 +40,9 @@ export class BudgetService {
       localStorage.setItem('cost_budgets', JSON.stringify(budgets));
       return of(newBudget);
     }
-    return this.http.post<Budget>(this.url, budget);
+    const payload: Partial<Budget> = { ...budget };
+    delete payload.id;
+    return this.http.post<Budget>(`${environment.apiUrl}/presupuesto`, payload);
   }
 
   updateBudget(id: number, budget: Budget): Observable<Budget> {
@@ -52,9 +56,9 @@ export class BudgetService {
       }
       return of(budget);
     }
-    const payload = { ...budget } as any;
+    const payload: Partial<Budget> = { ...budget };
     delete payload.id;
-    return this.http.put<Budget>(`${this.url}/${id}`, payload);
+    return this.http.put<Budget>(`${environment.apiUrl}/presupuesto/${id}`, payload);
   }
 
   deleteBudget(id: number): Observable<void> {
@@ -64,6 +68,6 @@ export class BudgetService {
       localStorage.setItem('cost_budgets', JSON.stringify(budgets));
       return of(undefined);
     }
-    return this.http.delete<void>(`${this.url}/${id}`);
+    return this.http.delete<void>(`${environment.apiUrl}/presupuesto/${id}`);
   }
 }

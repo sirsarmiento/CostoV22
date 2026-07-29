@@ -1,3 +1,5 @@
+<!-- CÓDIGO ORIGINAL DE MANTIS (COMENTADO POR SI SE NECESITAN LAS GRÁFICAS MÁS ADELANTE) -->
+<!--
 <div class="row">
   @for (analytic of AnalyticEcommerce; track analytic) {
     <div class="col-md-6 col-xl-3">
@@ -114,5 +116,146 @@
       </div>
     </div>
   </div>
-  <!-- [ sample-page ] end -->
+</div>
+-->
+
+<!-- DASHBOARD DE COSTOS -->
+<div class="row mb-4">
+  <div class="col-sm-6">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a routerLink="/dashboard/default">Dashboard</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Análisis de Costos</li>
+      </ol>
+    </nav>
+  </div>
+</div>
+
+<div class="row">
+  <!-- Columna Izquierda: Controles y Costos Directos -->
+  <div class="col-md-7 col-xl-8">
+    <div class="card mb-3 border-0 shadow-sm">
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-12">
+            <label for="perfilInput" class="form-label fw-medium text-muted mb-1">Perfil (Empresa)</label>
+            <input 
+              id="perfilInput" 
+              type="text" 
+              class="form-control bg-light text-muted fw-bold" 
+              [value]="selectedPerfilName || 'Cargando...'" 
+              readonly>
+          </div>
+          <div class="col-12">
+            <label for="productoSelect" class="form-label fw-medium text-muted mb-1">Productos disponibles</label>
+            <ng-select 
+              id="productoSelect" 
+              [(ngModel)]="selectedProductId" 
+              (change)="onProductChange()"
+              [clearable]="false"
+              [searchable]="true"
+              appendTo="body"
+              placeholder="-- Selecciona un producto --">
+              @for (prod of filteredProducts; track prod.id) {
+                <ng-option [value]="prod.id">{{ prod.nombre }} - {{ prod.sku }}</ng-option>
+              }
+            </ng-select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    @if (selectedProductId) {
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom-0 pb-0 pt-4">
+          <h5 class="mb-0">Desglose de Costos Directos</h5>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive mb-0" style="max-height: 400px; overflow-y: auto;">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light" style="position: sticky; top: 0; z-index: 10;">
+                <tr>
+                  <th class="ps-4">Tipo</th>
+                  <th>Concepto</th>
+                  <th class="text-end pe-4">Precio</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of filteredCostItems; track item.id) {
+                  <tr>
+                    <td class="ps-4">
+                      <span class="badge" [class.bg-light-primary]="item.tipo === 'Variable'" [class.bg-light-warning]="item.tipo === 'Fijo'">
+                        {{ item.tipo }}
+                      </span>
+                    </td>
+                    <td>{{ item.concepto }}</td>
+                    <td class="text-end pe-4 fw-medium">{{ item.precio | number: '1.2-2' }}</td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="3" class="text-center py-4 text-muted">No hay costos directos para este producto.</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Columna Derecha: Totales y Prorrateo -->
+  @if (selectedProductId) {
+    <div class="col-md-5 col-xl-4">
+      
+      <!-- Gran Total (Widget Primario) -->
+      <div class="card bg-primary text-white mb-3 shadow-sm border-0">
+        <div class="card-body py-4">
+          <h6 class="text-white-50 mb-3 text-uppercase fw-semibold" style="letter-spacing: 1px;">Costo Unitario Real</h6>
+          <h2 class="mb-0 text-white d-flex align-items-center">
+            <i class="ti ti-currency-dollar me-2 opacity-50 fs-1"></i>
+            {{ totalPrecio | number: '1.2-2' }}
+          </h2>
+        </div>
+      </div>
+
+      <!-- Resumen de Costos Indirectos -->
+      <div class="card mb-3 border-0 shadow-sm">
+        <div class="card-body">
+          <h6 class="mb-4 text-muted fw-semibold">Prorrateo de Gastos Generales</h6>
+          
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="d-flex align-items-center gap-3">
+              <div class="avatar avatar-s rounded bg-light-warning text-warning">
+                <i class="ti ti-building-factory fs-5"></i>
+              </div>
+              <span class="text-dark fw-medium">Costos Indirectos</span>
+            </div>
+            <strong class="text-dark fs-5">${{ totalFijoIndirecto | number: '1.2-2' }}</strong>
+          </div>
+
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="d-flex align-items-center gap-3">
+              <div class="avatar avatar-s rounded bg-light-danger text-danger">
+                <i class="ti ti-tool fs-5"></i>
+              </div>
+              <span class="text-dark fw-medium">Depreciación Mensual</span>
+            </div>
+            <strong class="text-dark fs-5">${{ totalDepreciacionMensual | number: '1.2-2' }}</strong>
+          </div>
+
+          <hr class="border-secondary border-opacity-25">
+
+          <div class="d-flex justify-content-between align-items-center mt-3">
+            <span class="text-muted small">Cantidad de Productos en el Perfil:</span>
+            <strong class="text-primary fs-5">{{ totalProducto }} <span class="fs-6 fw-normal text-muted">unidades</span></strong>
+          </div>
+          
+          <div class="alert alert-primary bg-light-primary border-0 mt-4 mb-0 p-3 text-center small rounded">
+            Estos gastos generales se dividen entre los <strong>{{ totalProducto }}</strong> productos del perfil para calcular el costo unitario real.
+          </div>
+        </div>
+      </div>
+    </div>
+  }
 </div>

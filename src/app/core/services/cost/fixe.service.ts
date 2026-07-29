@@ -22,7 +22,9 @@ export class FixeService {
 
   getFixes(): Observable<Fixe[]> {
     if (environment.useMocks) return of(this.getMockFixes());
-    return this.http.get<any>(this.url).pipe(map((res: any) => res.data ? res.data : res));
+    return this.http.get<{ data?: Fixe[] } | Fixe[]>(this.url).pipe(
+      map(res => (Array.isArray(res) ? res : res.data) || [])
+    );
   }
 
   createFixe(fixe: Fixe): Observable<Fixe> {
@@ -34,7 +36,9 @@ export class FixeService {
       localStorage.setItem('cost_fixes', JSON.stringify(fixes));
       return of(newFixe);
     }
-    return this.http.post<Fixe>(this.url, fixe);
+    const payload: Partial<Fixe> = { ...fixe };
+    delete payload.id;
+    return this.http.post<Fixe>(`${environment.apiUrl}/costo`, payload);
   }
 
   updateFixe(id: number, fixe: Fixe): Observable<Fixe> {
@@ -48,9 +52,9 @@ export class FixeService {
       }
       return of(fixe);
     }
-    const payload = { ...fixe } as any;
+    const payload: Partial<Fixe> = { ...fixe };
     delete payload.id;
-    return this.http.put<Fixe>(`${this.url}/${id}`, payload);
+    return this.http.put<Fixe>(`${environment.apiUrl}/costo/${id}`, payload);
   }
 
   deleteFixe(id: number): Observable<void> {
@@ -60,6 +64,6 @@ export class FixeService {
       localStorage.setItem('cost_fixes', JSON.stringify(fixes));
       return of(undefined);
     }
-    return this.http.delete<void>(`${this.url}/${id}`);
+    return this.http.delete<void>(`${environment.apiUrl}/costo/${id}`);
   }
 }

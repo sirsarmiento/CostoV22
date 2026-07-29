@@ -1,6 +1,11 @@
 <div class="row mb-4">
   <div class="col-sm-6">
-    <h5 class="mb-0">Gestión de Costos</h5>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a routerLink="/cost/fixes">Costos</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Listado</li>
+      </ol>
+    </nav>
   </div>
   <div class="col-sm-6 text-sm-end mt-2 mt-sm-0">
     <button class="btn btn-primary d-inline-flex align-items-center gap-2" (click)="openAdd()">

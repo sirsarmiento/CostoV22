@@ -179,6 +179,7 @@ export class ProductComponent implements OnInit {
           next: () => {
             this.allProducts = this.allProducts.filter(p => p.id !== id);
             this.applyFilterAndPagination();
+            setTimeout(() => this.cdr.detectChanges(), 10);
           }
         });
       }

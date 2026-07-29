@@ -34,7 +34,9 @@ export class CodingService {
   // --- SKUs CRUD ---
   getSKUs(): Observable<SkuCoding[]> {
     if (environment.useMocks) return of(this.getMockSKUs());
-    return this.http.get<any>(this.skuUrl).pipe(map((res: any) => res.data ? res.data : res));
+    return this.http.get<{ data?: SkuCoding[] } | SkuCoding[]>(this.skuUrl).pipe(
+      map(res => (Array.isArray(res) ? res : res.data) || [])
+    );
   }
 
   createSKU(sku: SkuCoding): Observable<SkuCoding> {
@@ -46,7 +48,9 @@ export class CodingService {
       localStorage.setItem('cost_skus', JSON.stringify(skus));
       return of(newSku);
     }
-    return this.http.post<SkuCoding>(this.skuUrl, sku);
+    const payload: Partial<SkuCoding> = { ...sku };
+    delete payload.id;
+    return this.http.post<SkuCoding>(`${environment.apiUrl}/codigo`, payload);
   }
 
   updateSKU(id: number, sku: SkuCoding): Observable<SkuCoding> {
@@ -60,9 +64,9 @@ export class CodingService {
       }
       return of(sku);
     }
-    const payload = { ...sku } as any;
+    const payload: Partial<SkuCoding> = { ...sku };
     delete payload.id;
-    return this.http.put<SkuCoding>(`${this.skuUrl}/${id}`, payload);
+    return this.http.put<SkuCoding>(`${environment.apiUrl}/codigo/${id}`, payload);
   }
 
   deleteSKU(id: number): Observable<void> {
@@ -72,13 +76,15 @@ export class CodingService {
       localStorage.setItem('cost_skus', JSON.stringify(skus));
       return of(undefined);
     }
-    return this.http.delete<void>(`${this.skuUrl}/${id}`);
+    return this.http.delete<void>(`${environment.apiUrl}/codigo/${id}`);
   }
 
   // --- FAMILIES CRUD ---
   getFamilies(): Observable<Family[]> {
     if (environment.useMocks) return of(this.getMockFamilies());
-    return this.http.get<any>(this.familyUrl).pipe(map((res: any) => res.data ? res.data : res));
+    return this.http.get<{ data?: Family[] } | Family[]>(this.familyUrl).pipe(
+      map(res => (Array.isArray(res) ? res : res.data) || [])
+    );
   }
 
   createFamily(family: Family): Observable<Family> {
@@ -90,7 +96,9 @@ export class CodingService {
       localStorage.setItem('cost_families', JSON.stringify(families));
       return of(newFamily);
     }
-    return this.http.post<Family>(this.familyUrl, family);
+    const payload: Partial<Family> = { ...family };
+    delete payload.id;
+    return this.http.post<Family>(`${environment.apiUrl}/familia`, payload);
   }
 
   updateFamily(id: number, family: Family): Observable<Family> {
@@ -104,9 +112,9 @@ export class CodingService {
       }
       return of(family);
     }
-    const payload = { ...family } as any;
+    const payload: Partial<Family> = { ...family };
     delete payload.id;
-    return this.http.put<Family>(`${this.familyUrl}/${id}`, payload);
+    return this.http.put<Family>(`${environment.apiUrl}/familia/${id}`, payload);
   }
 
   deleteFamily(id: number): Observable<void> {
@@ -116,6 +124,6 @@ export class CodingService {
       localStorage.setItem('cost_families', JSON.stringify(families));
       return of(undefined);
     }
-    return this.http.delete<void>(`${this.familyUrl}/${id}`);
+    return this.http.delete<void>(`${environment.apiUrl}/familia/${id}`);
   }
 }

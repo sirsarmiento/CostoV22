@@ -26,7 +26,9 @@ export class AssetService {
     if (environment.useMocks) {
       return of(this.getMockAssets());
     }
-    return this.http.get<any>(this.url).pipe(map((res: any) => res.data ? res.data : res));
+    return this.http.get<{ data?: Asset[] } | Asset[]>(this.url).pipe(
+      map(res => (Array.isArray(res) ? res : res.data) || [])
+    );
   }
 
   createAsset(asset: Asset): Observable<Asset> {
@@ -38,7 +40,9 @@ export class AssetService {
       localStorage.setItem('cost_assets', JSON.stringify(assets));
       return of(newAsset);
     }
-    return this.http.post<Asset>(this.url, asset);
+    const payload: Partial<Asset> = { ...asset };
+    delete payload.id;
+    return this.http.post<Asset>(`${environment.apiUrl}/activo`, payload);
   }
 
   updateAsset(id: number, asset: Asset): Observable<Asset> {
@@ -52,9 +56,9 @@ export class AssetService {
       }
       return of(asset);
     }
-    const payload = { ...asset } as any;
+    const payload: Partial<Asset> = { ...asset };
     delete payload.id;
-    return this.http.put<Asset>(`${this.url}/${id}`, payload);
+    return this.http.put<Asset>(`${environment.apiUrl}/activo/${id}`, payload);
   }
 
   deleteAsset(id: number): Observable<void> {
@@ -64,6 +68,6 @@ export class AssetService {
       localStorage.setItem('cost_assets', JSON.stringify(assets));
       return of(undefined);
     }
-    return this.http.delete<void>(`${this.url}/${id}`);
+    return this.http.delete<void>(`${environment.apiUrl}/activo/${id}`);
   }
 }

@@ -26,7 +26,9 @@ export class ConfigService {
     if (environment.useMocks) {
       return of(this.getMockConfigs());
     }
-    return this.http.get<any>(this.url).pipe(map((res: any) => res.data ? res.data : res));
+    return this.http.get<{ data?: Config[] } | Config[]>(this.url).pipe(
+      map(res => (Array.isArray(res) ? res : res.data) || [])
+    );
   }
 
   createConfig(config: Config): Observable<Config> {
@@ -38,7 +40,9 @@ export class ConfigService {
       localStorage.setItem('cost_configs', JSON.stringify(configs));
       return of(newConfig);
     }
-    return this.http.post<Config>(this.url, config);
+    const payload: Partial<Config> = { ...config };
+    delete payload.id;
+    return this.http.post<Config>(this.url, payload);
   }
 
   updateConfig(id: number, config: Config): Observable<Config> {
@@ -52,9 +56,9 @@ export class ConfigService {
       }
       return of(config); // Si no se encuentra, retornamos igual para evitar errores
     }
-    const payload = { ...config } as any;
+    const payload: Partial<Config> = { ...config };
     delete payload.id;
-    return this.http.put<Config>(`${this.url}/${id}`, payload);
+    return this.http.put<Config>(`${environment.apiUrl}/perfil/${id}`, payload);
   }
 
   deleteConfig(id: number): Observable<void> {
@@ -64,6 +68,6 @@ export class ConfigService {
       localStorage.setItem('cost_configs', JSON.stringify(configs));
       return of(undefined);
     }
-    return this.http.delete<void>(`${this.url}/${id}`);
+    return this.http.delete<void>(`${environment.apiUrl}/config/${id}`);
   }
 }

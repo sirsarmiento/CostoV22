@@ -88,8 +88,8 @@
                         (click)="selectedRow = selectedRow === row ? null : row"
                         [class.table-primary]="selectedRow?.id === row.id"
                         style="cursor: pointer;">
-                        <td class="font-monospace fw-bold">{{ row.sku || row.codigo }}</td>
-                        <td>{{ row.productName || 'No especificado' }}</td>
+                        <td class="font-monospace fw-bold">{{ row.codigo || row.sku }}</td>
+                        <td>{{ row.producto?.nombre || row.servicio?.nombre || row.proyecto?.nombre || row.productName || 'No especificado' }}</td>
                         <td>
                           <span class="badge bg-light-info text-info">
                             {{ row.categoria === 'PF' ? 'Producto' : (row.categoria === 'SR' ? 'Servicio' : 'Proyecto') }}

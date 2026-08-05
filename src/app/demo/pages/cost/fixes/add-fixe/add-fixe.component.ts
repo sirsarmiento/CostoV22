@@ -53,7 +53,6 @@ export class AddFixeComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadProducts();
-    this.setValues();
 
     // Conceptos dinámicos según el tipo de costo
     this.form.get('tipo')?.valueChanges.subscribe(valor => {
@@ -87,6 +86,7 @@ export class AddFixeComponent implements OnInit {
       next: (products) => {
         this.products = products;
         this.filteredProducts = [...this.products];
+        this.setValues(); // Call setValues here after items are loaded
       }
     });
   }
@@ -104,7 +104,8 @@ export class AddFixeComponent implements OnInit {
         this.form.get('tipo')?.setValue(data.tipo);
         this.form.get('precio')?.setValue(data.precio);
         this.form.get('clasificacion')?.setValue(data.clasificacion);
-        this.form.get('producto')?.setValue(data.producto);
+        const foundProd = this.filteredProducts.find(p => p.id == data.producto);
+        this.form.get('producto')?.setValue(foundProd ? foundProd.id : null);
         this.id = data.id;
 
         // Si el concepto cargado no está en las opciones por defecto, se considera "Otro"

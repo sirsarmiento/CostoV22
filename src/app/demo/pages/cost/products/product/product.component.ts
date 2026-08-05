@@ -43,8 +43,6 @@ export class ProductComponent implements OnInit {
 
   Math = Math; // Para usar en la plantilla
 
-  // Ya no necesitamos data por defecto aquí, viene del environment.local.ts vía servicio
-
   ngOnInit(): void {
     this.getProducts();
   }

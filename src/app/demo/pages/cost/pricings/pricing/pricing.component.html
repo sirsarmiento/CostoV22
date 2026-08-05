@@ -23,10 +23,11 @@
             placeholder="Seleccione..."
             [clearable]="false"
             [searchable]="true"
+            [items]="productos"
+            bindValue="id"
+            bindLabel="nombre"
+            appendTo="body"
             (change)="onProductoPrecioChange()">
-            @for (p of productos; track p.id) {
-              <ng-option [value]="p.id">{{ p.nombre }}</ng-option>
-            }
           </ng-select>
         </div>
 
@@ -90,10 +91,11 @@
             placeholder="Seleccione..."
             [clearable]="false"
             [searchable]="true"
+            [items]="productos"
+            bindValue="id"
+            bindLabel="nombre"
+            appendTo="body"
             (change)="onProductoEquilibrioChange()">
-            @for (p of productos; track p.id) {
-              <ng-option [value]="p.id">{{ p.nombre }}</ng-option>
-            }
           </ng-select>
         </div>
 

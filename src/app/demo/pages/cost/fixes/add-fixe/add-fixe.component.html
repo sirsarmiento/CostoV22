@@ -26,6 +26,7 @@
                 placeholder="Seleccione..."
                 [clearable]="false"
                 [searchable]="false"
+                appendTo="body"
                 [class.is-invalid]="submitted && f['tipo'].errors">
                 <ng-option value="Fijo">Fijo</ng-option>
                 <ng-option value="Variable">Variable</ng-option>
@@ -43,6 +44,7 @@
                 placeholder="Seleccione..."
                 [clearable]="false"
                 [searchable]="true"
+                appendTo="body"
                 [class.is-invalid]="submitted && f['concepto'].errors">
                 @for (opcion of conceptosMostrados; track opcion) {
                   <ng-option [value]="opcion">{{ opcion }}</ng-option>
@@ -90,6 +92,7 @@
                 placeholder="Seleccione..."
                 [clearable]="false"
                 [searchable]="false"
+                appendTo="body"
                 [class.is-invalid]="submitted && f['clasificacion'].errors">
                 <ng-option value="Directo">Directo</ng-option>
                 <ng-option value="Indirecto">Indirecto</ng-option>
@@ -107,10 +110,11 @@
                   formControlName="producto"
                   placeholder="Seleccione producto..."
                   [clearable]="true"
-                  [searchable]="true">
-                  @for (p of filteredProducts; track p.id) {
-                    <ng-option [value]="p.id">{{ p.nombre }}</ng-option>
-                  }
+                  [searchable]="true"
+                  [items]="filteredProducts"
+                  bindValue="id"
+                  bindLabel="nombre"
+                  appendTo="body">
                 </ng-select>
               </div>
             }

@@ -104,7 +104,11 @@ export class CodingComponent implements OnInit {
     } else {
       this.filteredSKUs = this.allSKUs.filter(p => 
         (p.sku && p.sku.toLowerCase().includes(query)) ||
+        (p.codigo && p.codigo.toLowerCase().includes(query)) ||
         (p.productName && p.productName.toLowerCase().includes(query)) ||
+        (p.producto?.nombre && p.producto.nombre.toLowerCase().includes(query)) ||
+        (p.servicio?.nombre && p.servicio.nombre.toLowerCase().includes(query)) ||
+        (p.proyecto?.nombre && p.proyecto.nombre.toLowerCase().includes(query)) ||
         (p.categoria && p.categoria.toLowerCase().includes(query)) ||
         (p.tecnologia && p.tecnologia.toLowerCase().includes(query)) ||
         (p.material && p.material.toLowerCase().includes(query))
@@ -114,8 +118,13 @@ export class CodingComponent implements OnInit {
     // Ordenamiento
     this.filteredSKUs.sort((a: SkuCoding, b: SkuCoding) => {
       const prop = this.sortColumnSKU as keyof SkuCoding;
-      let valA = a[prop];
-      let valB = b[prop];
+      let valA: string | number | null | undefined = a[prop] as string | number | null | undefined;
+      let valB: string | number | null | undefined = b[prop] as string | number | null | undefined;
+
+      if (prop === 'productName') {
+         valA = a.producto?.nombre || a.servicio?.nombre || a.proyecto?.nombre || a.productName || '';
+         valB = b.producto?.nombre || b.servicio?.nombre || b.proyecto?.nombre || b.productName || '';
+      }
       
       if (valA && typeof valA === "string") valA = valA.toLowerCase();
       if (valB && typeof valB === "string") valB = valB.toLowerCase();

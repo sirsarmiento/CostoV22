@@ -165,50 +165,233 @@ export class BudgetComponent implements OnInit {
   }
 
   onFormule(row: Budget) {
-    // Calcular costes base simulados para mostrar
-    const totalGramos = (row.piezas || []).reduce((sum, p) => sum + (p.gramos || 0), 0);
-    const rawMaterialCost = (row.piezas || []).reduce((sum, p) => sum + ((p.gramos || 0) * (p.precioMaterial || 0)), 0);
-    const totalCostoMaterial = rawMaterialCost * (1 + ((row.tasaFalloGlobal || 0) / 100));
+    // Totales Físicos
+    const totalGramos = (row.piezas || []).reduce((sum, p) => sum + (Number(p.gramos) || 0), 0);
+    const totalMetros = (row.piezas || []).reduce((sum, p) => sum + (Number(p.metros) || 0), 0);
+    const totalHorasRaw = (row.piezas || []).reduce((sum, p) => sum + (Number(p.horas) || 0), 0);
+    const totalMinutosRaw = (row.piezas || []).reduce((sum, p) => sum + (Number(p.minutos) || 0), 0);
 
-    const totalHoras = (row.piezas || []).reduce((sum, p) => sum + (p.horas || 0), 0);
-    const totalMinutos = (row.piezas || []).reduce((sum, p) => sum + (p.minutos || 0), 0);
-    const totalTiempoHoras = totalHoras + (totalMinutos / 60);
-    const totalCostoMaquina = (row.costoMaquina || 0) * totalTiempoHoras;
+    // Formatear tiempo
+    const extraHours = Math.floor(totalMinutosRaw / 60);
+    const finalHoras = totalHorasRaw + extraHours;
+    const finalMinutos = totalMinutosRaw % 60;
+    const totalTiempoHoras = finalHoras + (finalMinutos / 60);
 
-    const baseCost = totalCostoMaterial + totalCostoMaquina;
-    const margin = row.margenGanancia || 0;
+    // Cálculos de costos base
+    const rawMaterialCost = (row.piezas || []).reduce((sum, p) => sum + ((Number(p.gramos) || 0) * (Number(p.precioMaterial) || 0)), 0);
+    const totalCostoMaterial = rawMaterialCost * (1 + ((Number(row.tasaFalloGlobal) || 0) / 100));
+    const totalCostoMaquina = (Number(row.costoMaquina) || 0) * totalTiempoHoras;
+    const totalCostoIndirecto = Number(row.costoOperador) || 0;
+
+    const baseCost = totalCostoMaterial + totalCostoMaquina + totalCostoIndirecto;
+    const margin = Number(row.margenGanancia) || 0;
     const factor = margin / 100;
     const suggestedPrice = factor >= 1 ? baseCost / 0.0001 : baseCost / (1 - factor);
 
+    // Construir tabla de piezas
+    const piezasRows = (row.piezas || []).map(p => {
+      const g = Number(p.gramos) || 0;
+      const m = Number(p.metros) || 0;
+      const h = Number(p.horas) || 0;
+      const min = Number(p.minutos) || 0;
+      const matCost = g * (Number(p.precioMaterial) || 0);
+      const maqCost = (Number(row.costoMaquina) || 0) * (h + (min / 60));
+      const pBase = matCost + maqCost; // Simplified individual base cost
+      const pPrice = factor >= 1 ? pBase / 0.0001 : pBase / (1 - factor);
+
+      return `
+        <tr>
+          <td class="text-start fw-medium">${p.nombre || 'Pieza'}</td>
+          <td>${g.toFixed(2)}</td>
+          <td>${m.toFixed(2)}</td>
+          <td>${h}</td>
+          <td>${min}</td>
+          <td>$${matCost.toFixed(2)}</td>
+          <td>$${maqCost.toFixed(2)}</td>
+          <td class="fw-bold text-primary">$${pPrice.toFixed(2)}</td>
+        </tr>
+      `;
+    }).join('');
+
+    // HTML del modal completo
     Swal.fire({
-      title: `Estructura de Costes: ${row.descripcion}`,
+      title: `<div class="text-start text-primary fw-bold fs-5">Estudio de Presupuesto</div>`,
       html: `
-        <div class="text-start font-monospace text-sm p-2 bg-light rounded border border-light">
-          <div class="d-flex justify-content-between mb-1">
-            <span>Materiales (${totalGramos.toFixed(1)}g):</span>
-            <span class="fw-bold">$${totalCostoMaterial.toFixed(2)}</span>
+        <div class="text-start" style="font-family: 'Inter', sans-serif; font-size: 0.85rem;">
+          
+          <div class="row g-3 mb-3">
+            <!-- Datos Generales -->
+            <div class="col-md-7">
+              <div class="card border-0 shadow-sm h-100 bg-light">
+                <div class="card-header bg-transparent border-bottom-0 pt-3 pb-1 text-start">
+                  <h6 class="fw-bold text-dark mb-0 fs-6"><i class="ti ti-file-description me-2"></i>Datos del Presupuesto</h6>
+                </div>
+                <div class="card-body px-3 py-2 text-start">
+                  <div class="d-flex justify-content-between border-bottom border-secondary border-opacity-10 py-1">
+                    <span class="text-muted" style="font-size: 0.8rem;">Clasificación:</span>
+                    <span class="fw-medium text-dark">${row.clasificacion || ''}</span>
+                  </div>
+                  <div class="d-flex justify-content-between border-bottom border-secondary border-opacity-10 py-1">
+                    <span class="text-muted" style="font-size: 0.8rem;">Nro. de Orden:</span>
+                    <span class="fw-medium text-dark">${row.numero || ''}</span>
+                  </div>
+                  <div class="d-flex justify-content-between border-bottom border-secondary border-opacity-10 py-1">
+                    <span class="text-muted" style="font-size: 0.8rem;">Fecha:</span>
+                    <span class="fw-medium text-dark">${row.fecha ? new Date(row.fecha).toLocaleDateString() : ''}</span>
+                  </div>
+                  <div class="d-flex justify-content-between border-bottom border-secondary border-opacity-10 py-1">
+                    <span class="text-muted" style="font-size: 0.8rem;">Descripción:</span>
+                    <span class="fw-medium text-dark">${row.descripcion || ''}</span>
+                  </div>
+                  <div class="d-flex justify-content-between border-bottom border-secondary border-opacity-10 py-1">
+                    <span class="text-muted" style="font-size: 0.8rem;">Equipo de Impresión:</span>
+                    <span class="fw-medium text-dark">N/A</span>
+                  </div>
+                  <div class="d-flex justify-content-between border-bottom border-secondary border-opacity-10 py-1">
+                    <span class="text-muted" style="font-size: 0.8rem;">Tasa de Fallo (Merma):</span>
+                    <span class="text-danger fw-medium">${row.tasaFalloGlobal || 0}%</span>
+                  </div>
+                  <div class="d-flex justify-content-between border-bottom border-secondary border-opacity-10 py-1">
+                    <span class="text-muted" style="font-size: 0.8rem;">Prep/Slicing:</span>
+                    <span class="fw-medium text-dark">${row.tiempoSetup || 0} min</span>
+                  </div>
+                  <div class="d-flex justify-content-between pt-1">
+                    <span class="text-muted" style="font-size: 0.8rem;">Post-procesado:</span>
+                    <span class="fw-medium text-dark">${row.tiempoPostProcesado || 0} min</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Panel Azul -->
+            <div class="col-md-5">
+              <div class="card h-100 border-0 text-white shadow-sm" style="background-color: #2b5fe8; border-radius: 8px;">
+                <div class="card-body text-start p-3 d-flex flex-column">
+                  <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-uppercase text-white-50 fw-bold" style="font-size: 0.7rem; letter-spacing: 1px;">Análisis de Costos</span>
+                    <div class="bg-white bg-opacity-25 rounded-circle d-flex align-items-center justify-content-center" style="width: 24px; height: 24px;">
+                      <i class="ti ti-currency-dollar fs-6 text-white"></i>
+                    </div>
+                  </div>
+                  
+                  <div class="d-flex justify-content-between mb-1" style="font-size: 0.8rem;">
+                    <span class="text-white-50">Costo de Materiales (con merma):</span>
+                    <span class="fw-medium">$${totalCostoMaterial.toFixed(2)}</span>
+                  </div>
+                  <div class="d-flex justify-content-between mb-1" style="font-size: 0.8rem;">
+                    <span class="text-white-50">Costo Operativo Máquina:</span>
+                    <span class="fw-medium">$${totalCostoMaquina.toFixed(2)}</span>
+                  </div>
+                  <div class="d-flex justify-content-between mb-2 border-bottom border-white border-opacity-25 pb-2" style="font-size: 0.8rem;">
+                    <span class="text-white-50">Costo Indirecto Prorrateado:</span>
+                    <span class="fw-medium">$${totalCostoIndirecto.toFixed(2)}</span>
+                  </div>
+                  <div class="d-flex justify-content-between mb-auto" style="font-size: 0.8rem;">
+                    <span class="text-white-50">Costo Total Base:</span>
+                    <span class="fw-bold">$${baseCost.toFixed(2)}</span>
+                  </div>
+
+                  <div class="mt-3 pt-2 border-top border-white border-opacity-25">
+                    <div class="text-white-50 mb-1" style="font-size: 0.75rem;">Precio Sugerido (Margen ${margin}%)</div>
+                    <div class="fs-3 fw-bold">$${suggestedPrice.toFixed(2)}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="d-flex justify-content-between mb-1">
-            <span>Tiempo Máquina (${totalTiempoHoras.toFixed(2)}h):</span>
-            <span class="fw-bold">$${totalCostoMaquina.toFixed(2)}</span>
+
+          <!-- Especificaciones Físicas -->
+          <div class="mb-3">
+            <h6 class="fw-bold mb-2 text-dark fs-6"><i class="ti ti-layers-intersect me-2 text-muted"></i>Especificaciones Físicas Totales</h6>
+            <div class="row g-2">
+              <div class="col-md-3">
+                <div class="card border border-light shadow-sm bg-white">
+                  <div class="card-body p-2 d-flex align-items-center">
+                    <div class="bg-primary bg-opacity-10 rounded-circle p-1 text-primary me-2">
+                      <i class="ti ti-weight fs-5"></i>
+                    </div>
+                    <div>
+                      <div class="text-muted mb-0" style="font-size: 0.7rem;">Gramos Totales</div>
+                      <div class="fw-bold fs-6 text-dark">${totalGramos.toFixed(2)}g</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card border border-light shadow-sm bg-white">
+                  <div class="card-body p-2 d-flex align-items-center">
+                    <div class="bg-success bg-opacity-10 rounded-circle p-1 text-success me-2">
+                      <i class="ti ti-ruler-2 fs-5"></i>
+                    </div>
+                    <div>
+                      <div class="text-muted mb-0" style="font-size: 0.7rem;">Metros Totales</div>
+                      <div class="fw-bold fs-6 text-dark">${totalMetros.toFixed(2)}m</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card border border-light shadow-sm bg-white">
+                  <div class="card-body p-2 d-flex align-items-center">
+                    <div class="bg-warning bg-opacity-10 rounded-circle p-1 text-warning me-2">
+                      <i class="ti ti-clock fs-5"></i>
+                    </div>
+                    <div>
+                      <div class="text-muted mb-0" style="font-size: 0.7rem;">Horas Totales</div>
+                      <div class="fw-bold fs-6 text-dark">${finalHoras}h</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card border border-light shadow-sm bg-white">
+                  <div class="card-body p-2 d-flex align-items-center">
+                    <div class="bg-danger bg-opacity-10 rounded-circle p-1 text-danger me-2">
+                      <i class="ti ti-timer fs-5"></i>
+                    </div>
+                    <div>
+                      <div class="text-muted mb-0" style="font-size: 0.7rem;">Minutos Totales</div>
+                      <div class="fw-bold fs-6 text-dark">${finalMinutos}m</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-          <hr class="my-2">
-          <div class="d-flex justify-content-between mb-2 text-dark">
-            <span class="fw-bold">Coste Base Total:</span>
-            <span class="fw-bold">$${baseCost.toFixed(2)}</span>
+
+          <!-- Tabla de Piezas -->
+          <div>
+            <h6 class="fw-bold mb-2 text-dark fs-6"><i class="ti ti-list-details me-2 text-muted"></i>Desglose por Pieza</h6>
+            <div class="table-responsive rounded shadow-sm border border-light">
+              <table class="table table-hover table-striped text-center align-middle mb-0 bg-white" style="font-size: 0.75rem;">
+                <thead style="background-color: #0b3d91;">
+                  <tr>
+                    <th class="text-start fw-semibold border-0 text-white py-2 ps-2">Nombre</th>
+                    <th class="fw-semibold border-0 text-white py-2">Gramos</th>
+                    <th class="fw-semibold border-0 text-white py-2">Metros</th>
+                    <th class="fw-semibold border-0 text-white py-2">Horas</th>
+                    <th class="fw-semibold border-0 text-white py-2">Minutos</th>
+                    <th class="fw-semibold border-0 text-white py-2">Costo Material</th>
+                    <th class="fw-semibold border-0 text-white py-2">Costo Máquina</th>
+                    <th class="fw-semibold border-0 text-white py-2 pe-2">Precio Sugerido</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${piezasRows || '<tr><td colspan="8" class="text-muted py-2">No hay piezas en este presupuesto</td></tr>'}
+                </tbody>
+              </table>
+            </div>
           </div>
-          <div class="d-flex justify-content-between mb-1 text-muted text-xs">
-            <span>Margen Aplicado:</span>
-            <span>${margin}%</span>
-          </div>
-          <div class="d-flex justify-content-between text-success">
-            <span class="fw-bold">Precio Sugerido:</span>
-            <span class="fw-bold">$${suggestedPrice.toFixed(2)}</span>
-          </div>
+
         </div>
       `,
-      icon: 'info',
-      confirmButtonText: 'Cerrar'
+      customClass: {
+        popup: 'rounded-4 bg-white',
+        title: 'border-bottom pb-2 mb-0'
+      },
+      width: '950px',
+      showCloseButton: true,
+      showConfirmButton: false,
     });
   }
 }

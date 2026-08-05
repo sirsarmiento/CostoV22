@@ -10,23 +10,7 @@ import { CodingService } from '../../../../../core/services/cost/coding.service'
 import { ProductService } from '../../../../../core/services/cost/product.service';
 import { BudgetService } from '../../../../../core/services/cost/budget.service';
 import Swal from 'sweetalert2';
-
-interface SkuCoding {
-  id: number;
-  sku: string;
-  codigo: string;
-  productName: string;
-  categoria: string;
-  tecnologia: string;
-  material: string;
-  familia: string;
-  subfamilia: string;
-  productId: number | null;
-  presupuestoId: number | null;
-  familiaId: number | null;
-  subfamiliaId: number | null;
-  materialesMolde?: unknown[];
-}
+import { SkuCoding } from '../../../../../core/models/Cost/coding';
 
 @Component({
   selector: 'app-add-coding',
@@ -62,13 +46,12 @@ export class AddCodingComponent implements OnInit {
   opcionesTecnologias = [
     { value: 'FDM', label: 'FDM (Filamento)' },
     { value: 'SLA', label: 'SLA (Resina)' },
-    { value: 'PLS', label: 'PLS (Plástico)' }
   ];
 
   opcionesMateriales = [
     { value: 'PLA', label: 'PLA (Ácido Poliláctico)' },
-    { value: 'ABS', label: 'ABS' },
-    { value: 'PET', label: 'PETG' },
+    { value: 'ABS', label: 'ABS (Acrilonitrilo Butadieno Estireno)' },
+    { value: 'PET', label: 'PET (Polietileno Tereftalato)' },
     { value: 'RES', label: 'RES (Resina)' },
     { value: 'CHO', label: 'CHO (Chocolate)' }
   ];
@@ -101,12 +84,22 @@ export class AddCodingComponent implements OnInit {
     return this.form.get('materialesMolde') as FormArray;
   }
 
+  editData: Partial<SkuCoding> | null = null;
+  familiasCargadas = false;
+  productosCargados = false;
+  formInitialized = false;
+
   ngOnInit(): void {
+    const stored = localStorage.getItem('cost_edit_coding');
+    if (stored) {
+      this.editData = JSON.parse(stored);
+      this.id = this.editData?.id || 0;
+    }
+
     this.cargarFamilias();
     this.cargarProductos();
     this.cargarPresupuestos();
     this.setupPreviewListeners();
-    this.setValues();
   }
 
   myFormValues() {
@@ -137,17 +130,25 @@ export class AddCodingComponent implements OnInit {
   cargarFamilias() {
     this.codingService.getFamilies().subscribe(fams => {
       this.familias = fams;
+      this.familiasCargadas = true;
+      this.checkAndSetValues();
     });
   }
 
   cargarProductos() {
     this.productService.getProducts().subscribe(prods => {
       this.productos = prods.filter(p => {
+        // Preservar el producto que estamos editando actualmente, aunque ya tenga SKU
+        if (this.editData && (Number(this.editData.productId) === p.id || Number(this.editData.producto?.id) === p.id)) {
+          return true;
+        }
         if (!p.sku) return true;
         const s = p.sku.trim().toLowerCase();
         return s === '' || s === 'null' || s === 'sin asignar' || s === 'n/a';
       });
       this.productosFiltrados = [...this.productos];
+      this.productosCargados = true;
+      this.checkAndSetValues();
     });
   }
 
@@ -179,7 +180,8 @@ export class AddCodingComponent implements OnInit {
 
   setupPreviewListeners() {
     this.form.get('familia')?.valueChanges.subscribe(famCode => {
-      const chosenFamily = this.familias.find(f => f.codigo === famCode);
+      const fCodeStr = typeof famCode === 'string' ? famCode : famCode?.codigo;
+      const chosenFamily = this.familias.find((f: Family) => f.codigo === fCodeStr);
       this.subfamilias = chosenFamily?.subFamilias || [];
 
       const subControl = this.form.get('subfamilia');
@@ -219,7 +221,8 @@ export class AddCodingComponent implements OnInit {
         this.previewMat = val.material || '???';
       }
 
-      const chosenFamily = this.familias.find(f => f.codigo === val.familia);
+      const valFamCode = typeof val.familia === 'string' ? val.familia : val.familia?.codigo;
+      const chosenFamily = this.familias.find((f: Family) => f.codigo === valFamCode);
       this.previewFam = chosenFamily ? chosenFamily.codigo : '???';
       this.previewSub = val.subfamilia || '';
       this.previewCorr = val.categoria === 'SR' ? 'S01' : (val.categoria === 'PP' ? 'P01' : '001');
@@ -232,35 +235,60 @@ export class AddCodingComponent implements OnInit {
     this.router.navigate(['/codings']);
   }
 
+  checkAndSetValues() {
+    if (this.editData && this.familiasCargadas && this.productosCargados && !this.formInitialized) {
+      this.formInitialized = true;
+      this.setValues();
+    }
+  }
+
   setValues() {
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-    const stored = localStorage.getItem('cost_edit_coding');
-    if (stored) {
-      const data = JSON.parse(stored);
-      if (data && data.id && data.id > 0) {
-        this.id = data.id;
-        this.form.get('categoria')?.setValue(data.categoria);
-        this.form.get('tecnologia')?.setValue(data.tecnologia);
-        this.form.get('material')?.setValue(data.material);
-        
-        let famCode = typeof data.familia === 'string' ? data.familia : '';
-        if (typeof data.familia === 'object' && data.familia) {
-          famCode = data.familia.codigo;
+    if (this.editData && this.editData.id && this.editData.id > 0) {
+      const data = this.editData;
+      this.form.get('categoria')?.setValue(data.categoria);
+      this.form.get('tecnologia')?.setValue(data.tecnologia);
+      this.form.get('material')?.setValue(data.material);
+      
+      this.onCategoryChange(); // Forzar actualización de validadores y vista
+      
+      // Buscar código de familia
+      let famCode = '';
+      if (typeof data.familia === 'string') {
+        famCode = data.familia;
+      } else if (typeof data.familia === 'object' && data.familia !== null) {
+        const famObj = data.familia as { id: number; nombre: string; codigo?: string };
+        famCode = famObj.codigo || '';
+        if (!famCode && famObj.id) {
+          const found = this.familias.find(f => f.id === famObj.id);
+          if (found) famCode = found.codigo;
         }
+      }
+      
+      // Buscar código de subfamilia
+      let subCode = '';
+      if (typeof data.subfamilia === 'string') {
+        subCode = data.subfamilia;
+      } else if (typeof data.subfamilia === 'object' && data.subfamilia !== null) {
+        const subObj = data.subfamilia as { id: number; nombre: string; codigo?: string };
+        subCode = subObj.codigo || '';
+        if (!subCode && subObj.id) {
+          const famFound = this.familias.find(f => f.codigo === famCode);
+          if (famFound && famFound.subFamilias) {
+             const subFound = famFound.subFamilias.find(s => s.id === subObj.id);
+             if (subFound) subCode = subFound.codigo;
+          }
+        }
+      }
+      
+      this.form.get('familia')?.setValue(famCode);
+      this.form.get('subfamilia')?.setValue(subCode);
 
-        let subCode = typeof data.subfamilia === 'string' ? data.subfamilia : '';
-        if (typeof data.subfamilia === 'object' && data.subfamilia) {
-          subCode = data.subfamilia.codigo;
-        }
-        
-        this.form.get('familia')?.setValue(famCode);
-        this.form.get('subfamilia')?.setValue(subCode);
-
-        if (data.categoria !== 'PF') {
-          this.form.get('nombreServicio')?.setValue(data.productName);
-        } else {
-          this.form.get('productoId')?.setValue(data.productId || data.producto);
-        }
+      if (data.categoria !== 'PF') {
+        this.form.get('nombreServicio')?.setValue(data.productName || data.servicio?.nombre || data.proyecto?.nombre);
+      } else {
+        const pId = data.productId || data.producto?.id;
+        const foundProd = this.productosFiltrados.find(p => p.id == pId);
+        this.form.get('productoId')?.setValue(foundProd ? foundProd.id : null);
       }
     }
   }
@@ -284,7 +312,7 @@ export class AddCodingComponent implements OnInit {
     }
 
     let matValue = this.form.value.material;
-    let payloadMats = [];
+    let payloadMats: { material: string, cantidad: number, unidad: string }[] = [];
     if (this.form.value.familia === 'MLD') {
       matValue = this.form.value.materialesMolde.map((m: { material: string }) => m.material).join('-');
       payloadMats = this.form.value.materialesMolde;
@@ -299,8 +327,10 @@ export class AddCodingComponent implements OnInit {
       }
     }
 
-    const famObj = this.familias.find(f => f.codigo === this.form.value.familia);
-    const subObj = this.subfamilias.find(s => s.codigo === this.form.value.subfamilia);
+    const valFamStr = typeof this.form.value.familia === 'string' ? this.form.value.familia : this.form.value.familia?.codigo;
+    const valSubStr = typeof this.form.value.subfamilia === 'string' ? this.form.value.subfamilia : this.form.value.subfamilia?.codigo;
+    const famObj = this.familias.find((f: Family) => f.codigo === valFamStr);
+    const subObj = this.subfamilias.find((s: Subfamily) => s.codigo === valSubStr);
 
     // Obtener los SKUs para calcular el correlativo o simplemente editar
     this.codingService.getSKUs().subscribe({

@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -29,7 +29,7 @@ export class PricingComponent implements OnInit {
   idProdPrecio: number | null = null;
   costoUnitarioPrecio = 0;
   minMargenGanancia = 0;
-  margenDeseado = 30; // 30% por defecto
+  margenDeseado = 0; // Se actualizará al cargar la configuración
   precioSugerido = 0;
   
   totalDirectoPrecio = 0;
@@ -51,35 +51,29 @@ export class PricingComponent implements OnInit {
   private productService = inject(ProductService);
   private assetService = inject(AssetService);
   private fixeService = inject(FixeService);
+  private cdr = inject(ChangeDetectorRef);
 
   constructor() { }
 
   ngOnInit(): void {
-    this.cargarConfiguracionGlobal();
     this.cargarDatosIniciales();
-  }
-
-  cargarConfiguracionGlobal() {
-    this.configService.getConfigs().subscribe({
-      next: (configs) => {
-        if (configs.length > 0) {
-          const config = configs[0];
-          this.minMargenGanancia = config.margenGanancia || 0;
-          this.margenDeseado = this.minMargenGanancia;
-          this.calcularPrecioSugerido();
-        }
-      },
-      error: (error) => console.error('Error loading config:', error)
-    });
   }
 
   cargarDatosIniciales() {
     forkJoin({
+      configs: this.configService.getConfigs(),
       products: this.productService.getProducts(),
       assets: this.assetService.getAssets(),
       fixes: this.fixeService.getFixes()
     }).subscribe({
       next: (data) => {
+        // Cargar Configuración
+        if (data.configs.length > 0) {
+          const config = data.configs[0];
+          this.minMargenGanancia = config.margenGanancia || 0;
+          this.margenDeseado = this.minMargenGanancia;
+        }
+
         this.productos = data.products;
         const activos = data.assets;
         this.allFixes = data.fixes;
@@ -105,10 +99,15 @@ export class PricingComponent implements OnInit {
 
         if (this.idProdPrecio) {
           this.onProductoPrecioChange();
+        } else {
+          this.calcularPrecioSugerido();
         }
+
         if (this.idProdEquilibrio) {
           this.onProductoEquilibrioChange();
         }
+        
+        this.cdr.detectChanges();
       },
       error: (error) => console.error('Error loading initial data for pricing:', error)
     });

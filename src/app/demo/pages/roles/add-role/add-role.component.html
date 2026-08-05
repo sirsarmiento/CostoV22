@@ -1,0 +1,57 @@
+<div class="row mb-4">
+  <div class="col-12">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a routerLink="/roles">Roles</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ id > 0 ? 'Editar' : 'Crear' }}</li>
+      </ol>
+    </nav>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header bg-light">
+        <h6 class="mb-0 text-primary">{{ id > 0 ? 'Editar Rol' : 'Nuevo Rol' }}</h6>
+      </div>
+      <div class="card-body">
+        <form [formGroup]="form">
+          
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">Descripción <span class="text-danger">*</span></label>
+              <input 
+                type="text" 
+                class="form-control" 
+                formControlName="description" 
+                placeholder="Ej. Administrador, Usuario..."
+                maxlength="250"
+                [class.is-invalid]="submitted && f['description'].errors">
+              
+              @if (submitted && f['description'].errors) {
+                <div class="invalid-feedback d-block">
+                  @if (f['description'].errors['required']) {
+                    Ingrese la descripción del rol.
+                  }
+                </div>
+              }
+            </div>
+          </div>
+
+          <div class="row mt-4 pt-3 border-top">
+            <div class="col-12 d-flex justify-content-end gap-2">
+              <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-1" type="button" (click)="back()">
+                <i class="ti ti-rotate-clockwise fs-5"></i> Regresar
+              </button>
+              <button class="btn btn-primary d-inline-flex align-items-center gap-1" type="button" [disabled]="loading" (click)="onSubmit()">
+                <i class="ti ti-device-floppy fs-5"></i> Guardar
+              </button>
+            </div>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

@@ -57,6 +57,15 @@ const routes: Routes = [
         path: 'codings/add-coding',
         loadComponent: () => import('./demo/pages/cost/codings/add-coding/add-coding.component').then((c) => c.AddCodingComponent)
       },
+      // Security Modules
+      {
+        path: 'roles',
+        loadComponent: () => import('./demo/pages/roles/role/role.component').then((c) => c.RoleComponent)
+      },
+      {
+        path: 'roles/add-role',
+        loadComponent: () => import('./demo/pages/roles/add-role/add-role.component').then((c) => c.AddRoleComponent)
+      },
       {
         path: 'codings/add-family',
         loadComponent: () => import('./demo/pages/cost/codings/add-family/add-family.component').then((c) => c.AddFamilyComponent)

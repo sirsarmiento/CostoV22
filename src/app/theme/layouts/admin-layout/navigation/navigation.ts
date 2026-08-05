@@ -54,7 +54,16 @@ export const NavigationItems: NavigationItem[] = [
         icon: 'setting',
         breadcrumbs: false
       },
-      // Usuarios y Roles de seguridad se colocarán después cuando se migren los archivos
+      {
+        id: 'roles',
+        title: 'Roles de Seguridad',
+        type: 'item',
+        classes: 'nav-item',
+        url: '/roles',
+        icon: 'lock',
+        breadcrumbs: false
+      },
+      // Usuarios se colocarán después cuando se migren los archivos
       {
         id: 'codings',
         title: 'Codigos',

@@ -63,7 +63,15 @@ export const NavigationItems: NavigationItem[] = [
         icon: 'lock',
         breadcrumbs: false
       },
-      // Usuarios se colocarán después cuando se migren los archivos
+      {
+        id: 'users',
+        title: 'Usuarios',
+        type: 'item',
+        classes: 'nav-item',
+        url: '/users',
+        icon: 'user',
+        breadcrumbs: false
+      },
       {
         id: 'codings',
         title: 'Codigos',

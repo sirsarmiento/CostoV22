@@ -3,8 +3,11 @@ import { environment } from '../../../environments/environment';
 import { catchError } from 'rxjs/operators';
 import { throwError } from 'rxjs';
 import Swal from 'sweetalert2';
+import { inject } from '@angular/core';
+import { AuthService } from '../services/auth.service';
 
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
+    const authService = inject(AuthService);
     const isOnBlackList = environment.endpoints.handle_error_blackList.some(path =>
         req.url.endsWith(path)
     );
@@ -18,7 +21,16 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
             const errorMsg = err.error?.msg || err.error?.message || err.statusText;
 
             if (err.status === 401) {
-                Swal.fire('Error 401', `${errorMsg}`, 'error');
+                Swal.fire({
+                    title: 'Sesión expirada',
+                    text: 'Su sesión ha expirado por inactividad o el token es inválido. Por favor, inicie sesión nuevamente.',
+                    icon: 'warning',
+                    confirmButtonText: 'Entendido',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false
+                }).then(() => {
+                    authService.logout();
+                });
             } else if (err.status === 404) {
                 Swal.fire('Error 404', `${errorMsg}`, 'error');
             } else if (err.status === 500) {

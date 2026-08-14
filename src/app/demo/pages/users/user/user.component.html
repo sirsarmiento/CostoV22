@@ -1,0 +1,135 @@
+<div class="row mb-4">
+  <div class="col-sm-6">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a routerLink="/users">Usuarios</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Listado</li>
+      </ol>
+    </nav>
+  </div>
+  <div class="col-sm-6 text-sm-end mt-2 mt-sm-0">
+    <button class="btn btn-primary d-inline-flex align-items-center gap-2" (click)="openAdd()">
+      <i class="ti ti-plus-circle fs-5"></i> Crear Usuario
+    </button>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        
+        <!-- Search Bar -->
+        <div class="row mb-3">
+          <div class="col-md-4">
+            <input 
+              type="text" 
+              class="form-control" 
+              placeholder="Buscar por nombre, correo o documento..." 
+              [(ngModel)]="searchTerm"
+              (input)="onSearchChange()">
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="table-responsive table-sm">
+          <table class="table table-hover align-middle mb-0 table-sm">
+            <thead class="table-light table-sm">
+              <tr>
+                <th style="cursor: pointer;" (click)="sortData('documentNumber')">
+                  Cédula <i class="ti fs-6" [class]="getSortClass('documentNumber')"></i>
+                </th>
+                <th style="cursor: pointer;" (click)="sortData('fullName')">
+                  Nombre Completo <i class="ti fs-6" [class]="getSortClass('fullName')"></i>
+                </th>
+                <th style="cursor: pointer;" (click)="sortData('email')">
+                  Correo <i class="ti fs-6" [class]="getSortClass('email')"></i>
+                </th>
+                <th style="cursor: pointer;" (click)="sortData('position')">
+                  Cargo <i class="ti fs-6" [class]="getSortClass('position')"></i>
+                </th>
+                <th style="cursor: pointer;" (click)="sortData('status')">
+                  Estado <i class="ti fs-6" [class]="getSortClass('status')"></i>
+                </th>
+                <th class="text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of paginatedUsers; track row.id) {
+                <tr 
+                  (click)="selectedRow = selectedRow === row ? null : row"
+                  [class.table-primary]="selectedRow?.id === row.id"
+                  style="cursor: pointer;">
+                  <td><span class="fw-semibold text-secondary">{{ row.documentNumber }}</span></td>
+                  <td>
+                    <span class="fw-medium text-dark">{{ row.firstName }} {{ row.lastName }}</span>
+                  </td>
+                  <td>{{ row.email }}</td>
+                  <td>
+                    <span class="badge bg-light-info text-info rounded-pill px-2 py-1">{{ row.position?.label }}</span>
+                  </td>
+                  <td>
+                    <span class="badge rounded-pill px-3 py-1" 
+                          [class.bg-light-success]="row.status?.label === 'Activo'"
+                          [class.text-success]="row.status?.label === 'Activo'"
+                          [class.bg-light-danger]="row.status?.label !== 'Activo'"
+                          [class.text-danger]="row.status?.label !== 'Activo'">
+                      {{ row.status?.label || 'Inactivo' }}
+                    </span>
+                  </td>
+                  <td class="text-center" (click)="$event.stopPropagation()">
+                    <div class="btn-group btn-group-sm">
+                      <button class="btn btn-icon btn-light-primary" (click)="onEdit(row)" title="Editar">
+                        <i class="ti ti-edit fs-5"></i>
+                      </button>
+                      <button class="btn btn-icon btn-light-danger" (click)="onDelete(row.id, row.firstName + ' ' + row.lastName)" title="Desactivar">
+                        <i class="ti ti-trash fs-5"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="6" class="text-center py-4 text-muted">
+                    No se encontraron usuarios que coincidan con la búsqueda.
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        @if (filteredUsers.length > 0) {
+          <div class="d-flex flex-column flex-md-row justify-content-end align-items-center mt-3 gap-4 text-muted" style="font-size: 0.875rem;">
+            
+            <div class="d-flex align-items-center gap-2">
+              <span>Filas por página:</span>
+              <select class="form-select form-select-sm border-0 shadow-none bg-light fw-medium" style="width: 70px; cursor: pointer;" [(ngModel)]="pageSize" (change)="onPageSizeChange()">
+                <option [ngValue]="5">5</option>
+                <option [ngValue]="10">10</option>
+                <option [ngValue]="20">20</option>
+                <option [ngValue]="50">50</option>
+              </select>
+            </div>
+            
+            <span>
+              {{ (currentPage - 1) * pageSize + 1 }} - {{ Math.min(currentPage * pageSize, filteredUsers ? filteredUsers.length : 0) }} de {{ filteredUsers ? filteredUsers.length : 0 }}
+            </span>
+            
+            <div class="d-flex align-items-center gap-2">
+              <button class="btn btn-sm btn-icon rounded-pill btn-light shadow-sm" [disabled]="currentPage === 1" (click)="setPage(currentPage - 1)" title="Anterior">
+                <i class="ti ti-chevron-left fs-5"></i>
+              </button>
+              <button class="btn btn-sm btn-icon rounded-pill btn-light shadow-sm" [disabled]="currentPage === totalPages" (click)="setPage(currentPage + 1)" title="Siguiente">
+                <i class="ti ti-chevron-right fs-5"></i>
+              </button>
+            </div>
+            
+          </div>
+        }
+
+      </div>
+    </div>
+  </div>
+</div>

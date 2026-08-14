@@ -47,11 +47,9 @@ export class AddFamilyComponent implements OnInit {
   }
 
   setValues() {
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-    const stored = localStorage.getItem('cost_edit_family');
-    if (stored) {
-      const data: Family = JSON.parse(stored);
-      if (data && data.id && data.id > 0) {
+    // Recuperar datos desde el historial de navegación (Router State)
+    const data: Family | undefined = history.state.edit_family;
+    if (data && data.id && data.id > 0) {
         this.form.patchValue({
           codigo: data.codigo,
           nombre: data.nombre
@@ -59,7 +57,6 @@ export class AddFamilyComponent implements OnInit {
         this.id = data.id;
         this.subfamiliesList = data.subFamilias ? [...data.subFamilias] : [];
       }
-    }
   }
 
   addSubfamily() {
@@ -124,7 +121,6 @@ export class AddFamilyComponent implements OnInit {
 
     request.subscribe({
       next: () => {
-        if (this.id > 0) localStorage.removeItem('cost_edit_family');
         this.loading = false;
         const msg = this.id > 0 ? 'Familia actualizada correctamente.' : 'Familia registrada correctamente.';
         Swal.fire('Éxito', msg, 'success').then(() => {

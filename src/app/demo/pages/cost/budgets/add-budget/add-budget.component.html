@@ -134,7 +134,7 @@
                 </div>
 
                 <div class="col-md-2">
-                  <label class="form-label text-xs mb-1">Categoría</label>
+                  <label class="form-label text-xs mb-1">Material</label>
                   <ng-select 
                     formControlName="materialTipo"
                     placeholder="Seleccione..."
@@ -183,11 +183,6 @@
                 </div>
 
                 <div class="col-md-1 col-sm-3">
-                  <label class="form-label text-xs mb-1">Metros</label>
-                  <input type="number" class="form-control form-control-sm" formControlName="metros">
-                </div>
-
-                <div class="col-md-1 col-sm-3">
                   <label class="form-label text-xs mb-1">Horas</label>
                   <input type="number" class="form-control form-control-sm" formControlName="horas">
                 </div>
@@ -216,7 +211,6 @@
                     <th>Material</th>
                     <th>Costo Mat./g</th>
                     <th>Gramos</th>
-                    <th>Metros</th>
                     <th>Horas</th>
                     <th>Minutos</th>
                     <th class="text-end">Acción</th>
@@ -229,7 +223,6 @@
                       <td>{{ row.materialTipo }}</td>
                       <td>{{ row.precioMaterial | currency:'USD' }}</td>
                       <td>{{ row.gramos | number:'1.1-2' }}</td>
-                      <td>{{ row.metros | number:'1.1-2' }} m</td>
                       <td>{{ row.horas }} h</td>
                       <td>{{ row.minutos }} m</td>
                       <td class="text-end">

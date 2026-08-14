@@ -133,14 +133,12 @@ export class BudgetComponent implements OnInit {
   }
 
   onEdit(row: Budget) {
-    // Transferir datos al formulario
-    localStorage.setItem('cost_edit_budget', JSON.stringify(row));
-    this.router.navigate(['/budgets/add-budget']);
+    // Transferir datos al formulario a través del state del router
+    this.router.navigate(['/budgets/add-budget'], { state: { edit_budget: row } });
   }
 
   openAdd() {
-    // Limpiar formulario para nuevo registro
-    localStorage.removeItem('cost_edit_budget');
+    // Navegar sin state (nuevo registro)
     this.router.navigate(['/budgets/add-budget']);
   }
 
@@ -167,7 +165,6 @@ export class BudgetComponent implements OnInit {
   onFormule(row: Budget) {
     // Totales Físicos
     const totalGramos = (row.piezas || []).reduce((sum, p) => sum + (Number(p.gramos) || 0), 0);
-    const totalMetros = (row.piezas || []).reduce((sum, p) => sum + (Number(p.metros) || 0), 0);
     const totalHorasRaw = (row.piezas || []).reduce((sum, p) => sum + (Number(p.horas) || 0), 0);
     const totalMinutosRaw = (row.piezas || []).reduce((sum, p) => sum + (Number(p.minutos) || 0), 0);
 
@@ -191,7 +188,6 @@ export class BudgetComponent implements OnInit {
     // Construir tabla de piezas
     const piezasRows = (row.piezas || []).map(p => {
       const g = Number(p.gramos) || 0;
-      const m = Number(p.metros) || 0;
       const h = Number(p.horas) || 0;
       const min = Number(p.minutos) || 0;
       const matCost = g * (Number(p.precioMaterial) || 0);
@@ -203,7 +199,6 @@ export class BudgetComponent implements OnInit {
         <tr>
           <td class="text-start fw-medium">${p.nombre || 'Pieza'}</td>
           <td>${g.toFixed(2)}</td>
-          <td>${m.toFixed(2)}</td>
           <td>${h}</td>
           <td>${min}</td>
           <td>$${matCost.toFixed(2)}</td>
@@ -304,7 +299,7 @@ export class BudgetComponent implements OnInit {
           <div class="mb-3">
             <h6 class="fw-bold mb-2 text-dark fs-6"><i class="ti ti-layers-intersect me-2 text-muted"></i>Especificaciones Físicas Totales</h6>
             <div class="row g-2">
-              <div class="col-md-3">
+              <div class="col-md-4">
                 <div class="card border border-light shadow-sm bg-white">
                   <div class="card-body p-2 d-flex align-items-center">
                     <div class="bg-primary bg-opacity-10 rounded-circle p-1 text-primary me-2">
@@ -317,20 +312,7 @@ export class BudgetComponent implements OnInit {
                   </div>
                 </div>
               </div>
-              <div class="col-md-3">
-                <div class="card border border-light shadow-sm bg-white">
-                  <div class="card-body p-2 d-flex align-items-center">
-                    <div class="bg-success bg-opacity-10 rounded-circle p-1 text-success me-2">
-                      <i class="ti ti-ruler-2 fs-5"></i>
-                    </div>
-                    <div>
-                      <div class="text-muted mb-0" style="font-size: 0.7rem;">Metros Totales</div>
-                      <div class="fw-bold fs-6 text-dark">${totalMetros.toFixed(2)}m</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="col-md-3">
+              <div class="col-md-4">
                 <div class="card border border-light shadow-sm bg-white">
                   <div class="card-body p-2 d-flex align-items-center">
                     <div class="bg-warning bg-opacity-10 rounded-circle p-1 text-warning me-2">
@@ -343,7 +325,7 @@ export class BudgetComponent implements OnInit {
                   </div>
                 </div>
               </div>
-              <div class="col-md-3">
+              <div class="col-md-4">
                 <div class="card border border-light shadow-sm bg-white">
                   <div class="card-body p-2 d-flex align-items-center">
                     <div class="bg-danger bg-opacity-10 rounded-circle p-1 text-danger me-2">
@@ -368,7 +350,6 @@ export class BudgetComponent implements OnInit {
                   <tr>
                     <th class="text-start fw-semibold border-0 text-white py-2 ps-2">Nombre</th>
                     <th class="fw-semibold border-0 text-white py-2">Gramos</th>
-                    <th class="fw-semibold border-0 text-white py-2">Metros</th>
                     <th class="fw-semibold border-0 text-white py-2">Horas</th>
                     <th class="fw-semibold border-0 text-white py-2">Minutos</th>
                     <th class="fw-semibold border-0 text-white py-2">Costo Material</th>
@@ -377,7 +358,7 @@ export class BudgetComponent implements OnInit {
                   </tr>
                 </thead>
                 <tbody>
-                  ${piezasRows || '<tr><td colspan="8" class="text-muted py-2">No hay piezas en este presupuesto</td></tr>'}
+                  ${piezasRows || '<tr><td colspan="7" class="text-muted py-2">No hay piezas en este presupuesto</td></tr>'}
                 </tbody>
               </table>
             </div>

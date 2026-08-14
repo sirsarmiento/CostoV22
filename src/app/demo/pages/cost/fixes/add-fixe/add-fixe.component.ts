@@ -96,12 +96,10 @@ export class AddFixeComponent implements OnInit {
   }
 
   setValues() {
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-    const stored = localStorage.getItem('cost_edit_fixe');
-    if (stored) {
-      const data: Fixe = JSON.parse(stored);
-      if (data && data.id && data.id > 0) {
-        this.form.get('tipo')?.setValue(data.tipo);
+    // Recuperar datos desde el historial de navegación (Router State)
+    const data: Fixe | undefined = history.state.edit_fixe;
+    if (data && data.id && data.id > 0) {
+      this.form.get('tipo')?.setValue(data.tipo);
         this.form.get('precio')?.setValue(data.precio);
         this.form.get('clasificacion')?.setValue(data.clasificacion);
         const foundProd = this.filteredProducts.find(p => p.id == data.producto);
@@ -117,7 +115,6 @@ export class AddFixeComponent implements OnInit {
           this.form.get('otroConcepto')?.setValue(data.concepto);
         }
       }
-    }
   }
 
   myFormValues() {
@@ -173,7 +170,6 @@ export class AddFixeComponent implements OnInit {
 
     request.subscribe({
       next: () => {
-        localStorage.removeItem('cost_edit_fixe');
         this.loading = false;
         Swal.fire({
           title: '¡Guardado!',

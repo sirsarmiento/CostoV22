@@ -7,6 +7,7 @@ import { AuthService } from './auth.service';
 import { SelectOption } from '../models/select-option';
 import { Responsibles } from '../models/Cost/config';
 import { Company } from '../models/company';
+import { PaginationResponse } from '../models/pagination-response';
 
 @Injectable({
   providedIn: 'root'
@@ -112,5 +113,56 @@ export class UserService extends HttpService {
     this.authService.saveUserInLocalstorage(user);
     return user;
 
+  }
+
+  /**
+   * Check all users, supports pagination and filter
+   * @param filter 
+   * @returns 
+   */
+  async getUsersPaginated(filter: any): Promise<PaginationResponse> {
+    const resp: any = await firstValueFrom(this.post(environment.apiUrl, '/user/all', filter));
+    const paginator = new PaginationResponse(filter.page, filter.rowByPage);
+    paginator.count = resp ? resp.count : 0;
+    const items = resp && resp.data ? resp.data : [];
+    paginator.data = items.map((item: any) => {
+      return User.mapFromObject(item);
+    }).filter((u: any) => u !== undefined);
+    return paginator;
+  }
+
+  /**
+   * Query user by id
+   * @param id 
+   * @returns 
+   */
+  async getUserById(id: number): Promise<User | undefined> {
+    const resp: any = await firstValueFrom(this.get(environment.apiUrl, `/user/${id}`));
+    if (resp && resp.length > 0) {
+      return User.mapFromObject(resp[0]);
+    }
+    return undefined;
+  }
+
+  /**
+   * Delete user by id
+   * @param id 
+   */
+  async deleteUser(id: number) {
+    await firstValueFrom(this.delete(environment.apiUrl, `/user/${id}`));
+  }
+
+  /**
+   * Persists user data
+   * @param data 
+   */
+  async storeUser(data: any) {
+    if (data.id) {
+      const id = data.id;
+      delete data.id;
+      return await firstValueFrom(this.put(environment.apiUrl, `/user/${id}`, data));
+    } else {
+      return await firstValueFrom(this.post(environment.apiUrl, '/user', data));
+    }
   }
 }

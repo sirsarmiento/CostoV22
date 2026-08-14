@@ -3,7 +3,7 @@ import { HttpService } from './http.service';
 
 import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject, firstValueFrom, } from 'rxjs';
-
+import { Router } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
 import { User } from '../models/user';
 
@@ -16,6 +16,7 @@ export class AuthService extends HttpService {
   asObservable = this.userSource.asObservable();
 
   private toastrService = inject(ToastrService);
+  private router = inject(Router);
 
   /**
    * Get current user from local
@@ -90,7 +91,9 @@ export class AuthService extends HttpService {
    * Close sesion
    */
   logout() {
+    localStorage.removeItem(environment.localstorage.userKey);
     localStorage.removeItem('cusr');
+    this.router.navigate(['/login']);
   }
 
 

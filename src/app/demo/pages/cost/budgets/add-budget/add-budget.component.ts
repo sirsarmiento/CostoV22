@@ -152,11 +152,10 @@ export class AddBudgetComponent implements OnInit {
   addPart() {
     const requiredFields = [
       { field: this.f['nombre'], message: 'el nombre de la pieza' },
-      { field: this.f['materialTipo'], message: 'la categoría de material' },
+      { field: this.f['materialTipo'], message: 'el material' },
       { field: this.form.get('materialId'), message: 'el material (activo circulante)' },
       { field: this.f['precioMaterial'], message: 'el costo de material por gramo' },
       { field: this.f['gramos'], message: 'los gramos' },
-      { field: this.f['metros'], message: 'los metros' },
       { field: this.f['horas'], message: 'las horas' },
       { field: this.f['minutos'], message: 'los minutos' }
     ];
@@ -196,7 +195,6 @@ export class AddBudgetComponent implements OnInit {
       materialTipo: materialDisplayName,
       precioMaterial: Number(this.f['precioMaterial'].value) || 0,
       gramos: Number(this.f['gramos'].value) || 0,
-      metros: Number(this.f['metros'].value) || 0, 
       horas: Number(this.f['horas'].value) || 0,
       minutos: Number(this.f['minutos'].value) || 0
     };
@@ -208,7 +206,6 @@ export class AddBudgetComponent implements OnInit {
 
   getTotales() {
     const totalGramos = this.piezas.reduce((sum, pieza) => sum + (+pieza.gramos || 0), 0);
-    const totalMetros = this.piezas.reduce((sum, pieza) => sum + (+pieza.metros || 0), 0);
     const totalHoras = this.piezas.reduce((sum, pieza) => sum + (+pieza.horas || 0), 0);
     const totalMinutos = this.piezas.reduce((sum, pieza) => sum + (+pieza.minutos || 0), 0);
 
@@ -232,7 +229,6 @@ export class AddBudgetComponent implements OnInit {
 
     return {
       totalGramos,
-      totalMetros,
       totalHoras,
       totalMinutos,
       totalCostoMaterial,
@@ -258,7 +254,6 @@ export class AddBudgetComponent implements OnInit {
     this.form.get('materialId')?.disable();
     this.f['precioMaterial'].setValue('');
     this.f['gramos'].setValue('');
-    this.f['metros'].setValue('');
     this.f['horas'].setValue('');
     this.f['minutos'].setValue('');
   }
@@ -279,11 +274,9 @@ export class AddBudgetComponent implements OnInit {
   }
 
   setValues() {
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-    const stored = localStorage.getItem('cost_edit_budget');
-    if (stored) {
-      const data: Budget = JSON.parse(stored);
-      if (data && data.id && data.id > 0) {
+    // Recuperar datos desde el historial de navegación (Router State)
+    const data: Budget | undefined = history.state.edit_budget;
+    if (data && data.id && data.id > 0) {
         let dateStr = '';
         if (data.fecha) {
           const rawDate = new Date(data.fecha);
@@ -310,7 +303,6 @@ export class AddBudgetComponent implements OnInit {
         this.actualizarCostoMaquina();
         this.actualizarMinMargenGanancia();
       }
-    }
   }
 
   myFormValues() {
@@ -327,7 +319,6 @@ export class AddBudgetComponent implements OnInit {
       materialId: [{ value: null, disabled: true }],
       precioMaterial: [''],
       gramos: [],
-      metros: [],
       horas: [],
       minutos: [],
 
@@ -464,7 +455,6 @@ export class AddBudgetComponent implements OnInit {
 
     request.subscribe({
       next: () => {
-        localStorage.removeItem('cost_edit_budget');
         this.loading = false;
         Swal.fire({
           title: '¡Guardado!',

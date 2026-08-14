@@ -249,28 +249,24 @@ export class CodingComponent implements OnInit {
 
   // --- Acciones SKU ---
   openAddSKU() {
-    // Limpiar formulario para nuevo registro
-    localStorage.removeItem('cost_edit_coding');
+    // Navegar sin state (nuevo registro)
     this.router.navigate(['/codings/add-coding']);
   }
 
   onEditSKU(row: SkuCoding) {
-    // Transferir datos al formulario
-    localStorage.setItem('cost_edit_coding', JSON.stringify(row));
-    this.router.navigate(['/codings/add-coding']);
+    // Transferir datos al formulario a través del state del router
+    this.router.navigate(['/codings/add-coding'], { state: { edit_coding: row } });
   }
 
   // --- Acciones Familia ---
   openAddFamily() {
-    // Limpiar formulario para nuevo registro
-    localStorage.removeItem('cost_edit_family');
+    // Navegar sin state (nuevo registro)
     this.router.navigate(['/codings/add-family']);
   }
 
   onEditFamily(row: Family) {
-    // Transferir datos al formulario
-    localStorage.setItem('cost_edit_family', JSON.stringify(row));
-    this.router.navigate(['/codings/add-family']);
+    // Transferir datos al formulario a través del state del router
+    this.router.navigate(['/codings/add-family'], { state: { edit_family: row } });
   }
 
   onDeleteFamily(row: Family) {

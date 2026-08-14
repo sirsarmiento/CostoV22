@@ -73,11 +73,9 @@ export class AddProductComponent implements OnInit {
   }
 
   setValues() {
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-    const stored = localStorage.getItem('cost_edit_product');
-    if (stored) {
-      const data: Product = JSON.parse(stored);
-      if (data && data.id && data.id > 0) {
+    // Recuperar datos desde el historial de navegación (Router State)
+    const data: Product | undefined = history.state.edit_product;
+    if (data && data.id && data.id > 0) {
         this.form.get('nombre')?.setValue(data.nombre);
         this.form.get('medida')?.setValue(data.medida);
         this.form.get('sku')?.setValue(data.sku);
@@ -91,7 +89,6 @@ export class AddProductComponent implements OnInit {
         this.form.get('periodo')?.setValue(data.periodo);
         this.id = data.id;
       }
-    }
   }
 
   myFormValues() {
@@ -133,7 +130,6 @@ export class AddProductComponent implements OnInit {
 
     request.subscribe({
       next: () => {
-        localStorage.removeItem('cost_edit_product');
         this.loading = false;
         Swal.fire({
           title: '¡Guardado!',

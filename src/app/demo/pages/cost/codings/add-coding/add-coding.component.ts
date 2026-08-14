@@ -90,10 +90,10 @@ export class AddCodingComponent implements OnInit {
   formInitialized = false;
 
   ngOnInit(): void {
-    const stored = localStorage.getItem('cost_edit_coding');
-    if (stored) {
-      this.editData = JSON.parse(stored);
-      this.id = this.editData?.id || 0;
+    const data: SkuCoding | undefined = history.state.edit_coding;
+    if (data && data.id && data.id > 0) {
+      this.editData = data;
+      this.id = this.editData.id || 0;
     }
 
     this.cargarFamilias();
@@ -359,7 +359,6 @@ export class AddCodingComponent implements OnInit {
 
           this.codingService.updateSKU(this.id, codingResult).subscribe({
             next: () => {
-              localStorage.removeItem('cost_edit_coding');
               this.loading = false;
               Swal.fire('Éxito', 'Código actualizado exitosamente.', 'success').then(() => {
                 this.router.navigate(['/codings']);

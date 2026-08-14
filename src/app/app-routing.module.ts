@@ -67,6 +67,14 @@ const routes: Routes = [
         loadComponent: () => import('./demo/pages/roles/add-role/add-role.component').then((c) => c.AddRoleComponent)
       },
       {
+        path: 'users',
+        loadComponent: () => import('./demo/pages/users/user/user.component').then((c) => c.UserComponent)
+      },
+      {
+        path: 'users/add-user',
+        loadComponent: () => import('./demo/pages/users/add-user/add-user.component').then((c) => c.AddUserComponent)
+      },
+      {
         path: 'codings/add-family',
         loadComponent: () => import('./demo/pages/cost/codings/add-family/add-family.component').then((c) => c.AddFamilyComponent)
       },

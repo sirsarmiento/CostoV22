@@ -22,7 +22,6 @@ export class Parts{ //Piezas
     nombre?: string;
     materialTipo!: string;
     gramos!: number;
-    metros!: number;
     horas!: number;
     minutos!: number;
     precioMaterial?: number;

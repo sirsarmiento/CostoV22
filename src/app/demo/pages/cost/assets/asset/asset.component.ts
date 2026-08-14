@@ -192,14 +192,12 @@ export class AssetComponent implements OnInit {
   }
 
   onEdit(row: Asset) {
-    // Transferir datos al formulario
-    localStorage.setItem('cost_edit_asset', JSON.stringify(row));
-    this.router.navigate(['/assets/add-asset']);
+    // Transferir datos al formulario a través del state del router
+    this.router.navigate(['/assets/add-asset'], { state: { edit_asset: row } });
   }
 
   openAdd() {
-    // Limpiar formulario para nuevo registro
-    localStorage.removeItem('cost_edit_asset');
+    // Navegar sin state (nuevo registro)
     this.router.navigate(['/assets/add-asset']);
   }
 }

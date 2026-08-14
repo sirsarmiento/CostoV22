@@ -57,7 +57,7 @@
               @for (row of paginatedConfigs; track row.id) {
                 <tr 
                   (click)="selectRow(row)" 
-                  [class.table-primary]="selectedRow?.id === row.id" 
+                  [class.table-primary]="selectedRow && selectedRow.id === row.id" 
                   style="cursor: pointer;">
                   <td>{{ row.nombre }}</td>
                   <td>{{ row.rif }}</td>

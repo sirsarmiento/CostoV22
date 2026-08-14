@@ -45,6 +45,21 @@ export class FixeComponent implements OnInit {
   // Ya no necesitamos data por defecto aquí, viene del environment.local.ts vía servicio
 
   ngOnInit(): void {
+    // Exponer funciones globales para SweetAlert
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).editVariable = (id: number) => {
+      const row = this.allCosts.find(f => f.id === id);
+      if (row) {
+        Swal.close();
+        this.onEdit(row);
+      }
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).deleteVariable = (id: number, concepto: string) => {
+      Swal.close();
+      this.onDelete(id, concepto);
+    };
+
     this.getCosts();
   }
 
@@ -93,6 +108,33 @@ export class FixeComponent implements OnInit {
   applyFilterAndPagination() {
     // Filtrar por Tipo de Costo (Fijo/Variable)
     let temp = this.allCosts.filter(c => c.tipo === this.activeTab);
+
+    if (this.activeTab === 'Variable') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const varMap = new Map<string, any>();
+      temp.forEach(v => {
+        const pName = v.productoName || 'Sin producto';
+        if (!varMap.has(pName)) {
+          varMap.set(pName, {
+            productoName: pName,
+            tipo: 'Variable',
+            clasificacion: v.clasificacion || 'Directo', 
+            precio: 0,
+            detalles: []
+          });
+        } else {
+          const group = varMap.get(pName);
+          if (group.clasificacion !== v.clasificacion) {
+            group.clasificacion = 'Variada';
+          }
+        }
+        
+        const group = varMap.get(pName);
+        group.precio += Number(v.precio || 0);
+        group.detalles.push(v);
+      });
+      temp = Array.from(varMap.values());
+    }
 
     // Filtrar por búsqueda
     const query = this.searchTerm.toLowerCase().trim();
@@ -158,15 +200,64 @@ export class FixeComponent implements OnInit {
     return this.sortAscending ? 'ti-chevron-up text-primary' : 'ti-chevron-down text-primary';
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  verDetalle(row: any) {
+    let htmlContent = `
+      <div style="overflow-x: auto;">
+        <table class="table table-hover text-start align-middle mb-0" style="font-size: 14px; width: 100%;">
+          <thead class="table-light">
+            <tr>
+              <th class="py-2">Concepto</th>
+              <th class="py-2">Clasificación</th>
+              <th class="py-2">Precio</th>
+              <th class="text-end py-2">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    row.detalles.forEach((det: any) => {
+      htmlContent += `
+        <tr>
+          <td class="fw-medium">${det.concepto}</td>
+          <td>${det.clasificacion}</td>
+          <td>$${Number(det.precio).toFixed(2)}</td>
+          <td class="text-end">
+            <div class="d-flex justify-content-end gap-1">
+              <button class="btn btn-sm btn-icon btn-light-primary" onclick="window.editVariable(${det.id})" title="Editar">
+                <i class="ti ti-pencil fs-5"></i>
+              </button>
+              <button class="btn btn-sm btn-icon btn-light-danger" onclick="window.deleteVariable(${det.id}, '${det.concepto}')" title="Eliminar">
+                <i class="ti ti-trash fs-5"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    });
+
+    htmlContent += `</tbody></table></div>`;
+
+    Swal.fire({
+      title: `<div class="text-start fs-5 text-primary fw-bold">Detalle de Costos<br><span class="fs-6 text-muted fw-normal">${row.productoName}</span></div>`,
+      html: htmlContent,
+      width: '600px',
+      showCloseButton: true,
+      showConfirmButton: false,
+      customClass: {
+        popup: 'rounded-4'
+      }
+    });
+  }
+
   onEdit(row: Fixe) {
-    // Transferir datos al formulario
-    localStorage.setItem('cost_edit_fixe', JSON.stringify(row));
-    this.router.navigate(['/fixes/add-fixe']);
+    // Transferir datos al formulario a través del state del router
+    this.router.navigate(['/fixes/add-fixe'], { state: { edit_fixe: row } });
   }
 
   openAdd() {
-    // Limpiar formulario para nuevo registro
-    localStorage.removeItem('cost_edit_fixe');
+    // Navegar sin state (nuevo registro)
     this.router.navigate(['/fixes/add-fixe']);
   }
 

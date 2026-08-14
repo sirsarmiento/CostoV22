@@ -177,20 +177,19 @@ export class ConfigComponent implements OnInit {
     this.applyFilterAndPagination();
   }
 
+
   getSortClass(column: string): string {
     if (this.sortColumn !== column) return 'ti-selector text-muted';
     return this.sortAscending ? 'ti-chevron-up text-primary' : 'ti-chevron-down text-primary';
   }
 
   onEdit(row: Config) {
-    // Transferir datos al formulario
-    localStorage.setItem('cost_edit_config', JSON.stringify(row));
-    this.router.navigate(['/configs/add-config']);
+    // Transferir datos al formulario a través del state del router
+    this.router.navigate(['/configs/add-config'], { state: { edit_config: row } });
   }
 
   openAdd() {
-    // Limpiar formulario para nuevo registro
-    localStorage.removeItem('cost_edit_config');
+    // Navegar sin state (nuevo registro)
     this.router.navigate(['/configs/add-config']);
   }
 }

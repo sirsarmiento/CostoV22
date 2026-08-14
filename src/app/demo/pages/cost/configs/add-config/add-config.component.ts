@@ -164,11 +164,9 @@ export class AddConfigComponent implements OnInit {
   }
 
   setValues() {
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-    const stored = localStorage.getItem('cost_edit_config');
-    if (stored) {
-      const data: Config = JSON.parse(stored);
-      if (data && data.id && data.id > 0) {
+    // Recuperar datos desde el historial de navegación (Router State)
+    const data: Config | undefined = history.state.edit_config;
+    if (data && data.id && data.id > 0) {
         this.f['nombre'].setValue(data.nombre);
         this.f['tipo'].setValue(data.tipo);
         this.f['sector'].setValue(data.sector);
@@ -185,7 +183,6 @@ export class AddConfigComponent implements OnInit {
         this.refreshList();
         this.clearForm();
       }
-    }
   }
 
   myFormValues() {
@@ -239,7 +236,6 @@ export class AddConfigComponent implements OnInit {
 
     request.subscribe({
       next: () => {
-        localStorage.removeItem('cost_edit_config');
         this.loading = false;
         Swal.fire({
           title: '¡Guardado!',

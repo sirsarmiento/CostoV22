@@ -58,9 +58,11 @@
           <table class="table table-hover align-middle mb-0 table-sm">
             <thead class="table-light table-sm">
               <tr>
-                <th style="cursor: pointer;" (click)="sortData('concepto')">
-                  Concepto <i class="ti fs-6" [class]="getSortClass('concepto')"></i>
-                </th>
+                @if (activeTab === 'Fijo') {
+                  <th style="cursor: pointer;" (click)="sortData('concepto')">
+                    Concepto <i class="ti fs-6" [class]="getSortClass('concepto')"></i>
+                  </th>
+                }
                 <th style="cursor: pointer;" (click)="sortData('precio')">
                   Precio <i class="ti fs-6" [class]="getSortClass('precio')"></i>
                 </th>
@@ -77,9 +79,11 @@
               @for (row of paginatedCosts; track row.id) {
                 <tr 
                   (click)="selectedRow = selectedRow === row ? null : row"
-                  [class.table-primary]="selectedRow?.id === row.id"
+                  [class.table-primary]="selectedRow && (row.id ? selectedRow.id === row.id : selectedRow.productoName === row.productoName)"
                   style="cursor: pointer;">
-                  <td>{{ row.concepto }}</td>
+                  @if (activeTab === 'Fijo') {
+                    <td>{{ row.concepto }}</td>
+                  }
                   <td class="fw-bold">{{ row.precio | number: '1.2-2' }}</td>
                   <td>
                     <span 
@@ -91,14 +95,20 @@
                   </td>
                   <td>{{ row.productoName || '-' }}</td>
                   <td class="text-center" (click)="$event.stopPropagation()">
-                    <div class="btn-group btn-group-sm">
-                      <button class="btn btn-icon btn-light-primary" (click)="onEdit(row)" title="Editar">
-                        <i class="ti ti-edit fs-5"></i>
+                    @if (activeTab === 'Fijo') {
+                      <div class="btn-group btn-group-sm">
+                        <button class="btn btn-icon btn-light-primary" (click)="onEdit(row)" title="Editar">
+                          <i class="ti ti-edit fs-5"></i>
+                        </button>
+                        <button class="btn btn-icon btn-light-danger" (click)="onDelete(row.id, row.concepto)" title="Eliminar">
+                          <i class="ti ti-trash fs-5"></i>
+                        </button>
+                      </div>
+                    } @else {
+                      <button class="btn btn-sm btn-light-primary d-inline-flex align-items-center" (click)="verDetalle(row)" title="Ver Detalle">
+                        <i class="ti ti-eye fs-5 me-1"></i> Detalle
                       </button>
-                      <button class="btn btn-icon btn-light-danger" (click)="onDelete(row.id, row.concepto)" title="Eliminar">
-                        <i class="ti ti-trash fs-5"></i>
-                      </button>
-                    </div>
+                    }
                   </td>
                 </tr>
               } @empty {

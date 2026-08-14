@@ -153,14 +153,12 @@ export class ProductComponent implements OnInit {
   }
 
   onEdit(row: Product) {
-    // Transferir datos al formulario
-    localStorage.setItem('cost_edit_product', JSON.stringify(row));
-    this.router.navigate(['/products/add-product']);
+    // Transferir datos al formulario a través del state del router
+    this.router.navigate(['/products/add-product'], { state: { edit_product: row } });
   }
 
   openAdd() {
-    // Limpiar formulario para nuevo registro
-    localStorage.removeItem('cost_edit_product');
+    // Navegar sin state (nuevo registro)
     this.router.navigate(['/products/add-product']);
   }
 

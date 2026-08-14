@@ -1,0 +1,220 @@
+<div class="row mb-4">
+  <div class="col-12">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a routerLink="/users">Usuarios</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ id === 0 ? 'Crear' : 'Editar' }}</li>
+      </ol>
+    </nav>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header bg-light">
+        <h6 class="mb-0 text-primary">Información del Usuario</h6>
+      </div>
+      <div class="card-body">
+        @if (formLoading) {
+          <div class="d-flex flex-column align-items-center justify-content-center py-5 text-secondary">
+            <span class="spinner-border mb-3" style="width: 3rem; height: 3rem;" role="status" aria-hidden="true"></span>
+            <span class="fw-medium">Cargando información...</span>
+          </div>
+        } @else {
+          <form [formGroup]="form" (ngSubmit)="onSubmit()">
+            <div class="row g-3">
+            
+
+            <div class="col-md-6">
+              <label class="form-label">Primer Nombre *</label>
+              <input type="text" class="form-control" formControlName="firstName" [class.is-invalid]="submitted && f['firstName'].errors">
+              @if (submitted && f['firstName'].errors) {
+                <div class="invalid-feedback">Requerido (Mín 3 letras).</div>
+              }
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Segundo Nombre</label>
+              <input type="text" class="form-control" formControlName="secondName">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Primer Apellido *</label>
+              <input type="text" class="form-control" formControlName="lastName" [class.is-invalid]="submitted && f['lastName'].errors">
+              @if (submitted && f['lastName'].errors) {
+                <div class="invalid-feedback">Requerido (Mín 3 letras).</div>
+              }
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Segundo Apellido</label>
+              <input type="text" class="form-control" formControlName="secondLastName">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Nacionalidad *</label>
+              <ng-select 
+                formControlName="documentType" 
+                placeholder="Seleccione"
+                [clearable]="false"
+                [searchable]="false"
+                [class.is-invalid]="submitted && f['documentType'].errors">
+                <ng-option value="V">Venezolano</ng-option>
+                <ng-option value="E">Extranjero</ng-option>
+                <ng-option value="J">Jurídico</ng-option>
+                <ng-option value="P">Pasaporte</ng-option>
+                <ng-option value="G">Gubernamental</ng-option>
+              </ng-select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Nro. Documento *</label>
+              <input type="text" class="form-control" formControlName="documentNumber" [class.is-invalid]="submitted && f['documentNumber'].errors">
+              @if (submitted && f['documentNumber'].errors) {
+                <div class="invalid-feedback">Requerido.</div>
+              }
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Fecha de Nacimiento *</label>
+              <input type="date" class="form-control" formControlName="birthDate" [class.is-invalid]="submitted && f['birthDate'].errors">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Sexo *</label>
+              <ng-select 
+                formControlName="sex" 
+                placeholder="Seleccione"
+                [clearable]="false"
+                [searchable]="false"
+                [class.is-invalid]="submitted && f['sex'].errors">
+                <ng-option value="M">Masculino</ng-option>
+                <ng-option value="F">Femenino</ng-option>
+              </ng-select>
+            </div>
+
+
+            <div class="col-md-6">
+              <label class="form-label">Correo Electrónico *</label>
+              <input type="email" class="form-control" formControlName="email" [class.is-invalid]="submitted && f['email'].errors">
+              @if (submitted && f['email'].errors) {
+                <div class="invalid-feedback">Correo inválido.</div>
+              }
+            </div>
+            
+            <div class="col-md-6">
+              <label class="form-label">País *</label>
+              <ng-select 
+                formControlName="country" 
+                placeholder="Seleccione"
+                [clearable]="false"
+                [searchable]="true"
+                (change)="onCountryChange($event)"
+                [class.is-invalid]="submitted && f['country'].errors">
+                @for (item of countries; track item.value) {
+                  <ng-option [value]="item.value">{{ item.label }}</ng-option>
+                }
+              </ng-select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Estado *</label>
+              <ng-select 
+                formControlName="state" 
+                placeholder="Seleccione"
+                [clearable]="false"
+                [searchable]="true"
+                (change)="onStateChange($event)"
+                [class.is-invalid]="submitted && f['state'].errors"
+                [disabled]="!form.get('country')?.value">
+                @for (item of states; track item.value) {
+                  <ng-option [value]="item.value">{{ item.label }}</ng-option>
+                }
+              </ng-select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Ciudad *</label>
+              <ng-select 
+                formControlName="city" 
+                placeholder="Seleccione"
+                [clearable]="false"
+                [searchable]="true"
+                [class.is-invalid]="submitted && f['city'].errors"
+                [disabled]="!form.get('state')?.value">
+                @for (item of cities; track item.value) {
+                  <ng-option [value]="item.value">{{ item.label }}</ng-option>
+                }
+              </ng-select>
+            </div>
+            
+            <div class="col-md-12">
+              <label class="form-label">Dirección *</label>
+              <textarea class="form-control" rows="2" formControlName="address" [class.is-invalid]="submitted && f['address'].errors"></textarea>
+            </div>
+
+
+            <div class="col-md-6">
+              <label class="form-label">Cargo *</label>
+              <ng-select 
+                formControlName="position" 
+                placeholder="Seleccione un Cargo"
+                [clearable]="false"
+                [searchable]="true"
+                [class.is-invalid]="submitted && f['position'].errors">
+                @for (item of positions; track item.value) {
+                  <ng-option [value]="item.value">{{ item.label }}</ng-option>
+                }
+              </ng-select>
+            </div>
+
+            <div class="col-md-12 mb-3">
+              <label class="form-label">Estructura Organizativa</label>
+              <div formArrayName="levels" class="row">
+                @for (control of levelsFormArray.controls; track control; let i = $index) {
+                  <div class="col-md-6 mb-2">
+                    <ng-select 
+                      [formControlName]="i" 
+                      placeholder="Seleccione"
+                      [clearable]="false"
+                      [searchable]="true"
+                      appendTo="body"
+                      dropdownPosition="bottom"
+                      (change)="onLevelChange(i, $event)">
+                      @for (est of levelsData[i]; track est.id) {
+                        <ng-option [value]="est.id">{{ est.estructuraorganizativa || est.descripcion }}</ng-option>
+                      }
+                    </ng-select>
+                  </div>
+                }
+              </div>
+            </div>
+
+            <div class="col-md-12">
+              <label class="form-label">Roles Asignados *</label>
+              <div class="row px-2">
+                @for (role of roles; track role.value; let i = $index) {
+                  <div class="col-md-3 col-sm-6 mb-2">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" [value]="role.value" [id]="'role'+i"
+                             [checked]="isChecked(role.value)" (change)="onCheckChange($event)">
+                      <label class="form-check-label text-truncate w-100" [for]="'role'+i" [title]="role.label">
+                        {{ role.label }}
+                      </label>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+            <button type="button" class="btn btn-light-secondary" (click)="back()">Cancelar</button>
+            <button type="submit" class="btn btn-primary d-flex align-items-center gap-2" [disabled]="loading">
+              @if (loading) {
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+              } @else {
+                <i class="ti ti-device-floppy fs-5"></i> Guardar
+              }
+            </button>
+          </div>
+        </form>
+        }
+      </div>
+    </div>
+  </div>
+</div>

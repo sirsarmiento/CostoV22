@@ -37,11 +37,10 @@ export class AddAssetComponent implements OnInit {
   }
 
   setValues() {
-    // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
-    const stored = localStorage.getItem('cost_edit_asset');
-    if (stored) {
-      const data: Asset = JSON.parse(stored);
-      if (data && data.id && data.id > 0) {
+    // Recuperar datos desde el historial de navegación (Router State)
+    const data: Asset | undefined = history.state.edit_asset;
+    
+    if (data && data.id && data.id > 0) {
         let dateVal = '';
         if (data.fechaCompra) {
           const rawDate = new Date(data.fechaCompra);
@@ -80,7 +79,6 @@ export class AddAssetComponent implements OnInit {
         this.id = data.id;
         this.actualizarValidaciones(tipoLimpio);
       }
-    }
   }
 
   isSwitchingType = false;
@@ -236,7 +234,6 @@ export class AddAssetComponent implements OnInit {
 
     request.subscribe({
       next: () => {
-        localStorage.removeItem('cost_edit_asset');
         this.loading = false;
         Swal.fire({
           title: '¡Guardado!',

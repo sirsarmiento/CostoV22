@@ -82,7 +82,7 @@
                   [class.table-primary]="selectedRow && (row.id ? selectedRow.id === row.id : selectedRow.productoName === row.productoName)"
                   style="cursor: pointer;">
                   @if (activeTab === 'Fijo') {
-                    <td>{{ row.concepto }}</td>
+                    <td><div class="cell-name-clamp" [attr.title]="row.concepto">{{ row.concepto }}</div></td>
                   }
                   <td class="fw-bold">{{ row.precio | number: '1.2-2' }}</td>
                   <td>

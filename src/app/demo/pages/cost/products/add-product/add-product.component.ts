@@ -3,10 +3,14 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { NgSelectModule } from '@ng-select/ng-select';
+import { Observable, forkJoin, of } from 'rxjs';
+import { catchError, switchMap, tap } from 'rxjs/operators';
 import { Product } from '../../../../../core/models/Cost/product';
 import { Config } from '../../../../../core/models/Cost/config';
+import { Fixe } from '../../../../../core/models/Cost/fixe';
 import { ProductService } from '../../../../../core/services/cost/product.service';
 import { ConfigService } from '../../../../../core/services/cost/config.service';
+import { FixeService } from '../../../../../core/services/cost/fixe.service';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -20,6 +24,7 @@ export class AddProductComponent implements OnInit {
   private router = inject(Router);
   private productService = inject(ProductService);
   private configService = inject(ConfigService);
+  private fixeService = inject(FixeService);
   private cdr = inject(ChangeDetectorRef);
 
   form!: FormGroup;
@@ -27,6 +32,26 @@ export class AddProductComponent implements OnInit {
   loading = false;
   submitted = false;
   configs: Config[] = [];
+
+  activeTab: 'def' | 'costos' = 'def';
+  costosPendientes: Fixe[] = [];
+  costosEliminados: number[] = [];
+
+  opcionesConceptos: Record<string, string[]> = {
+    'Fijo': [
+      'Alquiler', 'Salarios base', 'Seguros', 
+      'Suscripciones y licencias', 'Impuestos', 
+      'Servicios básicos (parte fija)',
+      'Otro'
+    ],
+    'Variable': [
+      'Materia prima e insumos', 'Costos de envío y distribución', 
+      'Comisiones de ventas', 'Empaquetado y embalaje', 
+      'Servicios básicos (por uso)',
+      'Otro'
+    ]
+  };
+  conceptosMostrados: string[] = [];
 
   constructor() {
     this.myFormValues();
@@ -41,6 +66,12 @@ export class AddProductComponent implements OnInit {
     this.form.get('medida')?.valueChanges.subscribe(value => {
       this.onMedidaChange(value);
     });
+
+    this.form.get('costoTipo')?.valueChanges.subscribe(valor => {
+      this.conceptosMostrados = this.opcionesConceptos[valor] || [];
+      this.form.get('costoConcepto')?.setValue('');
+    });
+    this.conceptosMostrados = this.opcionesConceptos['Variable'];
   }
 
   shouldShowPeriodoField(): boolean {
@@ -73,33 +104,88 @@ export class AddProductComponent implements OnInit {
   }
 
   setValues() {
-    // Recuperar datos desde el historial de navegación (Router State)
     const data: Product | undefined = history.state.edit_product;
     if (data && data.id && data.id > 0) {
-        this.form.get('nombre')?.setValue(data.nombre);
-        this.form.get('medida')?.setValue(data.medida);
-        this.form.get('sku')?.setValue(data.sku);
-        this.form.get('clasificacion')?.setValue(data.clasificacion);
-        this.form.get('descripcion')?.setValue(data.descripcion);
-        
-        // Extraer el ID puro si viene como objeto o como string
-        const perfilId = typeof data.perfil === 'object' ? (data.perfil as { id?: number })?.id : Number(data.perfil);
-        this.form.get('perfil')?.setValue(perfilId || null);
-        
-        this.form.get('periodo')?.setValue(data.periodo);
-        this.id = data.id;
+      this.form.get('nombre')?.setValue(data.nombre);
+      this.form.get('medida')?.setValue(data.medida);
+      this.form.get('sku')?.setValue(data.sku);
+      this.form.get('clasificacion')?.setValue(data.clasificacion);
+      this.form.get('descripcion')?.setValue(data.descripcion);
+      
+      const perfilId = typeof data.perfil === 'object' ? (data.perfil as { id?: number })?.id : Number(data.perfil);
+      this.form.get('perfil')?.setValue(perfilId || null);
+      
+      this.form.get('periodo')?.setValue(data.periodo);
+      this.id = data.id;
+
+      this.loadCostosAsociados(data.id);
+    }
+  }
+
+  loadCostosAsociados(productoId: number) {
+    this.fixeService.getFixes().subscribe((fixes) => {
+      if (fixes) {
+        this.costosPendientes = fixes.filter((c: Fixe) => c.producto === productoId && c.clasificacion === 'Directo');
+        this.cdr.detectChanges();
       }
+    });
+  }
+
+  agregarCosto() {
+    const tipo = this.form.get('costoTipo')?.value;
+    let concepto = this.form.get('costoConcepto')?.value;
+    if (concepto === 'Otro') {
+      concepto = this.form.get('costoOtroConcepto')?.value;
+    }
+    const precio = Number(this.form.get('costoPrecio')?.value) || 0;
+
+    if (!tipo || !concepto || precio <= 0) {
+      Swal.fire('Atención', 'Debe indicar Tipo, Concepto y Precio válido para agregar el costo.', 'warning');
+      return;
+    }
+
+    const nuevoCosto: Fixe = {
+      tipo: tipo,
+      concepto: concepto,
+      precio: precio,
+      clasificacion: 'Directo',
+      producto: this.id > 0 ? this.id : undefined
+    };
+
+    this.costosPendientes = [...this.costosPendientes, nuevoCosto];
+    
+    this.form.patchValue({
+      costoConcepto: '',
+      costoOtroConcepto: '',
+      costoPrecio: ''
+    });
+    this.cdr.detectChanges();
+  }
+
+  removerCosto(index: number) {
+    const costo = this.costosPendientes[index];
+    if (costo.id) {
+      this.costosEliminados.push(costo.id);
+    }
+    this.costosPendientes.splice(index, 1);
+    this.costosPendientes = [...this.costosPendientes];
+    this.cdr.detectChanges();
   }
 
   myFormValues() {
     this.form = this.formBuilder.group({
       nombre: ['', Validators.required],
-      medida: ['', Validators.required],
+      medida: ['Unidades'],
       sku: [''],
       descripcion: ['', Validators.required],
       clasificacion: ['', Validators.required],
       perfil: [''],
-      periodo: ['']
+      periodo: [''],
+      // Costos directos
+      costoTipo: ['Variable'],
+      costoConcepto: [''],
+      costoOtroConcepto: [''],
+      costoPrecio: ['']
     });
   }
 
@@ -124,27 +210,62 @@ export class AddProductComponent implements OnInit {
       periodo: this.form.get('periodo')?.value
     };
 
-    const request = this.id === 0 
-      ? this.productService.createProduct(product)
-      : this.productService.updateProduct(this.id, product);
+    // Lógica Maestro-Detalle usando RxJS
+    let productReq$: Observable<Product>;
 
-    request.subscribe({
-      next: () => {
+    if (this.id === 0) {
+      productReq$ = this.productService.addWithReturn(product).pipe(
+        tap((resp: Product) => {
+          const newId = resp.id;
+          if (newId) this.id = newId;
+        })
+      );
+    } else {
+      productReq$ = this.productService.updateWithReturn(this.id, product).pipe(
+        tap(() => console.log('Product updated'))
+      );
+    }
+
+    productReq$.pipe(
+      switchMap(() => {
+        const requests: Observable<unknown>[] = [];
+        
+        // Costos nuevos a crear (no tienen ID)
+        const nuevos = this.costosPendientes.filter(c => !c.id);
+        for (const c of nuevos) {
+          c.producto = this.id;
+          requests.push(this.fixeService.addWithReturn(c));
+        }
+
+        // Costos a eliminar
+        for (const id of this.costosEliminados) {
+          requests.push(this.fixeService.deleteWithReturn(id));
+        }
+
+        if (requests.length === 0) {
+          return of(true);
+        }
+
+        return forkJoin(requests);
+      }),
+      catchError(error => {
         this.loading = false;
+        console.error(error);
+        Swal.fire('Atención', 'Se guardó el producto, pero ocurrió un problema guardando sus costos vinculados.', 'warning');
+        return of(null);
+      })
+    ).subscribe((res) => {
+      this.loading = false;
+      if (res !== null) {
         Swal.fire({
           title: '¡Guardado!',
-          text: 'Producto guardado exitosamente.',
+          text: 'Producto y costos guardados exitosamente.',
           icon: 'success',
           confirmButtonText: 'Aceptar',
           confirmButtonColor: '#4680ff'
         }).then(() => {
           this.router.navigate(['/products']);
         });
-      },
-      error: (error) => {
-        this.loading = false;
-        console.error('Error saving product:', error);
-        Swal.fire('Error', 'Ha ocurrido un error al guardar.', 'error');
       }
     });
   }

@@ -70,7 +70,7 @@ export class AddAssetComponent implements OnInit {
           ubicacion: data.ubicacion,
           valorUnitario: data.valorUnitario,
           categoria: catLimpia,
-          subcategoria: data.subcategoria,
+          subcategoria: data.subcategoria || ((data as unknown as Record<string, unknown>)['subCategoria'] as string) || ((data as unknown as Record<string, unknown>)['Subcategoria'] as string) || '',
           consumoMaquina: data.consumoMaquina,
           tarifa: data.tarifa,
           costoMantenimiento: data.costoMantenimiento
@@ -211,6 +211,7 @@ export class AddAssetComponent implements OnInit {
       costoInicial: Number(formValues.costoInicial) || 0,
       categoria: formValues.categoria,
       subcategoria: formValues.subcategoria,
+      subCategoria: formValues.subcategoria,
       
       valorResidual: formValues.tipo === 'Fijo' ? (Number(formValues.valorResidual) || 0) : 0,
       vidaUtil: formValues.tipo === 'Fijo' ? (Number(formValues.vidaUtil) || 0) : 0,

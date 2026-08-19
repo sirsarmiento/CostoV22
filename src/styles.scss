@@ -53,6 +53,100 @@ File: style.css
   font-size: 0.85rem;
 }
 
+/**======================================================================
+=========================================================================
+Template Name: MAntis Angular - Angular Admin Template
+Author: codedThemes
+Support: https://codedthemes.support-hub.io/
+File: style.css
+=========================================================================
+=================================================================================== */
+
+// local fonts & icons
+@import 'scss/fonts/tabler-icons.min.css';
+@import 'scss/fonts/inter/inter.css';
+
+// ng-select default styling theme
+@import '../node_modules/@ng-select/ng-select/themes/default.theme.css';
+
+// main framework
+@import '../node_modules/bootstrap/scss/functions';
+@import '../node_modules/bootstrap/scss/variables';
+@import '../node_modules/bootstrap/scss/variables-dark';
+
+@import 'scss/settings/color-variables';
+@import 'scss/settings/theme-variables';
+@import 'scss/settings/bootstrap-variables';
+
+// bootstrap import
+@import 'scss/bootstrap/bootstrap.scss';
+
+@import '../node_modules/bootstrap/scss/utilities';
+@import '../node_modules/bootstrap/scss/utilities/api';
+
+// main framework
+@import 'scss/themes/generic.scss';
+@import 'scss/themes/general.scss';
+
+@import 'scss/themes/components/components.scss';
+
+// theme
+@import 'scss/themes/layouts/menu/sidebar.scss';
+@import 'scss/themes/layouts/navbar/navbar.scss';
+@import 'scss/themes/layouts/pc-common.scss';
+@import 'scss/themes/layouts/breadcrumb/breadcrumb.scss';
+@import 'scss/themes/layouts/footer/footer.scss';
+
+@import 'scss/themes/preset-style.scss';
+
+// Premium customization layer
+@import 'scss/custom-premium.scss';
+
+/* Aplicar formato ultra-compacto y eficiente a TODAS las tablas del sistema */
+.table {
+  > :not(caption) > * > * {
+    padding: 0.45rem 0.65rem !important;
+    font-size: 0.84rem;
+    line-height: 1.3;
+  }
+
+  thead th {
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    padding-top: 0.55rem !important;
+    padding-bottom: 0.55rem !important;
+  }
+}
+
+/* Limitar texto de nombres largos a 2 líneas para prevenir estiramiento vertical */
+.cell-name-clamp {
+  max-width: 340px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
+}
+
+/* Botones cuadrados de acción en formularios en línea (evita que se estiren horizontalmente) */
+.btn-square-icon,
+.btn-action-add {
+  width: 42px !important;
+  height: 42px !important;
+  min-width: 42px !important;
+  max-width: 42px !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 8px !important;
+}
+
 /* Global scroll for responsive tables */
 .table-responsive {
   max-height: 65vh;
@@ -65,4 +159,34 @@ File: style.css
   position: sticky;
   top: 0;
   z-index: 10;
+}
+
+/* Ensure ng-select dropdown panels float above cards and overlays */
+.ng-dropdown-panel {
+  z-index: 1070 !important;
+}
+
+/* Modern global styling for form-select dropdowns & paginator option items */
+.form-select {
+  border-radius: 8px !important;
+  font-weight: 500;
+  transition: all 0.2s ease-in-out;
+  border: 1px solid #e2e8f0 !important;
+
+  &:hover {
+    border-color: #cbd5e1 !important;
+  }
+
+  &:focus {
+    border-color: #4680ff !important;
+    box-shadow: 0 0 0 0.2rem rgba(70, 128, 255, 0.15) !important;
+  }
+}
+
+/* Custom styling for native option dropdown popup items */
+.form-select option {
+  padding: 8px 12px !important;
+  font-size: 0.875rem !important;
+  background-color: #ffffff !important;
+  color: #1e293b !important;
 }

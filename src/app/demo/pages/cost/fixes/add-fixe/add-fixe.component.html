@@ -102,13 +102,30 @@
               }
             </div>
 
-            <!-- Producto (Sólo si es Directo) -->
+            <!-- Tipo Directo (Proyecto / Servicio / Producto) -->
+            @if (shouldShowTipoDirectoField()) {
+              <div class="col-md-6">
+                <label class="form-label">Tipo Elemento Directo</label>
+                <ng-select 
+                  formControlName="tipoDirecto"
+                  placeholder="Seleccione..."
+                  [clearable]="true"
+                  [searchable]="false"
+                  appendTo="body">
+                  <ng-option value="Producto">Producto</ng-option>
+                  <ng-option value="Proyecto">Proyecto</ng-option>
+                  <ng-option value="Servicio">Servicio</ng-option>
+                </ng-select>
+              </div>
+            }
+
+            <!-- Producto / Servicio Específico -->
             @if (shouldShowProductoField()) {
               <div class="col-md-6">
-                <label class="form-label">Producto</label>
+                <label class="form-label">Elemento Específico</label>
                 <ng-select 
                   formControlName="producto"
-                  placeholder="Seleccione producto..."
+                  placeholder="Seleccione elemento..."
                   [clearable]="true"
                   [searchable]="true"
                   [items]="filteredProducts"

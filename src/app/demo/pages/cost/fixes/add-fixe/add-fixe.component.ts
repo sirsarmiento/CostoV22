@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -20,6 +20,7 @@ export class AddFixeComponent implements OnInit {
   private router = inject(Router);
   private fixeService = inject(FixeService);
   private productService = inject(ProductService);
+  private cdr = inject(ChangeDetectorRef);
 
   form!: FormGroup;
   id: number = 0;
@@ -52,8 +53,6 @@ export class AddFixeComponent implements OnInit {
   get f() { return this.form.controls; }
 
   ngOnInit(): void {
-    this.loadProducts();
-
     // Conceptos dinámicos según el tipo de costo
     this.form.get('tipo')?.valueChanges.subscribe(valor => {
       this.conceptosMostrados = this.opcionesConceptos[valor] || [];
@@ -69,15 +68,22 @@ export class AddFixeComponent implements OnInit {
     if (tipoInicial) {
       this.conceptosMostrados = this.opcionesConceptos[tipoInicial] || [];
     }
+
+    this.loadProducts();
+  }
+
+  shouldShowTipoDirectoField(): boolean {
+    return this.form.get('clasificacion')?.value === 'Directo';
   }
 
   shouldShowProductoField(): boolean {
-    return this.form.get('clasificacion')?.value === 'Directo';
+    return this.form.get('clasificacion')?.value === 'Directo' && !!this.form.get('tipoDirecto')?.value;
   }
 
   onClasificacionChange(clasificacion: string) {
     if (clasificacion !== 'Directo') {
       this.form.get('producto')?.setValue('');
+      this.form.get('tipoDirecto')?.setValue('');
     }
   }
 
@@ -86,9 +92,41 @@ export class AddFixeComponent implements OnInit {
       next: (products) => {
         this.products = products;
         this.filteredProducts = [...this.products];
-        this.setValues(); // Call setValues here after items are loaded
+        
+        this.form.get('tipoDirecto')?.valueChanges.subscribe(() => {
+          this.applyFilters('');
+          if (!this.id || this.id === 0) {
+            this.form.get('producto')?.setValue('');
+          }
+        });
+
+        this.setValues();
       }
     });
+  }
+
+  applyFilters(searchValue: string) {
+    const tipoDirecto = this.form.get('tipoDirecto')?.value;
+    
+    let preFiltered = this.products;
+    if (tipoDirecto) {
+      preFiltered = this.products.filter(p => {
+        const c = p.clasificacion?.toLowerCase().trim() || '';
+        if (tipoDirecto === 'Producto') return c === 'producto' || c === 'productos';
+        if (tipoDirecto === 'Proyecto') return c === 'proyecto' || c === 'proyectos';
+        if (tipoDirecto === 'Servicio') return c === 'servicio' || c === 'servicios';
+        return true;
+      });
+    }
+
+    if (searchValue) {
+      this.filteredProducts = preFiltered.filter(product => 
+        product.nombre.toLowerCase().includes(searchValue.toLowerCase())
+      );
+    } else {
+      this.filteredProducts = preFiltered;
+    }
+    this.cdr.detectChanges();
   }
 
   back() {
@@ -96,25 +134,37 @@ export class AddFixeComponent implements OnInit {
   }
 
   setValues() {
-    // Recuperar datos desde el historial de navegación (Router State)
     const data: Fixe | undefined = history.state.edit_fixe;
     if (data && data.id && data.id > 0) {
-      this.form.get('tipo')?.setValue(data.tipo);
-        this.form.get('precio')?.setValue(data.precio);
-        this.form.get('clasificacion')?.setValue(data.clasificacion);
-        const foundProd = this.filteredProducts.find(p => p.id == data.producto);
-        this.form.get('producto')?.setValue(foundProd ? foundProd.id : null);
-        this.id = data.id;
+      this.form.get('tipo')?.setValue(data.tipo, { emitEvent: false });
+      this.conceptosMostrados = this.opcionesConceptos[data.tipo] || [];
 
-        // Si el concepto cargado no está en las opciones por defecto, se considera "Otro"
-        const opciones = this.opcionesConceptos[data.tipo] || [];
-        if (opciones.includes(data.concepto)) {
-          this.form.get('concepto')?.setValue(data.concepto);
-        } else {
-          this.form.get('concepto')?.setValue('Otro');
-          this.form.get('otroConcepto')?.setValue(data.concepto);
+      if (this.conceptosMostrados.includes(data.concepto)) {
+        this.form.get('concepto')?.setValue(data.concepto, { emitEvent: false });
+      } else {
+        this.form.get('concepto')?.setValue('Otro', { emitEvent: false });
+        this.form.get('otroConcepto')?.setValue(data.concepto, { emitEvent: false });
+      }
+
+      this.form.get('precio')?.setValue(data.precio, { emitEvent: false });
+      this.form.get('clasificacion')?.setValue(data.clasificacion, { emitEvent: false });
+
+      if (data.producto && this.products.length > 0) {
+        const prod = this.products.find(p => p.id === data.producto);
+        if (prod) {
+          const c = prod.clasificacion?.toLowerCase().trim();
+          if (c === 'producto' || c === 'productos') this.form.get('tipoDirecto')?.setValue('Producto', { emitEvent: false });
+          else if (c === 'proyecto' || c === 'proyectos') this.form.get('tipoDirecto')?.setValue('Proyecto', { emitEvent: false });
+          else if (c === 'servicio' || c === 'servicios') this.form.get('tipoDirecto')?.setValue('Servicio', { emitEvent: false });
+          
+          this.applyFilters('');
         }
       }
+
+      this.form.get('producto')?.setValue(data.producto, { emitEvent: false });
+      this.id = data.id;
+      this.cdr.detectChanges();
+    }
   }
 
   myFormValues() {
@@ -124,6 +174,7 @@ export class AddFixeComponent implements OnInit {
       otroConcepto: [''],
       precio: ['', Validators.required],
       clasificacion: ['', Validators.required],
+      tipoDirecto: [''],
       producto: ['']
     });
   }
@@ -186,19 +237,5 @@ export class AddFixeComponent implements OnInit {
         Swal.fire('Error', 'Ha ocurrido un error al guardar el costo.', 'error');
       }
     });
-  }
-
-  filterProducts(event: Event) {
-    const input = event.target as HTMLInputElement;
-    const query = input.value.toLowerCase().trim();
-
-    if (!query) {
-      this.filteredProducts = [...this.products];
-      return;
-    }
-
-    this.filteredProducts = this.products.filter(p => 
-      p.nombre.toLowerCase().includes(query)
-    );
   }
 }

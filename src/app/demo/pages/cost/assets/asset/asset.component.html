@@ -39,30 +39,32 @@
         @if (activeTab === 'fijo') {
           <!-- TABLA: Activos Fijos -->
           <div class="table-responsive mb-3">
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover table-compact align-middle mb-0">
               <thead class="table-light">
                 <tr>
-                  <th class="ps-4" style="cursor: pointer; width: 35%; min-width: 250px;" (click)="sortData('nombre')">Nombre <i class="ti fs-6" [class]="getSortClass('nombre')"></i></th>
+                  <th class="ps-3" style="cursor: pointer; width: 32%; min-width: 220px;" (click)="sortData('nombre')">Nombre <i class="ti fs-6" [class]="getSortClass('nombre')"></i></th>
                   <th style="cursor: pointer;" (click)="sortData('costoInicial')">Costo Inicial <i class="ti fs-6" [class]="getSortClass('costoInicial')"></i></th>
                   <th style="cursor: pointer;" (click)="sortData('valorResidual')">Val. Residual <i class="ti fs-6" [class]="getSortClass('valorResidual')"></i></th>
                   <th style="cursor: pointer;" (click)="sortData('vidaUtil')">Vida Útil <i class="ti fs-6" [class]="getSortClass('vidaUtil')"></i></th>
                   <th style="cursor: pointer;" (click)="sortData('fechaCompra')">Compra <i class="ti fs-6" [class]="getSortClass('fechaCompra')"></i></th>
                   <th>Dep. Mensual</th>
                   <th>Dep. Anual</th>
-                  <th class="text-center pe-4">Acciones</th>
+                  <th class="text-center pe-3">Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 @for (row of paginatedAssets; track row.id) {
                   <tr>
-                    <td class="ps-4">{{ row.nombre }}</td>
+                    <td class="ps-3">
+                      <div class="cell-name-clamp" [attr.title]="row.nombre">{{ row.nombre }}</div>
+                    </td>
                     <td class="fw-bold">{{ row.costoInicial | number: '1.2-2' }}</td>
                     <td>{{ row.valorResidual | number: '1.2-2' }}</td>
                     <td>{{ row.vidaUtil }} años</td>
                     <td>{{ row.fechaCompra | date: 'dd-MM-yyyy' }}</td>
                     <td class="text-danger fw-bold">{{ row.depMensual | number: '1.2-2' }}</td>
                     <td>{{ row.depAnual | number: '1.2-2' }}</td>
-                    <td class="text-center pe-4">
+                    <td class="text-center pe-3">
                       <button class="btn btn-sm btn-icon btn-light-primary" (click)="onEdit(row)" title="Editar">
                         <i class="ti ti-edit fs-5"></i>
                       </button>
@@ -87,28 +89,32 @@
         @if (activeTab === 'circulante') {
           <!-- TABLA: Activos Circulantes -->
           <div class="table-responsive mb-3">
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover table-compact align-middle mb-0">
               <thead class="table-light">
                 <tr>
-                  <th class="ps-4" style="cursor: pointer; width: 35%; min-width: 250px;" (click)="sortData('nombre')">Nombre <i class="ti fs-6" [class]="getSortClass('nombre')"></i></th>
+                  <th class="ps-3" style="cursor: pointer; width: 32%; min-width: 220px;" (click)="sortData('nombre')">Nombre <i class="ti fs-6" [class]="getSortClass('nombre')"></i></th>
                   <th>Descripción</th>
                   <th>Ubicación</th>
                   <th>Cant. / Unidad</th>
                   <th style="cursor: pointer;" (click)="sortData('valorUnitario')">Val. Unitario <i class="ti fs-6" [class]="getSortClass('valorUnitario')"></i></th>
                   <th style="cursor: pointer;" (click)="sortData('costoInicial')">Valor Total <i class="ti fs-6" [class]="getSortClass('costoInicial')"></i></th>
-                  <th class="text-center pe-4">Acciones</th>
+                  <th class="text-center pe-3">Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 @for (row of paginatedAssets; track row.id) {
                   <tr>
-                    <td class="ps-4">{{ row.nombre }}</td>
-                    <td>{{ row.descripcion }}</td>
+                    <td class="ps-3">
+                      <div class="cell-name-clamp" [attr.title]="row.nombre">{{ row.nombre }}</div>
+                    </td>
+                    <td>
+                      <div class="cell-name-clamp" style="max-width: 250px;" [attr.title]="row.descripcion">{{ row.descripcion }}</div>
+                    </td>
                     <td>{{ row.ubicacion }}</td>
                     <td>{{ row.cantidad }} {{ row.unidadMedida }}</td>
                     <td>{{ row.valorUnitario | number: '1.2-2' }}</td>
                     <td class="text-primary fw-bold">{{ row.costoInicial | number: '1.2-2' }}</td>
-                    <td class="text-center pe-4">
+                    <td class="text-center pe-3">
                       <button class="btn btn-sm btn-icon btn-light-primary" (click)="onEdit(row)" title="Editar">
                         <i class="ti ti-edit fs-5"></i>
                       </button>

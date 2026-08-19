@@ -79,23 +79,47 @@ export class ProductComponent implements OnInit {
     });
   }
 
+  activeTab: 'Productos' | 'Proyectos' | 'Servicios' = 'Productos';
+
   onSearchChange() {
     this.currentPage = 1;
     this.applyFilterAndPagination();
   }
 
+  setActiveTab(tab: 'Productos' | 'Proyectos' | 'Servicios') {
+    this.activeTab = tab;
+    this.currentPage = 1;
+    this.applyFilterAndPagination();
+  }
+
   applyFilterAndPagination() {
+    // 1. Filtrar por pestaña activa
+    let temp = this.allProducts.filter(item => {
+      const cls = (item.clasificacion || '').toLowerCase().trim();
+      if (this.activeTab === 'Productos') {
+        return cls === 'producto' || cls === 'productos' || cls === 'producto/servicio' || !cls;
+      }
+      if (this.activeTab === 'Proyectos') {
+        return cls === 'proyecto' || cls === 'proyectos';
+      }
+      if (this.activeTab === 'Servicios') {
+        return cls === 'servicio' || cls === 'servicios';
+      }
+      return true;
+    });
+
+    // 2. Búsqueda
     const query = this.searchTerm.toLowerCase().trim();
-    if (!query) {
-      this.filteredProducts = [...this.allProducts];
-    } else {
-      this.filteredProducts = this.allProducts.filter(p => 
-        p.nombre.toLowerCase().includes(query) || 
-        p.sku.toLowerCase().includes(query) ||
-        p.clasificacion.toLowerCase().includes(query) ||
+    if (query) {
+      temp = temp.filter(p => 
+        (p.nombre && p.nombre.toLowerCase().includes(query)) || 
+        (p.sku && p.sku.toLowerCase().includes(query)) ||
+        (p.clasificacion && p.clasificacion.toLowerCase().includes(query)) ||
         (p.perfilName && p.perfilName.toLowerCase().includes(query))
       );
     }
+
+    this.filteredProducts = temp;
 
     // Ordenamiento
     this.filteredProducts.sort((a: ProductWithProfile, b: ProductWithProfile) => {

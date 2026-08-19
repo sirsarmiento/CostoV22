@@ -2,14 +2,14 @@
   <div class="col-sm-6">
     <nav aria-label="breadcrumb">
       <ol class="breadcrumb mb-0">
-        <li class="breadcrumb-item"><a routerLink="/cost/products">Productos</a></li>
+        <li class="breadcrumb-item"><a routerLink="/cost/products">Catálogo</a></li>
         <li class="breadcrumb-item active" aria-current="page">Listado</li>
       </ol>
     </nav>
   </div>
   <div class="col-sm-6 text-sm-end mt-2 mt-sm-0">
     <button class="btn btn-primary d-inline-flex align-items-center gap-2" (click)="openAdd()">
-      <i class="ti ti-plus-circle fs-5"></i> Agregar Producto
+      <i class="ti ti-plus-circle fs-5"></i> Agregar
     </button>
   </div>
 </div>
@@ -18,13 +18,44 @@
   <div class="col-12">
     <div class="card">
       <div class="card-body">
+        <!-- Tabs de Catálogo -->
+        <ul class="nav nav-tabs mb-4" id="catalogTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button 
+              class="nav-link" 
+              [class.active]="activeTab === 'Productos'" 
+              (click)="setActiveTab('Productos')" 
+              type="button">
+              Productos
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button 
+              class="nav-link" 
+              [class.active]="activeTab === 'Proyectos'" 
+              (click)="setActiveTab('Proyectos')" 
+              type="button">
+              Proyectos
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button 
+              class="nav-link" 
+              [class.active]="activeTab === 'Servicios'" 
+              (click)="setActiveTab('Servicios')" 
+              type="button">
+              Servicios
+            </button>
+          </li>
+        </ul>
+
         <!-- Filtro de Búsqueda -->
         <div class="row mb-3">
           <div class="col-md-4">
             <input 
               type="text" 
               class="form-control" 
-              placeholder="Buscar por nombre, SKU o clasificación..." 
+              placeholder="Buscar..." 
               [(ngModel)]="searchTerm"
               (input)="onSearchChange()">
           </div>
@@ -57,16 +88,19 @@
               @for (row of paginatedProducts; track row.id) {
                 <tr 
                   (click)="selectedRow = selectedRow === row ? null : row"
-                  [class.table-primary]="selectedRow?.id === row.id"
+                  [class.table-primary]="selectedRow && selectedRow.id === row.id"
                   style="cursor: pointer;">
-                  <td>{{ row.nombre }}</td>
-                  <td>{{ row.sku }}</td>
+                  <td>
+                    <div class="cell-name-clamp" [attr.title]="row.nombre">{{ row.nombre }}</div>
+                  </td>
+                  <td>{{ row.sku || 'n/a' }}</td>
                   <td>{{ row.medida }}</td>
                   <td>
                     <span 
                       class="badge" 
-                      [class.bg-light-success]="row.clasificacion === 'Directo'"
-                      [class.bg-light-warning]="row.clasificacion !== 'Directo'">
+                      [class.bg-light-success]="row.clasificacion === 'Proyecto'"
+                      [class.bg-light-info]="row.clasificacion === 'Servicio'"
+                      [class.bg-light-primary]="row.clasificacion === 'Productos' || row.clasificacion === 'Producto'">
                       {{ row.clasificacion }}
                     </span>
                   </td>
@@ -91,7 +125,7 @@
               } @empty {
                 <tr>
                   <td colspan="6" class="text-center py-4 text-muted">
-                    No se encontraron productos que coincidan con la búsqueda.
+                    No se encontraron elementos para esta categoría.
                   </td>
                 </tr>
               }

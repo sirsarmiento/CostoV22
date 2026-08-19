@@ -207,10 +207,10 @@ export class FixeComponent implements OnInit {
         <table class="table table-hover text-start align-middle mb-0" style="font-size: 14px; width: 100%;">
           <thead class="table-light">
             <tr>
-              <th class="py-2">Concepto</th>
-              <th class="py-2">Clasificación</th>
-              <th class="py-2">Precio</th>
-              <th class="text-end py-2">Acciones</th>
+              <th class="py-2 text-nowrap text-uppercase text-muted" style="font-size: 12px;">Concepto</th>
+              <th class="py-2 text-nowrap text-uppercase text-muted" style="font-size: 12px;">Clasificación</th>
+              <th class="py-2 text-nowrap text-uppercase text-muted" style="font-size: 12px;">Precio</th>
+              <th class="text-end py-2 text-nowrap text-uppercase text-muted" style="font-size: 12px;">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -221,9 +221,9 @@ export class FixeComponent implements OnInit {
       htmlContent += `
         <tr>
           <td class="fw-medium">${det.concepto}</td>
-          <td>${det.clasificacion}</td>
-          <td>$${Number(det.precio).toFixed(2)}</td>
-          <td class="text-end">
+          <td class="text-nowrap">${det.clasificacion}</td>
+          <td class="text-nowrap fw-bold">$${Number(det.precio).toFixed(2)}</td>
+          <td class="text-end text-nowrap">
             <div class="d-flex justify-content-end gap-1">
               <button class="btn btn-sm btn-icon btn-light-primary" onclick="window.editVariable(${det.id})" title="Editar">
                 <i class="ti ti-pencil fs-5"></i>
@@ -240,9 +240,9 @@ export class FixeComponent implements OnInit {
     htmlContent += `</tbody></table></div>`;
 
     Swal.fire({
-      title: `<div class="text-start fs-5 text-primary fw-bold">Detalle de Costos<br><span class="fs-6 text-muted fw-normal">${row.productoName}</span></div>`,
+      title: `<div class="text-center fs-4 text-dark fw-normal mb-1">Detalle de Costos<br><span class="fs-6 text-muted fw-normal">${row.productoName}</span></div>`,
       html: htmlContent,
-      width: '600px',
+      width: '650px',
       showCloseButton: true,
       showConfirmButton: false,
       customClass: {

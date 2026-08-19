@@ -126,6 +126,17 @@ export class PricingComponent implements OnInit {
       this.indirectoProrrateadoPrecio = (this.totalFijoIndirecto + this.totalDepreciacionMensual) / numProductos;
       this.costoUnitarioPrecio = this.totalDirectoPrecio + this.indirectoProrrateadoPrecio;
 
+      // Escala de Margen Variable Automática
+      if (this.costoUnitarioPrecio <= 5) {
+        this.margenDeseado = 300;
+      } else if (this.costoUnitarioPrecio <= 20) {
+        this.margenDeseado = 100;
+      } else if (this.costoUnitarioPrecio <= 30) {
+        this.margenDeseado = 50;
+      } else {
+        this.margenDeseado = 30;
+      }
+
       this.calcularPrecioSugerido();
     } else {
       this.totalDirectoPrecio = 0;

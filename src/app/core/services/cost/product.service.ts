@@ -70,4 +70,12 @@ export class ProductService {
     }
     return this.http.delete<void>(`${environment.apiUrl}/product/${id}`);
   }
+
+  addWithReturn(data: Product): Observable<Product> {
+    return this.createProduct(data);
+  }
+
+  updateWithReturn(id: number, data: Product): Observable<Product> {
+    return this.updateProduct(id, data);
+  }
 }

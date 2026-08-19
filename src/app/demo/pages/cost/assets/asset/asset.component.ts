@@ -65,6 +65,8 @@ export class AssetComponent implements OnInit {
             ubicacion: item.ubicacion || '',
             unidadMedida: item.unidadMedida || '',
             presentacion: item.presentacion || '',
+            categoria: item.categoria || ((item as unknown as Record<string, unknown>)['Categoria'] as string) || '',
+            subcategoria: item.subcategoria || ((item as unknown as Record<string, unknown>)['subCategoria'] as string) || ((item as unknown as Record<string, unknown>)['Subcategoria'] as string) || ((item as unknown as Record<string, unknown>)['SUBCATEGORIA'] as string) || '',
             depMensual: 0,
             depAnual: 0
           };

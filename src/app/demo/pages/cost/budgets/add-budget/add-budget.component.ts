@@ -8,6 +8,7 @@ import { Asset } from '../../../../../core/models/Cost/asset';
 import { Product } from '../../../../../core/models/Cost/product';
 import { BudgetService } from '../../../../../core/services/cost/budget.service';
 import { ConfigService } from '../../../../../core/services/cost/config.service';
+import { Machine } from '../../../../../core/models/Cost/config';
 import { ProductService } from '../../../../../core/services/cost/product.service';
 import { AssetService } from '../../../../../core/services/cost/asset.service';
 import { FixeService } from '../../../../../core/services/cost/fixe.service';
@@ -38,9 +39,9 @@ export class AddBudgetComponent implements OnInit {
   minMargenGanancia = 0;
 
   totalFijoIndirecto = 0;
-  totalDepreciacionMensual = 0;
-  costoIndirectoProrrateado = 0;
-  depreciacionProrrateada = 0;
+  capacidadHorasMaquina = 1;
+  tasaCIF = 0;
+  tasaDepreciacionMaquina = 0;
 
   maquinasList: Asset[] = [];
   activosCirculantes: Asset[] = [];
@@ -66,7 +67,21 @@ export class AddBudgetComponent implements OnInit {
     }).subscribe(data => {
       // Configuración global
       if (data.configs.length > 0) {
-        this.actualizarMinMargenGanancia(data.configs[0].margenGanancia || 0);
+        const config = data.configs[0];
+        this.actualizarMinMargenGanancia(config.margenGanancia || 0);
+        
+        let capacidad = 0;
+        if (config.parametros && config.parametros.length > 0) {
+          config.parametros.forEach((machine: Machine) => {
+            const unidad = machine.unidad?.toLowerCase().trim();
+            console.log('Machine parameter:', machine, 'Unidad evaluada:', unidad);
+            if (unidad === 'horas' || unidad === 'hora' || unidad === 'horas máquina' || unidad === 'horas maquina') {
+              capacidad += (Number(machine.horasUso) || 0) * (Number(machine.prodMaxHoras) || 0);
+            }
+          });
+        }
+        console.log('Capacidad calculada:', capacidad);
+        this.capacidadHorasMaquina = capacidad > 0 ? capacidad : 1;
       }
       
       // Productos
@@ -88,14 +103,6 @@ export class AddBudgetComponent implements OnInit {
       
       this.actualizarCostoMaquina();
       this.actualizarMinMargenGanancia();
-      
-      // Costos y Depreciación
-      this.totalDepreciacionMensual = data.assets.reduce((sum, asset) => {
-        const costo = parseFloat(String(asset.costoInicial)) || 0;
-        const residual = parseFloat(String(asset.valorResidual)) || 0;
-        const vida = parseInt(String(asset.vidaUtil)) || 0;
-        return vida > 0 ? sum + ((costo - residual) / vida / 12) : sum;
-      }, 0);
       
       const indirectos = data.fixes.filter(item => item.clasificacion === 'Indirecto');
       this.totalFijoIndirecto = indirectos.reduce((total, item) => total + (Number(item.precio) || 0), 0);
@@ -121,10 +128,16 @@ export class AddBudgetComponent implements OnInit {
         const mantenimiento = Number(machine.costoMantenimiento) || 0;
         const tasa = (consumo / 1000 * tarifa) + mantenimiento;
         this.form.get('costoMaquina')?.setValue(tasa);
+
+        const costoInicial = Number(machine.costoInicial) || 0;
+        const valorResidual = Number(machine.valorResidual) || 0;
+        const vidaUtil = Number(machine.vidaUtil) > 0 ? Number(machine.vidaUtil) : 1;
+        this.tasaDepreciacionMaquina = (costoInicial - valorResidual) / vidaUtil;
         return;
       }
     }
     this.form.get('costoMaquina')?.setValue(0);
+    this.tasaDepreciacionMaquina = 0;
   }
 
   actualizarMinMargenGanancia(minMarginValue?: number) {
@@ -144,9 +157,7 @@ export class AddBudgetComponent implements OnInit {
   }
 
   actualizarIndirectoProrrateado() {
-    const numProductos = this.productosList.length || 1;
-    this.costoIndirectoProrrateado = this.totalFijoIndirecto / numProductos;
-    this.depreciacionProrrateada = this.totalDepreciacionMensual / numProductos;
+    this.tasaCIF = this.totalFijoIndirecto / (this.capacidadHorasMaquina || 1);
   }
 
   addPart() {
@@ -217,8 +228,8 @@ export class AddBudgetComponent implements OnInit {
     const totalTiempoHoras = totalHoras + (totalMinutos / 60);
     const totalCostoMaquina = costoMaquinaRate * totalTiempoHoras;
 
-    const costoIndirectoAsignado = this.costoIndirectoProrrateado;
-    const depreciacionAsignada = this.depreciacionProrrateada;
+    const costoIndirectoAsignado = this.tasaCIF * totalTiempoHoras;
+    const depreciacionAsignada = this.tasaDepreciacionMaquina * totalTiempoHoras;
     const costoTotalBase = totalCostoMaterial + totalCostoMaquina + costoIndirectoAsignado + depreciacionAsignada;
 
     const margen = Number(this.form?.get('margenGanancia')?.value) || 0;
@@ -370,7 +381,7 @@ export class AddBudgetComponent implements OnInit {
       this.materialesFiltrados = [...this.materialesPorCategoria];
       
       this.subcategoriasMaterial = [...new Set(
-        this.materialesPorCategoria.map(a => a.subcategoria).filter(Boolean)
+        this.materialesPorCategoria.map(a => a.subcategoria || ((a as unknown as Record<string, unknown>)['subCategoria'] as string) || ((a as unknown as Record<string, unknown>)['Subcategoria'] as string) || ((a as unknown as Record<string, unknown>)['SUBCATEGORIA'] as string)).filter(Boolean)
       )] as string[];
 
       this.form.get('materialId')?.enable();
@@ -388,7 +399,7 @@ export class AddBudgetComponent implements OnInit {
   onSubcategoriaChange(subcategoria: string) {
     if (subcategoria) {
       this.materialesFiltrados = this.materialesPorCategoria.filter(
-        a => a.subcategoria === subcategoria
+        a => (a.subcategoria || ((a as unknown as Record<string, unknown>)['subCategoria'] as string) || ((a as unknown as Record<string, unknown>)['Subcategoria'] as string) || ((a as unknown as Record<string, unknown>)['SUBCATEGORIA'] as string)) === subcategoria
       );
     } else {
       this.materialesFiltrados = [...this.materialesPorCategoria];

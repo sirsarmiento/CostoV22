@@ -66,4 +66,12 @@ export class FixeService {
     }
     return this.http.delete<void>(`${environment.apiUrl}/costo/${id}`);
   }
+
+  addWithReturn(data: Fixe): Observable<Fixe> {
+    return this.createFixe(data);
+  }
+
+  deleteWithReturn(id: number): Observable<void> {
+    return this.deleteFixe(id);
+  }
 }

@@ -1,1 +1,20 @@
-// This file is intentionally left empty to allow customers to add custom CSS if needed.
+.user-avatar-initials {
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  min-height: 34px !important;
+  border-radius: 50% !important;
+  background-color: #4680ff !important;
+  color: #ffffff !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-weight: 700 !important;
+  font-size: 13px !important;
+  line-height: 1 !important;
+  flex-shrink: 0 !important;
+  box-shadow: 0 2px 5px rgba(70, 128, 255, 0.3) !important;
+  border: 2px solid #ffffff !important;
+  position: relative !important;
+  z-index: 5 !important;
+}

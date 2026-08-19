@@ -5,11 +5,13 @@ import { RouterModule, Routes } from '@angular/router';
 // Project import
 import { AdminLayout } from './theme/layouts/admin-layout/admin-layout.component';
 import { GuestLayoutComponent } from './theme/layouts/guest-layout/guest-layout.component';
+import { authGuard } from './core/guards/auth.guard';
 
 const routes: Routes = [
   {
     path: '',
     component: AdminLayout,
+    canActivate: [authGuard],
     children: [
       {
         path: '',
@@ -105,6 +107,10 @@ const routes: Routes = [
       {
         path: 'budgets/add-budget',
         loadComponent: () => import('./demo/pages/cost/budgets/add-budget/add-budget.component').then((c) => c.AddBudgetComponent)
+      },
+      {
+        path: 'password/change-pass',
+        loadComponent: () => import('./demo/pages/password/change-pass/change-pass.component').then((c) => c.ChangePassComponent)
       }
     ]
   },

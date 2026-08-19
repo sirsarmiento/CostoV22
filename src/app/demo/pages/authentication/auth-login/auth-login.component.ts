@@ -28,8 +28,8 @@ export class AuthLoginComponent implements OnInit {
 
   ngOnInit(): void {
     this.loginForm = this.fb.group({
-      email: ['ssarmiento@gmail.com', [Validators.required, Validators.email]],
-      password: ['Tucson*50*', [Validators.required]]
+      email: ['', [Validators.required, Validators.email]],
+      password: ['', [Validators.required]]
     });
 
     this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/dashboard/default';
@@ -48,14 +48,12 @@ export class AuthLoginComponent implements OnInit {
       const resp = await this.authService.login(email, password);
       if (resp instanceof User) {
         try {
-          await this.userService.getInfoUser(); // No se cual es el uso y me esta dando un error. Comentare y mas adelante de que trata y si es necesario para solucionarlo
-          this.toastr.success('¡Bienvenido!', 'Sesión iniciada');
-          await this.router.navigate([this.returnUrl]);
+          await this.userService.getInfoUser();
         } catch (infoError) {
-          console.error('Error fetching user info:', infoError);
-          // Let the user know the info fetch failed, but keep them logged in or log the error
-          this.toastr.error('Error al obtener los datos del usuario.', 'Error');
+          console.warn('Could not fetch extra user info upon login:', infoError);
         }
+        this.toastr.success('¡Bienvenido!', 'Sesión iniciada');
+        await this.router.navigate([this.returnUrl]);
       } else {
         this.toastr.error(resp || 'Usuario o Contraseña inválidos', 'Error de Autenticación');
       }

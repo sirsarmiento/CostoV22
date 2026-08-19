@@ -99,56 +99,56 @@
   </li>
   -->
   <li class="pc-h-item header-user-profile" ngbDropdown>
-    <a href="javascript:void(0)" class="pc-head-link arrow-none me-0" ngbDropdownToggle>
-      <img src="assets/images/user/avatar-2.jpg" alt="user-image" class="user-avatar me-2" />
-      <span class="f-w-600">{{ firstName }} {{ lastName }}</span>
+    <a href="javascript:void(0)" class="pc-head-link arrow-none me-0 d-inline-flex align-items-center" ngbDropdownToggle>
+      <div class="user-avatar user-avatar-initials me-2">
+        {{ userInitials }}
+      </div>
+      <span class="f-w-600 me-1">{{ userFullName }}</span>
     </a>
     <div class="dropdown-user-profile dropdown-menu-end pc-h-dropdown" ngbDropdownMenu>
       <div class="dropdown-header">
-        <div class="d-flex mb-1">
-          <div class="flex-shrink-0">
-            <img src="assets/images/user/avatar-2.jpg" alt="user-image" class="user-avatar wid-35" />
+        <div class="d-flex align-items-center mb-1">
+          <div class="flex-shrink-0 me-3">
+            <div class="user-avatar user-avatar-initials" style="width: 38px !important; height: 38px !important; font-size: 14px !important;">
+              {{ userInitials }}
+            </div>
           </div>
-          <div class="flex-grow-1 ms-3 text-start">
-            <span>{{ position }}</span>
+          <div class="flex-grow-1 text-start">
+            <h6 class="mb-0 fw-bold text-dark">{{ userFullName }}</h6>
+            <span class="text-muted small">{{ position }}</span>
           </div>
-          <a href="" (click)="onLogout($event)" class="bg-transparent"><i class="d-flex f-20" antIcon theme="outline"
-              title="Cerrar sesión" type="logout"></i></a>
+          <a href="" (click)="onLogout($event)" class="bg-transparent text-secondary ms-2" title="Cerrar sesión">
+            <i class="d-flex f-20" antIcon theme="outline" type="logout"></i>
+          </a>
         </div>
       </div>
       <ul ngbNav #nav="ngbNav" class="drp-tabs nav-fill nav-tabs">
         <li ngbNavItem="1">
           <a ngbNavLink>
             <i antIcon theme="outline" type="user" class="me-2"></i>
-            Profile
+            Perfil
           </a>
           <ng-template ngbNavContent>
             @for (task of profile; track task) {
             <div>
-              <a href="javascript:void(0)" class="dropdown-item">
-                <i class="text-muted" antIcon theme="outline" type="{{ task.icon }}"></i>
+              <a routerLink="/password/change-pass" class="dropdown-item">
+                <i class="text-muted me-2" antIcon theme="outline" type="{{ task.icon }}"></i>
                 <span>{{ task.title }}</span>
               </a>
             </div>
             }
           </ng-template>
         </li>
+        <!-- Tab Setting Comentado
         <li ngbNavItem="2">
           <a ngbNavLink>
             <i class="me-2" antIcon theme="outline" type="setting"></i>
             Setting
           </a>
           <ng-template ngbNavContent>
-            @for (task of setting; track task) {
-            <div>
-              <a href="javascript:void(0)" class="dropdown-item">
-                <i class="text-muted" antIcon theme="outline" type="{{ task.icon }}"></i>
-                <span>{{ task.title }}</span>
-              </a>
-            </div>
-            }
           </ng-template>
         </li>
+        -->
       </ul>
       <div [ngbNavOutlet]="nav"></div>
     </div>

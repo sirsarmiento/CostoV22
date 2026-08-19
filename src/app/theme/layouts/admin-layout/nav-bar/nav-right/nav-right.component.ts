@@ -1,5 +1,4 @@
-// angular import
-import { Component, output, inject, input } from '@angular/core';
+import { Component, OnInit, output, inject, input } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 
 // project import
@@ -29,17 +28,21 @@ import {
   GithubOutline
 } from '@ant-design/icons-angular/icons';
 
+import { AuthService } from 'src/app/core/services/auth.service';
+
 @Component({
   selector: 'app-nav-right',
   imports: [SharedModule, RouterModule],
   templateUrl: './nav-right.component.html',
   styleUrls: ['./nav-right.component.scss']
 })
-export class NavRightComponent {
+export class NavRightComponent implements OnInit {
   firstName: string | undefined;
   lastName: string | undefined;
   position: string | undefined;
   private iconService = inject(IconService);
+  private authService = inject(AuthService);
+  private router = inject(Router);
 
   // public props
   styleSelectorToggle = input<boolean>();
@@ -49,7 +52,7 @@ export class NavRightComponent {
   direction: string = 'ltr';
 
   // constructor
-  constructor(private router: Router) {
+  constructor() {
     this.windowWidth = window.innerWidth;
     this.iconService.addIcon(
       ...[
@@ -77,7 +80,6 @@ export class NavRightComponent {
 
   ngOnInit(): void {
     const userInfo = this.getUserInfoFromLocalStorage();
-    console.log('userInfo', userInfo);
     if (userInfo) {
       this.firstName = userInfo.firstName;
       this.lastName = userInfo.lastName;
@@ -85,33 +87,44 @@ export class NavRightComponent {
     }
   }
 
+  get userInitials(): string {
+    const fn = (this.firstName || '').trim().charAt(0).toUpperCase();
+    const ln = (this.lastName || '').trim().charAt(0).toUpperCase();
+    const init = (fn + ln).trim();
+    return init || 'U';
+  }
+
+  get userFullName(): string {
+    const full = `${this.firstName || ''} ${this.lastName || ''}`.trim();
+    return full || 'Usuario';
+  }
+
   getUserInfoFromLocalStorage(): { firstName: string, lastName: string, position: string } | null {
     try {
       const cusrData = localStorage.getItem('cusr');
-
-      if (!cusrData) {
-        console.warn('No se encontró la clave "cusr" en Local Storage');
-        return null;
+      if (cusrData) {
+        const parsedData = JSON.parse(cusrData);
+        if (parsedData && parsedData.user) {
+          return {
+            firstName: parsedData.user.firstName || '',
+            lastName: parsedData.user.lastName || '',
+            position: parsedData.user.position?.label || parsedData.user.position?.Descripcion || 'Analista'
+          };
+        }
       }
 
-      // Parsear el JSON
-      const parsedData = JSON.parse(cusrData);
-
-      console.log('parsedData', parsedData);
-
-      // Verificar que la estructura sea la esperada
-      if (parsedData && parsedData.user && parsedData.user.firstName && parsedData.user.lastName) {
+      const user = this.authService.currentUser;
+      if (user) {
         return {
-          firstName: parsedData.user.firstName,
-          lastName: parsedData.user.lastName,
-          position: parsedData.user.position?.label || 'Sin posición' // Usa optional chaining y valor por defecto
+          firstName: user.firstName || '',
+          lastName: user.lastName || '',
+          position: user.position?.label || 'Analista'
         };
-      } else {
-        console.warn('Estructura del objeto "cusr" no es la esperada');
-        return null;
       }
+
+      return null;
     } catch (error) {
-      console.error('Error al obtener datos del Local Storage:', error);
+      console.error('Error al obtener datos del usuario:', error);
       return null;
     }
   }
@@ -129,27 +142,12 @@ export class NavRightComponent {
 
   profile = [
     {
-      icon: 'edit',
-      title: 'Edit Profile'
-    },
-    {
-      icon: 'user',
-      title: 'View Profile'
-    },
-    {
-      icon: 'profile',
-      title: 'Social Profile'
-    },
-    {
-      icon: 'wallet',
-      title: 'Billing'
+      icon: 'lock',
+      title: 'Cambiar Contraseña'
     }
-    // {
-    //   icon: 'logout',
-    //   title: 'Logout'
-    // }
   ];
 
+  /* 
   setting = [
     {
       icon: 'question-circle',
@@ -172,4 +170,5 @@ export class NavRightComponent {
       title: 'History'
     }
   ];
+  */
 }

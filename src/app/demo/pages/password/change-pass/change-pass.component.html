@@ -1,0 +1,74 @@
+<div class="row mb-4">
+  <div class="col-12">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a routerLink="/dashboard/default">Usuario</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Cambiar Clave</li>
+      </ol>
+    </nav>
+  </div>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-md-6 col-12">
+    <div class="card">
+      <div class="card-header bg-light">
+        <h6 class="mb-0 text-primary">Cambiar Contraseña</h6>
+      </div>
+      <div class="card-body">
+        <form [formGroup]="form" (ngSubmit)="onSubmit()">
+          <div class="row g-3">
+            
+            <div class="col-12">
+              <label class="form-label">Nueva Contraseña</label>
+              <input 
+                type="password" 
+                class="form-control" 
+                formControlName="password" 
+                placeholder="Ingrese nueva contraseña"
+                [class.is-invalid]="submitted && (f['password'].errors || form.errors?.['passwordsMismatch'])">
+              @if (submitted && f['password'].errors?.['required']) {
+                <div class="invalid-feedback">Ingrese la nueva contraseña</div>
+              }
+              @if (submitted && f['password'].errors?.['minlength']) {
+                <div class="invalid-feedback">La contraseña debe tener al menos 6 caracteres</div>
+              }
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Confirmar Contraseña</label>
+              <input 
+                type="password" 
+                class="form-control" 
+                formControlName="confirmPassword" 
+                placeholder="Confirme la nueva contraseña"
+                [class.is-invalid]="submitted && (f['confirmPassword'].errors || form.errors?.['passwordsMismatch'])">
+              @if (submitted && f['confirmPassword'].errors?.['required']) {
+                <div class="invalid-feedback">Confirme su contraseña</div>
+              }
+              @if (submitted && form.errors?.['passwordsMismatch']) {
+                <div class="invalid-feedback d-block">Las contraseñas no coinciden</div>
+              }
+            </div>
+
+          </div>
+
+          <div class="row mt-4 pt-3 border-top">
+            <div class="col-12 d-flex justify-content-end gap-2">
+              <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-1" type="button" (click)="back()">
+                <i class="ti ti-rotate-clockwise fs-5"></i> Cancelar
+              </button>
+              <button class="btn btn-primary d-inline-flex align-items-center gap-1" type="submit" [disabled]="loading">
+                @if (loading) {
+                  <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Guardando...
+                } @else {
+                  <i class="ti ti-device-floppy fs-5"></i> Guardar
+                }
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

@@ -93,7 +93,7 @@ export const NavigationItems: NavigationItem[] = [
     children: [
       {
         id: 'products',
-        title: 'Productos',
+        title: 'Catálogo',
         type: 'item',
         classes: 'nav-item',
         url: '/products',

@@ -8,4 +8,9 @@ export class Product {
     descripcion!: string;
     perfil!: number;
     periodo?: string;
+    tasaFallo?: number;
+    prepSlicing?: number;
+    postProcesado?: number;
+    margenGanancia?: number;
+    piezasBase?: any[];
 }

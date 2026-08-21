@@ -15,17 +15,27 @@ export class Budget { //Presupuesto
     margenGanancia?: number;
     tiempoPostProcesado?: number;
     activoId?: number;
+    cantidadGlobal?: number;
+    delivery?: number;
+    clienteId?: number;
 }
 
 export class Parts{ //Piezas
     id?: number;
+    tipo?: string;
     nombre?: string;
+    cantidad?: number;
+    assetId?: number;
     materialTipo!: string;
+    materialDisplayName?: string;
     gramos!: number;
+    metros?: number;
     horas!: number;
     minutos!: number;
     precioMaterial?: number;
     tiempoPostProcesado?: number;
+    maquinaId?: number;
+    maquinaNombre?: string;
 }
 
 

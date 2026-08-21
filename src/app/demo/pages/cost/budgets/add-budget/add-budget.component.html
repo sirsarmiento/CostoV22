@@ -26,6 +26,8 @@
                 placeholder="Seleccione..."
                 [clearable]="false"
                 [searchable]="false"
+                appendTo="body"
+                dropdownPosition="bottom"
                 [class.is-invalid]="submitted && f['clasificacion'].errors">
                 <ng-option value="Proyecto">Proyecto</ng-option>
                 <ng-option value="Servicio">Servicio</ng-option>
@@ -36,31 +38,50 @@
               }
             </div>
 
-            @if (f['clasificacion'].value === 'Producto') {
+            @if (f['clasificacion'].value) {
               <div class="col-md-3">
-                <label class="form-label">Seleccione el Producto</label>
+                <label class="form-label">Seleccione {{ f['clasificacion'].value }}</label>
                 <ng-select 
                   formControlName="productoId"
                   placeholder="Seleccione..."
-                  [clearable]="false"
+                  [clearable]="true"
                   [searchable]="true"
+                  appendTo="body"
+                  dropdownPosition="bottom"
                   [class.is-invalid]="submitted && f['productoId'].errors">
-                  @for (prod of productosList; track prod.id) {
+                  @for (prod of filteredItemsList; track prod.id) {
                     <ng-option [value]="prod.id">{{ prod.nombre }}</ng-option>
                   }
                 </ng-select>
                 @if (submitted && f['productoId'].errors?.['required']) {
-                  <div class="invalid-feedback d-block">Seleccione un producto</div>
+                  <div class="invalid-feedback d-block">Seleccione un {{ f['clasificacion'].value.toLowerCase() }}</div>
+                }
+              </div>
+            }
+
+            @if (f['clasificacion'].value !== 'Producto') {
+              <div class="col-md-3">
+                <label class="form-label">Número de Orden</label>
+                <input type="text" class="form-control" formControlName="numero" maxlength="25" placeholder="Ej: ORD-001" [class.is-invalid]="submitted && f['numero'].errors">
+                @if (submitted && f['numero'].errors?.['required']) {
+                  <div class="invalid-feedback">Ingrese el número de la orden</div>
                 }
               </div>
             }
 
             <div class="col-md-3">
-              <label class="form-label">Número de Orden</label>
-              <input type="text" class="form-control" formControlName="numero" maxlength="25" placeholder="Ej: ORD-001" [class.is-invalid]="submitted && f['numero'].errors">
-              @if (submitted && f['numero'].errors?.['required']) {
-                <div class="invalid-feedback">Ingrese el número de la orden</div>
-              }
+              <label class="form-label">Cliente</label>
+              <ng-select 
+                formControlName="clienteId"
+                placeholder="-- Sin cliente --"
+                [clearable]="true"
+                [searchable]="true"
+                appendTo="body"
+                dropdownPosition="bottom">
+                @for (c of clientesList; track c.id) {
+                  <ng-option [value]="c.id">{{ c.nombre }}</ng-option>
+                }
+              </ng-select>
             </div>
 
             <div class="col-md-3">
@@ -70,29 +91,18 @@
                 <div class="invalid-feedback">Seleccione la fecha</div>
               }
             </div>
-          </div>
 
-          <!-- DESCRIPCIÓN Y MÁQUINA -->
-          <div class="row g-3 mb-4 pb-3 border-bottom">
-            <div class="col-md-8">
+            <div class="col-md-3">
+              <label class="form-label">Cantidad Presupuestada</label>
+              <input type="number" min="1" class="form-control" formControlName="cantidadGlobal" placeholder="1">
+            </div>
+
+            <div class="col-md-6">
               <label class="form-label">Descripción</label>
               <input type="text" class="form-control" formControlName="descripcion" placeholder="Descripción detallada del presupuesto..." [class.is-invalid]="submitted && f['descripcion'].errors">
               @if (submitted && f['descripcion'].errors?.['required']) {
                 <div class="invalid-feedback">Ingrese la descripción</div>
               }
-            </div>
-            
-            <div class="col-md-4">
-              <label class="form-label">Seleccionar Máquina</label>
-              <ng-select 
-                formControlName="activoId"
-                placeholder="-- Sin máquina --"
-                [clearable]="true"
-                [searchable]="true">
-                @for (maq of maquinasList; track maq.id) {
-                  <ng-option [value]="maq.id">{{ maq.nombre }}</ng-option>
-                }
-              </ng-select>
             </div>
           </div>
 
@@ -125,37 +135,64 @@
           <!-- FORMULARIO DE AGREGAR PIEZA -->
           <div class="card bg-light border-0 mb-4">
             <div class="card-body py-3">
-              <h6 class="mb-3 text-muted text-sm fw-bold"><i class="ti ti-plus"></i> Agregar Pieza / Componente</h6>
+              <h6 class="mb-3 text-muted text-sm fw-bold"><i class="ti ti-plus"></i> Detalle de Piezas / Componentes</h6>
               
               <div class="row g-2 align-items-end">
                 <div class="col-md-3">
-                  <label class="form-label text-xs mb-1">Nombre Pieza</label>
-                  <input type="text" class="form-control form-control-sm" formControlName="nombre">
-                </div>
-
-                <div class="col-md-2">
-                  <label class="form-label text-xs mb-1">Material</label>
-                  <ng-select 
-                    formControlName="materialTipo"
-                    placeholder="Seleccione..."
-                    [clearable]="false"
-                    [searchable]="true"
-                    class="ng-select-sm">
-                    @for (cat of categoriasMaterial; track cat) {
-                      <ng-option [value]="cat">{{ cat }}</ng-option>
-                    }
+                  <label class="form-label text-xs mb-1">Tipo de Pieza</label>
+                  <ng-select formControlName="piezaTipo" [clearable]="false" [searchable]="false" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
+                    <ng-option value="Del Inventario">Del Inventario</ng-option>
+                    <ng-option value="Fabricada">Fabricada</ng-option>
                   </ng-select>
                 </div>
 
-                @if (f['materialTipo'].value) {
-                  <div class="col-md-2">
+                <div class="col-md-2">
+                  <label class="form-label text-xs mb-1">Cantidad</label>
+                  <input type="number" min="1" class="form-control form-control-sm" formControlName="piezaCantidad">
+                </div>
+
+                @if (f['piezaTipo'].value === 'Del Inventario') {
+                  <div class="col-md-5">
+                    <label class="form-label text-xs mb-1">Activo del Inventario</label>
+                    <ng-select formControlName="piezaInventario" placeholder="Seleccione activo mobiliario..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
+                      @for (asset of assetsMobiliario; track asset.id) {
+                        <ng-option [value]="asset.id">{{ asset.nombre }} (${{ asset.valorUnitario | number:'1.2-2' }})</ng-option>
+                      }
+                    </ng-select>
+                  </div>
+                  <div class="col-auto d-flex align-items-end">
+                    <button class="btn btn-primary btn-square-icon" type="button" (click)="addPart()" title="Agregar Pieza">
+                      <i class="ti ti-plus fs-4"></i>
+                    </button>
+                  </div>
+                } @else {
+                  <div class="col-md-3">
+                    <label class="form-label text-xs mb-1">Nombre Pieza Fabricada</label>
+                    <input type="text" class="form-control form-control-sm" formControlName="piezaFabricada" placeholder="Ej: Pieza 1">
+                  </div>
+
+                  <div class="col-md-3">
+                    <label class="form-label text-xs mb-1">Máquina de Fabricación</label>
+                    <ng-select formControlName="activoId" placeholder="-- Sin máquina --" [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
+                      @for (maq of maquinasList; track maq.id) {
+                        <ng-option [value]="maq.id">{{ maq.nombre }}</ng-option>
+                      }
+                    </ng-select>
+                  </div>
+
+                  <!-- Fila 2 para Pieza Fabricada -->
+                  <div class="col-md-3">
+                    <label class="form-label text-xs mb-1">Categoría Material</label>
+                    <ng-select formControlName="piezaMaterialCategoria" placeholder="Seleccione..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
+                      @for (cat of categoriasMaterial; track cat) {
+                        <ng-option [value]="cat">{{ cat }}</ng-option>
+                      }
+                    </ng-select>
+                  </div>
+
+                  <div class="col-md-3">
                     <label class="form-label text-xs mb-1">Subcategoría</label>
-                    <ng-select 
-                      formControlName="subcategoria"
-                      placeholder="-- Todas --"
-                      [clearable]="true"
-                      [searchable]="true"
-                      class="ng-select-sm">
+                    <ng-select formControlName="piezaMaterialSubcategoria" placeholder="-- Todas --" [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
                       @for (sub of subcategoriasMaterial; track sub) {
                         <ng-option [value]="sub">{{ sub }}</ng-option>
                       }
@@ -163,40 +200,35 @@
                   </div>
 
                   <div class="col-md-3">
-                    <label class="form-label text-xs mb-1">Material (Activo)</label>
-                    <ng-select 
-                      formControlName="materialId"
-                      placeholder="Seleccione..."
-                      [clearable]="false"
-                      [searchable]="true"
-                      class="ng-select-sm">
+                    <label class="form-label text-xs mb-1">Material Insumo</label>
+                    <ng-select formControlName="piezaMaterialId" placeholder="Seleccione..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
                       @for (m of materialesFiltrados; track m.id) {
                         <ng-option [value]="m.id">{{ m.nombre }}</ng-option>
                       }
                     </ng-select>
                   </div>
+
+                  <div class="col-md-1">
+                    <label class="form-label text-xs mb-1">Gramos</label>
+                    <input type="number" class="form-control form-control-sm" formControlName="piezaGramos">
+                  </div>
+
+                  <div class="col-md-1">
+                    <label class="form-label text-xs mb-1">Horas</label>
+                    <input type="number" class="form-control form-control-sm" formControlName="piezaHoras">
+                  </div>
+
+                  <div class="col-md-1">
+                    <label class="form-label text-xs mb-1">Minutos</label>
+                    <input type="number" class="form-control form-control-sm" formControlName="piezaMinutos">
+                  </div>
+
+                  <div class="col-auto d-flex align-items-end">
+                    <button class="btn btn-primary btn-square-icon" type="button" (click)="addPart()" title="Agregar Pieza">
+                      <i class="ti ti-plus fs-4"></i>
+                    </button>
+                  </div>
                 }
-
-                <div class="col-md-1 col-sm-3">
-                  <label class="form-label text-xs mb-1">Gramos</label>
-                  <input type="number" class="form-control form-control-sm" formControlName="gramos">
-                </div>
-
-                <div class="col-md-1 col-sm-3">
-                  <label class="form-label text-xs mb-1">Horas</label>
-                  <input type="number" class="form-control form-control-sm" formControlName="horas">
-                </div>
-
-                <div class="col-md-1 col-sm-3">
-                  <label class="form-label text-xs mb-1">Minutos</label>
-                  <input type="number" class="form-control form-control-sm" formControlName="minutos">
-                </div>
-
-                <div class="col-auto d-flex align-items-end">
-                  <button class="btn btn-primary btn-square-icon" type="button" (click)="addPart()" title="Agregar Pieza">
-                    <i class="ti ti-plus fs-4"></i>
-                  </button>
-                </div>
               </div>
             </div>
           </div>
@@ -207,24 +239,38 @@
               <table class="table table-hover table-sm align-middle mb-0">
                 <thead class="table-light">
                   <tr>
+                    <th>Tipo</th>
+                    <th>Cantidad</th>
                     <th>Nombre</th>
-                    <th>Material</th>
+                    <th>Máquina</th>
+                    <th>Material / Detalle</th>
                     <th>Costo Mat./g</th>
                     <th>Gramos</th>
-                    <th>Horas</th>
-                    <th>Minutos</th>
+                    <th>Tiempo</th>
                     <th class="text-end">Acción</th>
                   </tr>
                 </thead>
                 <tbody>
                   @for (row of piezas; track row.id) {
                     <tr>
+                      <td>
+                        <span class="badge" [class.bg-light-success]="row.tipo === 'Fabricada'" [class.bg-light-info]="row.tipo === 'Del Inventario'">
+                          {{ row.tipo || 'Fabricada' }}
+                        </span>
+                      </td>
+                      <td class="fw-bold">{{ row.cantidad || 1 }}</td>
                       <td class="fw-bold">{{ row.nombre }}</td>
-                      <td>{{ row.materialTipo }}</td>
-                      <td>{{ row.precioMaterial | currency:'USD' }}</td>
-                      <td>{{ row.gramos | number:'1.1-2' }}</td>
-                      <td>{{ row.horas }} h</td>
-                      <td>{{ row.minutos }} m</td>
+                      <td>
+                        @if (row.maquinaNombre) {
+                          <span class="badge bg-light-primary text-primary px-2 py-1"><i class="ti ti-printer me-1"></i>{{ row.maquinaNombre }}</span>
+                        } @else {
+                          <span class="text-muted">-</span>
+                        }
+                      </td>
+                      <td>{{ row.materialDisplayName || row.materialTipo }}</td>
+                      <td>{{ row.precioMaterial ? (row.precioMaterial | currency:'USD') : '-' }}</td>
+                      <td>{{ row.gramos ? (row.gramos | number:'1.1-2') + ' g' : '-' }}</td>
+                      <td>{{ row.horas || 0 }}h : {{ row.minutos || 0 }}m</td>
                       <td class="text-end">
                         <button class="btn btn-sm btn-icon btn-light-danger" type="button" (click)="onDelete(row)" title="Eliminar Pieza">
                           <i class="ti ti-trash"></i>
@@ -270,39 +316,58 @@
                       <span class="fw-bold text-dark">${{ getTotales().depreciacionAsignada | number:'1.2-2' }}</span>
                     </div>
 
-                    <div class="d-flex justify-content-between pt-3 text-md">
-                      <span class="fw-bold text-dark">Costo Total Base:</span>
-                      <span class="fw-bold text-primary fs-5">${{ getTotales().costoTotalBase | number:'1.2-2' }}</span>
+                    @if (getTotales().totalCostoInventario > 0) {
+                      <div class="d-flex justify-content-between py-2 border-bottom">
+                        <span class="text-secondary text-sm">Costo Piezas Inventario:</span>
+                        <span class="fw-bold text-dark">${{ getTotales().totalCostoInventario | number:'1.2-2' }}</span>
+                      </div>
+                    }
+
+                    <div class="d-flex justify-content-between pt-3 pb-3 text-md border-bottom">
+                      <span class="fw-bold text-dark">Costo Unitario Base:</span>
+                      <span class="fw-bold text-primary fs-5">${{ getTotales().costoTotalUnitarioBase | number:'1.2-2' }}</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between pt-3 align-items-center">
+                      <span class="fw-bold text-dark text-sm">Costo de Delivery ($):</span>
+                      <input type="number" min="0" step="0.01" class="form-control form-control-sm text-end fw-bold" style="width: 120px;" formControlName="delivery">
                     </div>
                   </div>
                 </div>
               </div>
 
-              <!-- Tarjeta de Precio Sugerido Gradient -->
+              <!-- Tarjeta de Precio Sugerido y Total Final Gradient -->
               <div class="col-lg-5">
                 <div class="card bg-primary text-white border-0 h-100 position-relative overflow-hidden" style="border-radius: 12px;">
                   <div class="card-body d-flex flex-column justify-content-between p-4" style="z-index: 2; background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);">
                     <div>
-                      <div class="d-flex justify-content-between align-items-center mb-3">
-                        <span class="text-uppercase text-white-50 fw-bold text-xs" style="letter-spacing: 1px;">PRECIO SUGERIDO</span>
+                      <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-uppercase text-white-50 fw-bold text-xs" style="letter-spacing: 1px;">PRECIO SUGERIDO UNITARIO</span>
                         <i class="ti ti-wallet fs-4 opacity-75"></i>
                       </div>
-                      <h2 class="fw-bold text-white mb-2 fs-2">
-                        ${{ getTotales().precioSugerido | number:'1.2-2' }}
-                      </h2>
-                      <p class="text-white-50 text-xs mb-0">
-                        Calculado aplicando un <strong>{{ form.get('margenGanancia')?.value }}%</strong> de margen sobre el costo total base.
-                      </p>
+                      <h3 class="fw-bold text-white mb-3">
+                        ${{ getTotales().precioSugeridoUnitario | number:'1.2-2' }}
+                      </h3>
+                      
+                      <div class="pt-2 border-top" style="border-top-color: rgba(255, 255, 255, 0.2) !important;">
+                        <span class="text-uppercase text-white-50 fw-bold text-xs" style="letter-spacing: 1px;">PRESUPUESTO TOTAL FINAL</span>
+                        <h2 class="fw-bold text-white mb-1 fs-2">
+                          ${{ getTotales().costoTotalFinal | number:'1.2-2' }}
+                        </h2>
+                        <p class="text-white-50 text-xs mb-0">
+                          (Unitario × {{ getTotales().cantidadGlobal }} unidades) + ${{ getTotales().delivery | number:'1.2-2' }} delivery
+                        </p>
+                      </div>
                     </div>
 
                     <div class="mt-4 pt-3 text-white-50 text-xs border-top" style="border-top-color: rgba(255, 255, 255, 0.15) !important;">
                       <div class="d-flex justify-content-between mb-1">
-                        <span>Costo Base:</span>
-                        <span class="text-white">${{ getTotales().costoTotalBase | number:'1.2-2' }}</span>
+                        <span>Margen Aplicado:</span>
+                        <span class="text-white fw-bold">{{ form.get('margenGanancia')?.value }}%</span>
                       </div>
                       <div class="d-flex justify-content-between">
                         <span>Ganancia Estimada:</span>
-                        <span class="text-white">${{ (getTotales().precioSugerido - getTotales().costoTotalBase) | number:'1.2-2' }}</span>
+                        <span class="text-white fw-bold">${{ ((getTotales().precioSugeridoUnitario - getTotales().costoTotalUnitarioBase) * getTotales().cantidadGlobal) | number:'1.2-2' }}</span>
                       </div>
                     </div>
                   </div>

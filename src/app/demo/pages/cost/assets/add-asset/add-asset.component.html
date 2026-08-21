@@ -84,7 +84,7 @@
                   }
 
                   <div class="col-md-4">
-                    <label class="form-label">Costo Inicial</label>
+                    <label class="form-label">Costo Inicial (Unitario)</label>
                     <input type="number" step="0.01" class="form-control" formControlName="costoInicial">
                   </div>
 
@@ -94,9 +94,14 @@
                   </div>
 
                   <div class="col-md-4">
-                    <label class="form-label">Vida Útil (Horas)</label>
+                    <label class="form-label">Cantidad</label>
+                    <input type="number" min="1" class="form-control" formControlName="cantidad" placeholder="1">
+                  </div>
+
+                  <div class="col-md-4">
+                    <label class="form-label">Vida Útil (Años)</label>
                     <input type="number" class="form-control" formControlName="vidaUtil">
-                    <div class="form-text text-muted">Ej: 5000 a 10000 horas para impresoras 3D FDM</div>
+                    <div class="form-text text-muted">Ej: 5 años para equipos y 10 para mobiliario</div>
                   </div>
 
                   <div class="col-md-4">

@@ -24,6 +24,10 @@
     "target": "es2022",
     "module": "es2020",
     "useDefineForClassFields": false,
+    "types": [
+      "jasmine",
+      "node"
+    ],
     "lib": [
       "es2022",
       "dom"

@@ -97,8 +97,8 @@ export class AddAssetComponent implements OnInit {
       consumoMaquina: [''],
       tarifa: [''],
       costoMantenimiento: [''],
-      // Campos de Circulantes
-      cantidad: [''],
+      // Campos de Circulantes / Comunes
+      cantidad: [1, [Validators.required, Validators.min(1)]],
       unidadMedida: [''],
       presentacion: [''],
       descripcion: [''],
@@ -123,13 +123,13 @@ export class AddAssetComponent implements OnInit {
   }
 
   private actualizarValidaciones(tipo: string) {
-    const camposFijos = ['valorResidual', 'vidaUtil', 'fechaCompra'];
+    const camposFijos = ['valorResidual', 'vidaUtil', 'fechaCompra', 'cantidad'];
     const camposCirculantes = ['cantidad', 'valorUnitario', 'ubicacion'];
     const camposEquipo = ['consumoMaquina', 'tarifa', 'costoMantenimiento'];
 
     if (tipo === 'Fijo') {
       this.setValidators(camposFijos, [Validators.required]);
-      this.setValidators(camposCirculantes, []);
+      this.setValidators(['valorUnitario', 'ubicacion'], []);
       this.form.get('costoInicial')?.enable();
 
       const categoria = this.form.get('categoria')?.value;
@@ -221,7 +221,7 @@ export class AddAssetComponent implements OnInit {
       tarifa: (formValues.tipo === 'Fijo' && formValues.categoria === 'Equipo') ? (Number(formValues.tarifa) || 0) : 0,
       costoMantenimiento: (formValues.tipo === 'Fijo' && formValues.categoria === 'Equipo') ? (Number(formValues.costoMantenimiento) || 0) : 0,
 
-      cantidad: formValues.tipo === 'Circulante' ? (Number(formValues.cantidad) || 0) : 0,
+      cantidad: Number(formValues.cantidad) || 1,
       valorUnitario: formValues.tipo === 'Circulante' ? (Number(formValues.valorUnitario) || 0) : 0,
       unidadMedida: formValues.tipo === 'Circulante' ? formValues.unidadMedida : '',
       presentacion: formValues.tipo === 'Circulante' ? formValues.presentacion : '',

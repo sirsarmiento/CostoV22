@@ -42,8 +42,10 @@
             <table class="table table-hover table-compact align-middle mb-0">
               <thead class="table-light">
                 <tr>
-                  <th class="ps-3" style="cursor: pointer; width: 32%; min-width: 220px;" (click)="sortData('nombre')">Nombre <i class="ti fs-6" [class]="getSortClass('nombre')"></i></th>
+                  <th class="ps-3" style="cursor: pointer; min-width: 180px;" (click)="sortData('nombre')">Nombre <i class="ti fs-6" [class]="getSortClass('nombre')"></i></th>
+                  <th style="cursor: pointer;" (click)="sortData('cantidad')">Cant. <i class="ti fs-6" [class]="getSortClass('cantidad')"></i></th>
                   <th style="cursor: pointer;" (click)="sortData('costoInicial')">Costo Inicial <i class="ti fs-6" [class]="getSortClass('costoInicial')"></i></th>
+                  <th>Costo Total</th>
                   <th style="cursor: pointer;" (click)="sortData('valorResidual')">Val. Residual <i class="ti fs-6" [class]="getSortClass('valorResidual')"></i></th>
                   <th style="cursor: pointer;" (click)="sortData('vidaUtil')">Vida Útil <i class="ti fs-6" [class]="getSortClass('vidaUtil')"></i></th>
                   <th style="cursor: pointer;" (click)="sortData('fechaCompra')">Compra <i class="ti fs-6" [class]="getSortClass('fechaCompra')"></i></th>
@@ -58,7 +60,9 @@
                     <td class="ps-3">
                       <div class="cell-name-clamp" [attr.title]="row.nombre">{{ row.nombre }}</div>
                     </td>
+                    <td class="fw-bold">{{ row.cantidad || 1 }}</td>
                     <td class="fw-bold">{{ row.costoInicial | number: '1.2-2' }}</td>
+                    <td class="fw-bold text-primary">{{ ((row.costoInicial || 0) * (row.cantidad || 1)) | number: '1.2-2' }}</td>
                     <td>{{ row.valorResidual | number: '1.2-2' }}</td>
                     <td>{{ row.vidaUtil }} años</td>
                     <td>{{ row.fechaCompra | date: 'dd-MM-yyyy' }}</td>
@@ -71,7 +75,7 @@
                     </td>
                   </tr>
                 } @empty {
-                  <tr><td colspan="8" class="text-center py-4 text-muted">No se encontraron activos fijos.</td></tr>
+                  <tr><td colspan="10" class="text-center py-4 text-muted">No se encontraron activos fijos.</td></tr>
                 }
               </tbody>
             </table>
@@ -92,7 +96,8 @@
             <table class="table table-hover table-compact align-middle mb-0">
               <thead class="table-light">
                 <tr>
-                  <th class="ps-3" style="cursor: pointer; width: 32%; min-width: 220px;" (click)="sortData('nombre')">Nombre <i class="ti fs-6" [class]="getSortClass('nombre')"></i></th>
+                  <th class="ps-3" style="cursor: pointer; min-width: 180px;" (click)="sortData('nombre')">Nombre <i class="ti fs-6" [class]="getSortClass('nombre')"></i></th>
+                  <th style="cursor: pointer;" (click)="sortData('categoria')">Categoría <i class="ti fs-6" [class]="getSortClass('categoria')"></i></th>
                   <th>Descripción</th>
                   <th>Ubicación</th>
                   <th>Cant. / Unidad</th>
@@ -108,6 +113,9 @@
                       <div class="cell-name-clamp" [attr.title]="row.nombre">{{ row.nombre }}</div>
                     </td>
                     <td>
+                      <span class="badge bg-light-primary text-primary px-2 py-1">{{ row.categoria || 'Sin cat.' }}</span>
+                    </td>
+                    <td>
                       <div class="cell-name-clamp" style="max-width: 250px;" [attr.title]="row.descripcion">{{ row.descripcion }}</div>
                     </td>
                     <td>{{ row.ubicacion }}</td>
@@ -121,7 +129,7 @@
                     </td>
                   </tr>
                 } @empty {
-                  <tr><td colspan="7" class="text-center py-4 text-muted">No se encontraron activos circulantes.</td></tr>
+                  <tr><td colspan="8" class="text-center py-4 text-muted">No se encontraron activos circulantes.</td></tr>
                 }
               </tbody>
             </table>

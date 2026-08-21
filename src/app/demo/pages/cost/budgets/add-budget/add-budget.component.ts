@@ -52,11 +52,28 @@ export class AddBudgetComponent implements OnInit {
   categoriasMaterial: string[] = [];
   subcategoriasMaterial: string[] = [];
 
+  assetsMobiliario: Asset[] = [];
+  clientesList: { id: number; nombre: string }[] = [
+    { id: 1, nombre: 'Empresa Alpha S.A.' },
+    { id: 2, nombre: 'Tecnologías Beta' },
+    { id: 3, nombre: 'Industrias Gamma' },
+    { id: 4, nombre: 'Cliente Particular 1' }
+  ];
+
   constructor() {
     this.myFormValues();
   }
 
   get f() { return this.form.controls; }
+
+  get filteredItemsList() {
+    const clasif = this.form?.get('clasificacion')?.value;
+    if (!clasif) return [];
+    if (clasif === 'Producto') {
+      return this.productosList.filter(p => p.clasificacion === 'Productos' || p.clasificacion === 'Producto');
+    }
+    return this.productosList.filter(p => p.clasificacion === clasif);
+  }
 
   ngOnInit() {
     forkJoin({
@@ -73,28 +90,30 @@ export class AddBudgetComponent implements OnInit {
         let capacidad = 0;
         if (config.parametros && config.parametros.length > 0) {
           config.parametros.forEach((machine: Machine) => {
-            const unidad = machine.unidad?.toLowerCase().trim();
-            console.log('Machine parameter:', machine, 'Unidad evaluada:', unidad);
-            if (unidad === 'horas' || unidad === 'hora' || unidad === 'horas máquina' || unidad === 'horas maquina') {
+            const unidad = machine.unidad?.toLowerCase().trim() || '';
+            if (unidad.includes('hora') || unidad.includes('hs') || unidad === '') {
               capacidad += (Number(machine.horasUso) || 0) * (Number(machine.prodMaxHoras) || 0);
             }
           });
         }
-        console.log('Capacidad calculada:', capacidad);
-        this.capacidadHorasMaquina = capacidad > 0 ? capacidad : 1;
+        // Si no hay capacidad parametrizada en la empresa, usar 160 horas/mes (mes estándar) en lugar de 1 hora
+        this.capacidadHorasMaquina = capacidad > 0 ? capacidad : 160;
       }
       
       // Productos
       this.productosList = data.products;
       
-      // Activos (Máquinas y Circulantes)
+      // Activos (Máquinas, Mobiliario y Circulantes)
       this.maquinasList = data.assets.filter(asset => 
         asset.tipo?.toLowerCase().trim() === 'fijo' && 
-        asset.categoria?.toLowerCase().trim() === 'maquinaria'
+        asset.categoria?.toLowerCase().trim() === 'equipo'
+      );
+      this.assetsMobiliario = data.assets.filter(asset => 
+        asset.categoria?.toLowerCase().trim() === 'mobiliario'
       );
       this.activosCirculantes = data.assets.filter(asset => 
-        asset.tipo?.toLowerCase().trim() === 'herramienta' || 
         asset.tipo?.toLowerCase().trim() === 'circulante' ||
+        asset.tipo?.toLowerCase().trim() === 'herramienta' ||
         asset.tipo === ''
       );
       this.categoriasMaterial = [...new Set(
@@ -109,7 +128,6 @@ export class AddBudgetComponent implements OnInit {
       
       this.actualizarIndirectoProrrateado();
       
-      // Inicializar formulario con datos de edición si existen
       this.setValues();
     });
   }
@@ -161,53 +179,81 @@ export class AddBudgetComponent implements OnInit {
   }
 
   addPart() {
-    const requiredFields = [
-      { field: this.f['nombre'], message: 'el nombre de la pieza' },
-      { field: this.f['materialTipo'], message: 'el material' },
-      { field: this.form.get('materialId'), message: 'el material (activo circulante)' },
-      { field: this.f['precioMaterial'], message: 'el costo de material por gramo' },
-      { field: this.f['gramos'], message: 'los gramos' },
-      { field: this.f['horas'], message: 'las horas' },
-      { field: this.f['minutos'], message: 'los minutos' }
-    ];
+    let nombre: string;
+    const cantidad = Number(this.form.get('piezaCantidad')?.value) || 1;
+    let assetId: number | null;
+    let gramos = 0;
+    let horas = 0;
+    let minutos = 0;
+    let precioMaterial = 0;
+    let materialDisplayName = '';
+    const tipo = this.form.get('piezaTipo')?.value || 'Del Inventario';
 
-    for (const { field, message } of requiredFields) {
-      if (!field || field.value === null || field.value === undefined || field.value === '' || field.value.toString().trim() === '') {
-        Swal.fire('Por Favor', `Debe agregar ${message}`, 'info');
+    let maquinaId: number | undefined = undefined;
+    let maquinaNombre: string | undefined = undefined;
+
+    if (tipo === 'Del Inventario') {
+      const asset = this.form.get('piezaInventario')?.value;
+      if (!asset) {
+        Swal.fire('Por Favor', 'Debe seleccionar un activo del inventario', 'info');
+        return;
+      }
+      nombre = this.assetsMobiliario.find(a => a.id == asset)?.nombre || 'Activo';
+      assetId = Number(asset);
+    } else {
+      nombre = this.form.get('piezaFabricada')?.value;
+      gramos = Number(this.form.get('piezaGramos')?.value) || 0;
+      horas = Number(this.form.get('piezaHoras')?.value) || 0;
+      minutos = Number(this.form.get('piezaMinutos')?.value) || 0;
+      
+      const maqVal = this.form.get('activoId')?.value;
+      if (maqVal) {
+        maquinaId = Number(maqVal);
+        maquinaNombre = this.maquinasList.find(m => m.id == maqVal)?.nombre;
+      }
+
+      const matId = this.form.get('piezaMaterialId')?.value;
+      if (!matId) {
+        Swal.fire('Por Favor', 'Debe seleccionar un material para la pieza fabricada', 'info');
+        return;
+      }
+      assetId = Number(matId);
+      precioMaterial = Number(this.form.get('piezaPrecioMaterial')?.value) || 0;
+      
+      const assetCirc = this.activosCirculantes.find(a => a.id == matId);
+      if (assetCirc) {
+        materialDisplayName = assetCirc.nombre;
+      }
+
+      if (!nombre) {
+        Swal.fire('Por Favor', 'Debe agregar el nombre de la pieza', 'info');
+        return;
+      }
+      if (gramos < 0) {
+        Swal.fire('Por Favor', 'Debe agregar los gramos válidos', 'info');
         return;
       }
     }
-    
-    const nombre = this.f['nombre'].value.toString().trim();
-    const exists = this.piezas.some(part => (part.nombre || '').toLowerCase() === nombre.toLowerCase());
 
-    if (exists) {
-      Swal.fire('', 'Esta pieza ya fue agregada', 'info');
+    if (!cantidad || cantidad <= 0) {
+      Swal.fire('Por Favor', 'Debe ingresar una cantidad válida', 'info');
       return;
     }
 
-    this.onAddPart();
-  }
-
-  onAddPart() {
-    const materialId = this.form.get('materialId')?.value;
-    let materialDisplayName = this.f['materialTipo'].value;
-    
-    if (materialId) {
-      const asset = this.activosCirculantes.find(a => a.id == materialId);
-      if (asset) {
-        materialDisplayName = asset.nombre;
-      }
-    }
-
-    const newParts = {
+    const newParts: Parts = {
       id: this.generateUniqueId(),
-      nombre: this.f['nombre'].value.toString().trim().toUpperCase(),
-      materialTipo: materialDisplayName,
-      precioMaterial: Number(this.f['precioMaterial'].value) || 0,
-      gramos: Number(this.f['gramos'].value) || 0,
-      horas: Number(this.f['horas'].value) || 0,
-      minutos: Number(this.f['minutos'].value) || 0
+      tipo: tipo,
+      nombre: nombre.toUpperCase(),
+      cantidad: cantidad,
+      assetId: assetId || undefined,
+      materialTipo: materialDisplayName || 'Sin material',
+      materialDisplayName: materialDisplayName,
+      precioMaterial: precioMaterial,
+      gramos: gramos,
+      horas: horas,
+      minutos: minutos,
+      maquinaId: maquinaId,
+      maquinaNombre: maquinaNombre
     };
 
     this.piezaCounter++;
@@ -215,28 +261,87 @@ export class AddBudgetComponent implements OnInit {
     this.clearForm();
   }
 
-  getTotales() {
-    const totalGramos = this.piezas.reduce((sum, pieza) => sum + (+pieza.gramos || 0), 0);
-    const totalHoras = this.piezas.reduce((sum, pieza) => sum + (+pieza.horas || 0), 0);
-    const totalMinutos = this.piezas.reduce((sum, pieza) => sum + (+pieza.minutos || 0), 0);
+  autoFillFromProduct(productId: number) {
+    const product = this.productosList.find(p => p.id == productId);
+    if (product) {
+      this.form.patchValue({
+        descripcion: product.descripcion || product.nombre,
+        tasaFalloGlobal: product.tasaFallo || 0,
+        tiempoSetup: product.prepSlicing || 0,
+        tiempoPostProcesado: product.postProcesado || 0,
+        margenGanancia: product.margenGanancia || this.minMargenGanancia
+      });
 
-    const tasaFallo = Number(this.form?.get('tasaFalloGlobal')?.value) || 0;
-    const rawMaterialCost = this.piezas.reduce((sum, pieza) => sum + ((+pieza.gramos || 0) * (Number(pieza.precioMaterial || 0))), 0);
-    const totalCostoMaterial = rawMaterialCost * (1 + (tasaFallo / 100));
+      if (product.piezasBase && Array.isArray(product.piezasBase) && product.piezasBase.length > 0) {
+        this.piezas = product.piezasBase.map((pb: Record<string, unknown>, index: number) => {
+          return {
+            id: index + 1,
+            tipo: (pb['tipo'] as string) || 'Fabricada',
+            nombre: (pb['nombre'] as string) || `PIEZA ${index + 1}`,
+            cantidad: Number(pb['cantidad']) || 1,
+            assetId: Number(pb['assetId']) || undefined,
+            materialTipo: (pb['materialDisplayName'] as string) || 'Sin material',
+            materialDisplayName: (pb['materialDisplayName'] as string) || '',
+            precioMaterial: Number(pb['precioMaterial']) || 0,
+            gramos: Number(pb['gramos']) || 0,
+            horas: Number(pb['horas']) || 0,
+            minutos: Number(pb['minutos']) || 0,
+            maquinaId: Number(pb['maquinaId']) || undefined,
+            maquinaNombre: (pb['maquinaNombre'] as string) || (pb['maquina'] as string) || undefined
+          };
+        });
+        this.piezaCounter = this.piezas.length + 1;
+      }
+    }
+  }
+
+  getTotales() {
+    let rawMaterialCost = 0;
+    let totalCostoInventario = 0;
+    let totalTiempoHoras = 0;
 
     const costoMaquinaRate = Number(this.form?.get('costoMaquina')?.value) || 0;
-    const totalTiempoHoras = totalHoras + (totalMinutos / 60);
+
+    this.piezas.forEach(pieza => {
+      const cant = Number(pieza.cantidad) || 1;
+      if (pieza.tipo === 'Del Inventario') {
+        const asset = this.assetsMobiliario.find(a => a.id == pieza.assetId);
+        if (asset) {
+          totalCostoInventario += (Number(asset.valorUnitario) || 0) * cant;
+        }
+      } else {
+        rawMaterialCost += ((Number(pieza.gramos) || 0) * (Number(pieza.precioMaterial) || 0)) * cant;
+        const tiempoPieza = (Number(pieza.horas) || 0) + ((Number(pieza.minutos) || 0) / 60);
+        totalTiempoHoras += (tiempoPieza * cant);
+      }
+    });
+
+    const tasaFallo = Number(this.form?.get('tasaFalloGlobal')?.value) || 0;
+    const totalCostoMaterial = rawMaterialCost * (1 + (tasaFallo / 100));
+
+    // Incluir tiempo extra de setup y post-procesado al tiempo de máquina
+    const tiempoExtraHoras = ((Number(this.form?.get('tiempoSetup')?.value) || 0) + (Number(this.form?.get('tiempoPostProcesado')?.value) || 0)) / 60;
+    totalTiempoHoras += tiempoExtraHoras;
+
     const totalCostoMaquina = costoMaquinaRate * totalTiempoHoras;
 
     const costoIndirectoAsignado = this.tasaCIF * totalTiempoHoras;
     const depreciacionAsignada = this.tasaDepreciacionMaquina * totalTiempoHoras;
-    const costoTotalBase = totalCostoMaterial + totalCostoMaquina + costoIndirectoAsignado + depreciacionAsignada;
+    const costoTotalUnitarioBase = totalCostoMaterial + totalCostoMaquina + costoIndirectoAsignado + depreciacionAsignada + totalCostoInventario;
 
     const margen = Number(this.form?.get('margenGanancia')?.value) || 0;
     const factorGanancia = margen < 1 ? margen : margen / 100;
-    const precioSugerido = factorGanancia >= 1
-      ? costoTotalBase / 0.0001
-      : costoTotalBase / (1 - factorGanancia);
+    const precioSugeridoUnitario = factorGanancia >= 1
+      ? costoTotalUnitarioBase / 0.0001
+      : costoTotalUnitarioBase / (1 - factorGanancia);
+
+    const cantidadGlobal = Number(this.form?.get('cantidadGlobal')?.value) || 1;
+    const delivery = Number(this.form?.get('delivery')?.value) || 0;
+    const costoTotalFinal = (precioSugeridoUnitario * cantidadGlobal) + delivery;
+
+    const totalGramos = this.piezas.reduce((sum, pieza) => sum + ((Number(pieza.gramos) || 0) * (Number(pieza.cantidad) || 1)), 0);
+    const totalHoras = Math.floor(totalTiempoHoras);
+    const totalMinutos = Math.round((totalTiempoHoras - totalHoras) * 60);
 
     return {
       totalGramos,
@@ -246,8 +351,12 @@ export class AddBudgetComponent implements OnInit {
       totalCostoMaquina,
       costoIndirectoAsignado,
       depreciacionAsignada,
-      costoTotalBase,
-      precioSugerido
+      totalCostoInventario,
+      costoTotalUnitarioBase,
+      precioSugeridoUnitario,
+      cantidadGlobal,
+      delivery,
+      costoTotalFinal
     };
   }
 
@@ -259,14 +368,20 @@ export class AddBudgetComponent implements OnInit {
 
   clearForm() {
     this.f['nombre'].setValue(`PIEZA ${this.piezaCounter}`);
-    this.f['materialTipo'].setValue('');
-    this.form.get('subcategoria')?.setValue('');
-    this.form.get('materialId')?.setValue(null);
-    this.form.get('materialId')?.disable();
-    this.f['precioMaterial'].setValue('');
-    this.f['gramos'].setValue('');
-    this.f['horas'].setValue('');
-    this.f['minutos'].setValue('');
+    this.form.patchValue({
+      piezaTipo: 'Del Inventario',
+      piezaInventario: '',
+      piezaFabricada: '',
+      piezaCantidad: 1,
+      piezaGramos: '',
+      piezaHoras: '',
+      piezaMinutos: '',
+      piezaMaterialCategoria: '',
+      piezaMaterialSubcategoria: '',
+      piezaMaterialId: null,
+      piezaPrecioMaterial: ''
+    });
+    this.form.get('piezaMaterialId')?.disable();
   }
 
   onDelete(row: Parts) {
@@ -285,35 +400,38 @@ export class AddBudgetComponent implements OnInit {
   }
 
   setValues() {
-    // Recuperar datos desde el historial de navegación (Router State)
     const data: Budget | undefined = history.state.edit_budget;
     if (data && data.id && data.id > 0) {
-        let dateStr = '';
-        if (data.fecha) {
-          const rawDate = new Date(data.fecha);
-          if (!isNaN(rawDate.getTime())) {
-            dateStr = rawDate.toISOString().substring(0, 10);
-          }
+      let dateStr = '';
+      if (data.fecha) {
+        const rawDate = new Date(data.fecha);
+        if (!isNaN(rawDate.getTime())) {
+          dateStr = rawDate.toISOString().substring(0, 10);
         }
-
-        this.form.patchValue({
-          clasificacion: data.clasificacion,
-          descripcion: data.descripcion,
-          numero: data.numero,
-          fecha: dateStr,
-          activoId: data.activoId,
-          tasaFalloGlobal: data.tasaFalloGlobal || 0,
-          tiempoSetup: data.tiempoSetup || 0,
-          tiempoPostProcesado: data.tiempoPostProcesado || 0,
-          margenGanancia: data.margenGanancia !== undefined ? data.margenGanancia : this.minMargenGanancia
-        });
-
-        this.id = data.id;
-        this.piezas = data.piezas || [];
-        this.f['nombre'].setValue(`PIEZA ${this.piezas.length + 1}`);
-        this.actualizarCostoMaquina();
-        this.actualizarMinMargenGanancia();
       }
+
+      this.form.patchValue({
+        clasificacion: data.clasificacion,
+        productoId: data.productoId,
+        descripcion: data.descripcion,
+        numero: data.numero,
+        fecha: dateStr,
+        activoId: data.activoId,
+        cantidadGlobal: data.cantidadGlobal || 1,
+        delivery: data.delivery || 0,
+        clienteId: data.clienteId || null,
+        tasaFalloGlobal: data.tasaFalloGlobal || 0,
+        tiempoSetup: data.tiempoSetup || 0,
+        tiempoPostProcesado: data.tiempoPostProcesado || 0,
+        margenGanancia: data.margenGanancia !== undefined ? data.margenGanancia : this.minMargenGanancia
+      });
+
+      this.id = data.id;
+      this.piezas = data.piezas || [];
+      this.f['nombre'].setValue(`PIEZA ${this.piezas.length + 1}`);
+      this.actualizarCostoMaquina();
+      this.actualizarMinMargenGanancia();
+    }
   }
 
   myFormValues() {
@@ -321,17 +439,26 @@ export class AddBudgetComponent implements OnInit {
       clasificacion: ['', Validators.required],
       productoId: [''],
       descripcion: ['', Validators.required],
-      numero: ['', Validators.required],
+      numero: [''],
       fecha: ['', Validators.required],
+      cantidadGlobal: [1, [Validators.required, Validators.min(1)]],
+      delivery: [0, [Validators.min(0)]],
+      clienteId: [null],
 
       nombre: [`PIEZA ${this.piezaCounter}`],
+      piezaTipo: ['Del Inventario'],
+      piezaInventario: [''],
+      piezaFabricada: [''],
+      piezaCantidad: [1],
       materialTipo: [''],
       subcategoria: [''],
-      materialId: [{ value: null, disabled: true }],
-      precioMaterial: [''],
-      gramos: [],
-      horas: [],
-      minutos: [],
+      piezaMaterialCategoria: [''],
+      piezaMaterialSubcategoria: [''],
+      piezaMaterialId: [{ value: null, disabled: true }],
+      piezaPrecioMaterial: [''],
+      piezaGramos: [''],
+      piezaHoras: [''],
+      piezaMinutos: [''],
 
       activoId: [null],
       tasaFalloGlobal: [0, [Validators.required, Validators.min(0), Validators.max(100)]],
@@ -341,20 +468,38 @@ export class AddBudgetComponent implements OnInit {
       costoMaquina: [0]
     });
 
+    this.form.get('clasificacion')?.valueChanges.subscribe((clasif) => {
+      const numeroControl = this.form.get('numero');
+      this.form.get('productoId')?.setValue(null);
+      if (clasif === 'Producto') {
+        numeroControl?.clearValidators();
+        numeroControl?.setValue('');
+      } else {
+        numeroControl?.setValidators([Validators.required]);
+      }
+      numeroControl?.updateValueAndValidity();
+    });
+
+    this.form.get('productoId')?.valueChanges.subscribe(prodId => {
+      if (prodId) {
+        this.autoFillFromProduct(Number(prodId));
+      }
+    });
+
     this.form.get('activoId')?.valueChanges.subscribe(() => {
       this.actualizarCostoMaquina();
       this.actualizarMinMargenGanancia();
     });
 
-    this.form.get('materialTipo')?.valueChanges.subscribe((categoria) => {
+    this.form.get('piezaMaterialCategoria')?.valueChanges.subscribe((categoria) => {
       this.onCategoriaChange(categoria);
     });
 
-    this.form.get('subcategoria')?.valueChanges.subscribe((subcategoria) => {
+    this.form.get('piezaMaterialSubcategoria')?.valueChanges.subscribe((subcategoria) => {
       this.onSubcategoriaChange(subcategoria);
     });
 
-    this.form.get('materialId')?.valueChanges.subscribe((materialId) => {
+    this.form.get('piezaMaterialId')?.valueChanges.subscribe((materialId) => {
       this.onMaterialChange(materialId);
     });
   }
@@ -384,16 +529,16 @@ export class AddBudgetComponent implements OnInit {
         this.materialesPorCategoria.map(a => a.subcategoria || ((a as unknown as Record<string, unknown>)['subCategoria'] as string) || ((a as unknown as Record<string, unknown>)['Subcategoria'] as string) || ((a as unknown as Record<string, unknown>)['SUBCATEGORIA'] as string)).filter(Boolean)
       )] as string[];
 
-      this.form.get('materialId')?.enable();
+      this.form.get('piezaMaterialId')?.enable();
     } else {
       this.materialesPorCategoria = [];
       this.materialesFiltrados = [];
       this.subcategoriasMaterial = [];
-      this.form.get('materialId')?.disable();
+      this.form.get('piezaMaterialId')?.disable();
     }
-    this.form.get('materialId')?.setValue(null, { emitEvent: false });
-    this.form.get('precioMaterial')?.setValue('');
-    this.form.get('subcategoria')?.setValue('', { emitEvent: false });
+    this.form.get('piezaMaterialId')?.setValue(null, { emitEvent: false });
+    this.form.get('piezaPrecioMaterial')?.setValue('');
+    this.form.get('piezaMaterialSubcategoria')?.setValue('', { emitEvent: false });
   }
 
   onSubcategoriaChange(subcategoria: string) {
@@ -404,8 +549,8 @@ export class AddBudgetComponent implements OnInit {
     } else {
       this.materialesFiltrados = [...this.materialesPorCategoria];
     }
-    this.form.get('materialId')?.setValue(null, { emitEvent: false });
-    this.form.get('precioMaterial')?.setValue('');
+    this.form.get('piezaMaterialId')?.setValue(null, { emitEvent: false });
+    this.form.get('piezaPrecioMaterial')?.setValue('');
   }
 
   onMaterialChange(materialId: number) {
@@ -421,10 +566,10 @@ export class AddBudgetComponent implements OnInit {
         } else if (uMedida === 'gramos' || uMedida === 'gramo') {
           precioPorGramo = valUnit;
         }
-        this.form.get('precioMaterial')?.setValue(precioPorGramo);
+        this.form.get('piezaPrecioMaterial')?.setValue(precioPorGramo);
       }
     } else {
-      this.form.get('precioMaterial')?.setValue('');
+      this.form.get('piezaPrecioMaterial')?.setValue('');
     }
   }
 
@@ -444,14 +589,17 @@ export class AddBudgetComponent implements OnInit {
 
     const budget: Budget = {
       id: this.id > 0 ? this.id : 0,
-      sku: this.id > 0 ? this.f['numero'].value : `B-${this.f['clasificacion'].value.substring(0, 3).toUpperCase()}-${Math.floor(Math.random() * 900) + 100}`,
+      sku: this.id > 0 ? this.f['numero'].value : `B-${(this.f['clasificacion'].value || 'GEN').substring(0, 3).toUpperCase()}-${Math.floor(Math.random() * 900) + 100}`,
       clasificacion: this.f['clasificacion'].value,
       descripcion: this.f['descripcion'].value,
-      numero: this.f['numero'].value,
+      numero: this.f['numero'].value || `ORD-${Date.now()}`,
       fecha: new Date(this.f['fecha'].value),
       piezas: this.piezas,
-      productoId: this.f['clasificacion'].value === 'Producto' ? Number(this.f['productoId'].value) : undefined,
+      productoId: Number(this.f['productoId'].value) || undefined,
       activoId: Number(this.f['activoId'].value) || undefined,
+      cantidadGlobal: Number(this.f['cantidadGlobal'].value) || 1,
+      delivery: Number(this.f['delivery'].value) || 0,
+      clienteId: Number(this.f['clienteId'].value) || undefined,
       tasaFalloGlobal: Number(this.f['tasaFalloGlobal'].value) || 0,
       tiempoSetup: Number(this.f['tiempoSetup'].value) || 0,
       tiempoPostProcesado: Number(this.f['tiempoPostProcesado'].value) || 0,

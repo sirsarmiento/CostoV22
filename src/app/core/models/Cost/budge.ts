@@ -18,6 +18,7 @@ export class Budget { //Presupuesto
     cantidadGlobal?: number;
     delivery?: number;
     clienteId?: number;
+    costoTotalFinal?: number;
 }
 
 export class Parts{ //Piezas

@@ -2,13 +2,14 @@ import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
+import { NgSelectModule } from '@ng-select/ng-select';
 import { Asset } from '../../../../../core/models/Cost/asset';
 import { AssetService } from '../../../../../core/services/cost/asset.service';
 
 @Component({
   selector: 'app-asset',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, NgSelectModule],
   templateUrl: './asset.component.html'
 })
 export class AssetComponent implements OnInit {
@@ -28,6 +29,8 @@ export class AssetComponent implements OnInit {
   totalCirculantes = 0;
 
   searchTerm = '';
+  selectedCategory: string | null = null;
+  categoriasList: string[] = [];
   currentPage = 1;
   pageSize = 10;
   totalPages = 1;
@@ -39,6 +42,40 @@ export class AssetComponent implements OnInit {
 
   ngOnInit(): void {
     this.getAssets();
+  }
+
+  actualizarCategorias() {
+    const isFijoTab = this.activeTab === 'fijo';
+    const assetsInTab = this.allAssets.filter(item => {
+      const isFijoItem = item.tipo?.toLowerCase().trim() === 'fijo' || (!item.tipo && item.vidaUtil > 0);
+      return isFijoTab ? isFijoItem : !isFijoItem;
+    });
+
+    const uniqueMap = new Map<string, string>();
+    assetsInTab.forEach(a => {
+      const rawCat = (a.categoria || ((a as unknown as Record<string, unknown>)['Categoria'] as string) || '').trim();
+      if (rawCat) {
+        const key = rawCat.toLowerCase();
+        if (!uniqueMap.has(key)) {
+          const formatted = rawCat.charAt(0).toUpperCase() + rawCat.slice(1);
+          uniqueMap.set(key, formatted);
+        }
+      }
+    });
+
+    this.categoriasList = Array.from(uniqueMap.values()).sort();
+  }
+
+  onCategoryChange() {
+    this.currentPage = 1;
+    this.applyFilterAndPagination();
+  }
+
+  clearFilters() {
+    this.searchTerm = '';
+    this.selectedCategory = null;
+    this.currentPage = 1;
+    this.applyFilterAndPagination();
   }
 
   normalizarNumero(valor: string | number | null | undefined): number {
@@ -75,6 +112,7 @@ export class AssetComponent implements OnInit {
           return asset;
         });
 
+        this.actualizarCategorias();
         this.applyFilterAndPagination();
        
         this.loading = false;
@@ -89,7 +127,9 @@ export class AssetComponent implements OnInit {
 
   setActiveTab(tab: string) {
     this.activeTab = tab;
+    this.selectedCategory = null;
     this.currentPage = 1;
+    this.actualizarCategorias();
     this.applyFilterAndPagination();
   }
 
@@ -105,6 +145,15 @@ export class AssetComponent implements OnInit {
       const isFijoItem = item.tipo?.toLowerCase().trim() === 'fijo' || (!item.tipo && item.vidaUtil > 0);
       return isFijoTab ? isFijoItem : !isFijoItem;
     });
+
+    // Filtrar por categoría
+    if (this.selectedCategory) {
+      const selCat = this.selectedCategory.toLowerCase().trim();
+      temp = temp.filter(item => {
+        const cat = item.categoria || ((item as unknown as Record<string, unknown>)['Categoria'] as string) || '';
+        return cat.toLowerCase().trim() === selCat;
+      });
+    }
 
     // Filtrar por búsqueda
     const query = this.searchTerm.toLowerCase().trim();

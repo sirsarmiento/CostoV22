@@ -12,9 +12,6 @@
 <div class="row">
   <div class="col-12">
     <div class="card shadow-sm border-0">
-      <div class="card-header bg-light">
-        <h6 class="mb-0 text-primary">Generar Presupuesto con Análisis de Estructura de Costos</h6>
-      </div>
       <div class="card-body">
         <form [formGroup]="form">
           <!-- DATOS BÁSICOS -->
@@ -46,12 +43,13 @@
                   placeholder="Seleccione..."
                   [clearable]="true"
                   [searchable]="true"
+                  [items]="filteredItemsList"
+                  bindValue="id"
+                  bindLabel="nombre"
+                  (change)="onProductSelect($event)"
                   appendTo="body"
                   dropdownPosition="bottom"
                   [class.is-invalid]="submitted && f['productoId'].errors">
-                  @for (prod of filteredItemsList; track prod.id) {
-                    <ng-option [value]="prod.id">{{ prod.nombre }}</ng-option>
-                  }
                 </ng-select>
                 @if (submitted && f['productoId'].errors?.['required']) {
                   <div class="invalid-feedback d-block">Seleccione un {{ f['clasificacion'].value.toLowerCase() }}</div>
@@ -76,11 +74,11 @@
                 placeholder="-- Sin cliente --"
                 [clearable]="true"
                 [searchable]="true"
+                [items]="clientesList"
+                bindValue="id"
+                bindLabel="nombre"
                 appendTo="body"
                 dropdownPosition="bottom">
-                @for (c of clientesList; track c.id) {
-                  <ng-option [value]="c.id">{{ c.nombre }}</ng-option>
-                }
               </ng-select>
             </div>
 
@@ -122,11 +120,11 @@
             </div>
             <div class="col-md-3">
               <label class="form-label text-sm mb-1 fw-bold text-secondary">Margen Ganancia (%)</label>
-              <input type="number" class="form-control form-control-sm" formControlName="margenGanancia" min="0" max="100" [class.is-invalid]="submitted && f['margenGanancia'].errors">
+              <input type="number" class="form-control form-control-sm" formControlName="margenGanancia" [min]="minMargenGanancia" max="100" (blur)="onMargenBlur()" [class.is-invalid]="submitted && f['margenGanancia'].errors">
               @if (f['margenGanancia'].errors) {
                 <div class="invalid-feedback text-xs">
                   @if (f['margenGanancia'].errors['required']) { <span>Ingrese el margen</span> }
-                  @if (f['margenGanancia'].errors['min']) { <span>Mínimo: {{ minMargenGanancia }}%</span> }
+                  @if (f['margenGanancia'].errors['min']) { <span>El margen mínimo permitido es {{ minMargenGanancia }}%</span> }
                 </div>
               }
             </div>

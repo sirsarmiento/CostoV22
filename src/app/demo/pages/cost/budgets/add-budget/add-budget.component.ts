@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -12,6 +12,7 @@ import { Machine } from '../../../../../core/models/Cost/config';
 import { ProductService } from '../../../../../core/services/cost/product.service';
 import { AssetService } from '../../../../../core/services/cost/asset.service';
 import { FixeService } from '../../../../../core/services/cost/fixe.service';
+import { ClientService } from '../../../../../core/services/cost/client.service';
 import { forkJoin } from 'rxjs';
 import Swal from 'sweetalert2';
 
@@ -29,6 +30,8 @@ export class AddBudgetComponent implements OnInit {
   private productService = inject(ProductService);
   private assetService = inject(AssetService);
   private fixeService = inject(FixeService);
+  private clientService = inject(ClientService);
+  private cdr = inject(ChangeDetectorRef);
   form!: FormGroup;
   id: number = 0;
   loading = false;
@@ -45,20 +48,15 @@ export class AddBudgetComponent implements OnInit {
 
   maquinasList: Asset[] = [];
   activosCirculantes: Asset[] = [];
+  assetsMobiliario: Asset[] = [];
   productosList: Product[] = [];
+  filteredItemsList: Product[] = [];
+  clientesList: { id: number; nombre: string }[] = [];
   materialesPorCategoria: Asset[] = [];
   materialesFiltrados: Asset[] = [];
 
   categoriasMaterial: string[] = [];
   subcategoriasMaterial: string[] = [];
-
-  assetsMobiliario: Asset[] = [];
-  clientesList: { id: number; nombre: string }[] = [
-    { id: 1, nombre: 'Empresa Alpha S.A.' },
-    { id: 2, nombre: 'Tecnologías Beta' },
-    { id: 3, nombre: 'Industrias Gamma' },
-    { id: 4, nombre: 'Cliente Particular 1' }
-  ];
 
   constructor() {
     this.myFormValues();
@@ -66,13 +64,26 @@ export class AddBudgetComponent implements OnInit {
 
   get f() { return this.form.controls; }
 
-  get filteredItemsList() {
+  actualizarItemsFiltrados() {
     const clasif = this.form?.get('clasificacion')?.value;
-    if (!clasif) return [];
-    if (clasif === 'Producto') {
-      return this.productosList.filter(p => p.clasificacion === 'Productos' || p.clasificacion === 'Producto');
+    const currentProdId = Number(this.form?.get('productoId')?.value);
+    if (!clasif && !currentProdId) {
+      this.filteredItemsList = [];
+      return;
     }
-    return this.productosList.filter(p => p.clasificacion === clasif);
+
+    const cLower = String(clasif || '').toLowerCase().trim();
+    this.filteredItemsList = this.productosList.filter(p => {
+      if (currentProdId && Number(p.id) === currentProdId) {
+        return true;
+      }
+      if (!clasif) return false;
+      const pClasif = String(p.clasificacion || '').toLowerCase().trim();
+      if (cLower === 'producto' || cLower === 'productos') {
+        return pClasif === 'producto' || pClasif === 'productos';
+      }
+      return pClasif === cLower;
+    });
   }
 
   ngOnInit() {
@@ -80,16 +91,25 @@ export class AddBudgetComponent implements OnInit {
       configs: this.configService.getConfigs(),
       products: this.productService.getProducts(),
       assets: this.assetService.getAssets(),
-      fixes: this.fixeService.getFixes()
+      fixes: this.fixeService.getFixes(),
+      clients: this.clientService.getClients()
     }).subscribe(data => {
+      if (data.clients && data.clients.length > 0) {
+        this.clientesList = data.clients.map(c => ({
+          id: Number(c.id) || 0,
+          nombre: `${c.nombre} ${c.apellido}`.trim()
+        }));
+      }
       // Configuración global
-      if (data.configs.length > 0) {
-        const config = data.configs[0];
-        this.actualizarMinMargenGanancia(config.margenGanancia || 0);
+      if (data.configs && data.configs.length > 0) {
+        const configObj = data.configs[0];
+        const configRec = configObj as unknown as Record<string, unknown>;
+        const minVal = Number(configRec['margenGanancia'] ?? configRec['minMargenGanancia'] ?? configRec['margen_ganancia']) || 0;
+        this.actualizarMinMargenGanancia(minVal);
         
         let capacidad = 0;
-        if (config.parametros && config.parametros.length > 0) {
-          config.parametros.forEach((machine: Machine) => {
+        if (configObj.parametros && configObj.parametros.length > 0) {
+          configObj.parametros.forEach((machine: Machine) => {
             const unidad = machine.unidad?.toLowerCase().trim() || '';
             if (unidad.includes('hora') || unidad.includes('hs') || unidad === '') {
               capacidad += (Number(machine.horasUso) || 0) * (Number(machine.prodMaxHoras) || 0);
@@ -101,7 +121,11 @@ export class AddBudgetComponent implements OnInit {
       }
       
       // Productos
-      this.productosList = data.products;
+      this.productosList = (data.products || []).map(p => ({
+        ...p,
+        id: Number(p.id) || 0
+      }));
+      this.actualizarItemsFiltrados();
       
       // Activos (Máquinas, Mobiliario y Circulantes)
       this.maquinasList = data.assets.filter(asset => 
@@ -129,6 +153,9 @@ export class AddBudgetComponent implements OnInit {
       this.actualizarIndirectoProrrateado();
       
       this.setValues();
+      this.piezas = this.resolvePiezasDisplay(this.piezas);
+      this.cdr.detectChanges();
+      setTimeout(() => this.cdr.detectChanges(), 50);
     });
   }
 
@@ -160,16 +187,34 @@ export class AddBudgetComponent implements OnInit {
 
   actualizarMinMargenGanancia(minMarginValue?: number) {
     if (minMarginValue !== undefined) {
-      this.minMargenGanancia = minMarginValue;
+      this.minMargenGanancia = Number(minMarginValue) || 0;
     }
 
-    const control = this.form.get('margenGanancia');
+    const control = this.form?.get('margenGanancia');
     if (control) {
       control.setValidators([Validators.required, Validators.min(this.minMargenGanancia), Validators.max(100)]);
-      control.updateValueAndValidity();
       
-      if (!this.id || control.value < this.minMargenGanancia) {
+      const currentVal = Number(control.value) || 0;
+      if (!this.id || currentVal < this.minMargenGanancia) {
         control.setValue(this.minMargenGanancia);
+      }
+      control.updateValueAndValidity();
+    }
+  }
+
+  onMargenBlur() {
+    const control = this.form?.get('margenGanancia');
+    if (control) {
+      const val = Number(control.value) || 0;
+      if (val < this.minMargenGanancia) {
+        control.setValue(this.minMargenGanancia);
+        Swal.fire({
+          icon: 'info',
+          title: 'Margen Mínimo Requerido',
+          text: `El margen de ganancia no puede ser menor al mínimo configurado en Perfil (${this.minMargenGanancia}%). Se ha ajustado automáticamente.`,
+          timer: 3000,
+          showConfirmButton: false
+        });
       }
     }
   }
@@ -259,6 +304,14 @@ export class AddBudgetComponent implements OnInit {
     this.piezaCounter++;
     this.piezas.push(newParts);
     this.clearForm();
+    this.cdr.detectChanges();
+  }
+
+  onProductSelect(item: { id: number } | number | null) {
+    const prodId = typeof item === 'object' && item !== null ? item.id : item;
+    if (prodId) {
+      this.autoFillFromProduct(Number(prodId));
+    }
   }
 
   autoFillFromProduct(productId: number) {
@@ -292,6 +345,7 @@ export class AddBudgetComponent implements OnInit {
         });
         this.piezaCounter = this.piezas.length + 1;
       }
+      this.cdr.detectChanges();
     }
   }
 
@@ -305,9 +359,14 @@ export class AddBudgetComponent implements OnInit {
     this.piezas.forEach(pieza => {
       const cant = Number(pieza.cantidad) || 1;
       if (pieza.tipo === 'Del Inventario') {
-        const asset = this.assetsMobiliario.find(a => a.id == pieza.assetId);
+        const foundCirc = this.activosCirculantes.find(a => a.id == pieza.assetId);
+        const foundMob = this.assetsMobiliario.find(a => a.id == pieza.assetId);
+        const asset = foundCirc || foundMob;
         if (asset) {
-          totalCostoInventario += (Number(asset.valorUnitario) || 0) * cant;
+          const val = Number(asset.valorUnitario) || Number(asset.costoInicial) || 0;
+          totalCostoInventario += val * cant;
+        } else {
+          totalCostoInventario += (Number(pieza.precioMaterial) || 0) * cant;
         }
       } else {
         rawMaterialCost += ((Number(pieza.gramos) || 0) * (Number(pieza.precioMaterial) || 0)) * cant;
@@ -395,43 +454,113 @@ export class AddBudgetComponent implements OnInit {
         this.piezas = this.piezas.filter(p => p.id !== row.id);
         this.piezaCounter = Math.max(1, this.piezaCounter - 1);
         this.f['nombre'].setValue(`PIEZA ${this.piezaCounter}`);
+        this.cdr.detectChanges();
       }
     });
   }
 
   setValues() {
-    const data: Budget | undefined = history.state.edit_budget;
-    if (data && data.id && data.id > 0) {
+    const data: Budget | Record<string, unknown> | undefined = history.state.edit_budget;
+    if (data && ((data as Record<string, unknown>)['id'] || (data as Record<string, unknown>)['id'] === 0)) {
       let dateStr = '';
-      if (data.fecha) {
-        const rawDate = new Date(data.fecha);
+      if ((data as Record<string, unknown>)['fecha']) {
+        const rawDate = new Date((data as Record<string, unknown>)['fecha'] as string);
         if (!isNaN(rawDate.getTime())) {
           dateStr = rawDate.toISOString().substring(0, 10);
         }
       }
 
+      const rawProd = (data as Record<string, unknown>)['productoId'] ?? (data as Record<string, unknown>)['producto_id'] ?? (data as Record<string, unknown>)['producto'];
+      let parsedProductoId: number | null = null;
+      if (rawProd && typeof rawProd === 'object') {
+        parsedProductoId = Number((rawProd as Record<string, unknown>)['id']) || null;
+      } else if (rawProd !== null && rawProd !== undefined && rawProd !== '') {
+        parsedProductoId = Number(rawProd) || null;
+      }
+
+      const rawCli = (data as Record<string, unknown>)['clienteId'] ?? (data as Record<string, unknown>)['cliente_id'] ?? (data as Record<string, unknown>)['cliente'];
+      let parsedClienteId: number | null = null;
+      if (rawCli && typeof rawCli === 'object') {
+        parsedClienteId = Number((rawCli as Record<string, unknown>)['id']) || null;
+        const nameStr = `${(rawCli as Record<string, unknown>)['nombre'] || ''} ${(rawCli as Record<string, unknown>)['apellido'] || ''}`.trim();
+        if (parsedClienteId && nameStr && !this.clientesList.some(c => c.id === parsedClienteId)) {
+          this.clientesList.push({ id: parsedClienteId, nombre: nameStr });
+        }
+      } else if (rawCli !== null && rawCli !== undefined && rawCli !== '') {
+        parsedClienteId = Number(rawCli) || null;
+      }
+
+      const rawAct = (data as Record<string, unknown>)['activoId'] ?? (data as Record<string, unknown>)['activo_id'] ?? (data as Record<string, unknown>)['activo'];
+      let parsedActivoId: number | null = null;
+      if (rawAct && typeof rawAct === 'object') {
+        parsedActivoId = Number((rawAct as Record<string, unknown>)['id']) || null;
+      } else if (rawAct !== null && rawAct !== undefined && rawAct !== '') {
+        parsedActivoId = Number(rawAct) || null;
+      }
+
       this.form.patchValue({
-        clasificacion: data.clasificacion,
-        productoId: data.productoId,
-        descripcion: data.descripcion,
-        numero: data.numero,
+        clasificacion: (data as Record<string, unknown>)['clasificacion'],
+        productoId: parsedProductoId,
+        descripcion: (data as Record<string, unknown>)['descripcion'],
+        numero: (data as Record<string, unknown>)['numero'],
         fecha: dateStr,
-        activoId: data.activoId,
-        cantidadGlobal: data.cantidadGlobal || 1,
-        delivery: data.delivery || 0,
-        clienteId: data.clienteId || null,
-        tasaFalloGlobal: data.tasaFalloGlobal || 0,
-        tiempoSetup: data.tiempoSetup || 0,
-        tiempoPostProcesado: data.tiempoPostProcesado || 0,
-        margenGanancia: data.margenGanancia !== undefined ? data.margenGanancia : this.minMargenGanancia
+        activoId: parsedActivoId,
+        cantidadGlobal: (data as Record<string, unknown>)['cantidadGlobal'] || 1,
+        delivery: (data as Record<string, unknown>)['delivery'] || 0,
+        clienteId: parsedClienteId,
+        tasaFalloGlobal: (data as Record<string, unknown>)['tasaFalloGlobal'] || 0,
+        tiempoSetup: (data as Record<string, unknown>)['tiempoSetup'] || 0,
+        tiempoPostProcesado: (data as Record<string, unknown>)['tiempoPostProcesado'] || 0,
+        margenGanancia: (data as Record<string, unknown>)['margenGanancia'] !== undefined ? (data as Record<string, unknown>)['margenGanancia'] : this.minMargenGanancia
       });
 
-      this.id = data.id;
-      this.piezas = data.piezas || [];
+      this.id = Number((data as Record<string, unknown>)['id']) || 0;
+      this.piezas = this.resolvePiezasDisplay(((data as Record<string, unknown>)['piezas'] as Parts[]) || []);
       this.f['nombre'].setValue(`PIEZA ${this.piezas.length + 1}`);
       this.actualizarCostoMaquina();
       this.actualizarMinMargenGanancia();
+      this.actualizarItemsFiltrados();
+      this.cdr.detectChanges();
+      setTimeout(() => this.cdr.detectChanges(), 50);
     }
+  }
+
+  resolvePiezasDisplay(piezasList: Parts[]): Parts[] {
+    if (!piezasList || !Array.isArray(piezasList)) return [];
+
+    return piezasList.map(p => {
+      const pObj = p as unknown as Record<string, unknown>;
+      
+      const maqId = p.maquinaId ?? pObj['maquina_id'] ?? pObj['maquina'];
+      if (maqId) {
+        p.maquinaId = Number(maqId);
+        const foundMaq = this.maquinasList.find(m => m.id == maqId);
+        if (foundMaq) {
+          p.maquinaNombre = foundMaq.nombre;
+        }
+      }
+
+      const actId = p.assetId ?? pObj['activo_id'] ?? pObj['activo'] ?? pObj['material_id'] ?? pObj['materialId'];
+      if (actId) {
+        p.assetId = Number(actId);
+        const foundCirc = this.activosCirculantes.find(a => a.id == actId);
+        const foundMob = this.assetsMobiliario.find(a => a.id == actId);
+        const assetObj = foundCirc || foundMob;
+        if (assetObj) {
+          p.materialDisplayName = assetObj.nombre;
+        }
+      }
+
+      if (!p.materialDisplayName || p.materialDisplayName === 'Sin material') {
+        if (p.materialTipo && p.materialTipo !== 'Sin material') {
+          p.materialDisplayName = p.materialTipo;
+        } else if (p.tipo === 'Del Inventario') {
+          p.materialDisplayName = p.nombre;
+        }
+      }
+
+      return p;
+    });
   }
 
   myFormValues() {
@@ -470,7 +599,6 @@ export class AddBudgetComponent implements OnInit {
 
     this.form.get('clasificacion')?.valueChanges.subscribe((clasif) => {
       const numeroControl = this.form.get('numero');
-      this.form.get('productoId')?.setValue(null);
       if (clasif === 'Producto') {
         numeroControl?.clearValidators();
         numeroControl?.setValue('');
@@ -478,6 +606,7 @@ export class AddBudgetComponent implements OnInit {
         numeroControl?.setValidators([Validators.required]);
       }
       numeroControl?.updateValueAndValidity();
+      this.actualizarItemsFiltrados();
     });
 
     this.form.get('productoId')?.valueChanges.subscribe(prodId => {
@@ -587,6 +716,14 @@ export class AddBudgetComponent implements OnInit {
 
     this.loading = true;
 
+    const prodVal = this.f['productoId']?.value;
+    const cliVal = this.f['clienteId']?.value;
+    const actVal = this.f['activoId']?.value;
+
+    const parsedProdId = prodVal !== null && prodVal !== undefined && prodVal !== '' ? Number(prodVal) : undefined;
+    const parsedCliId = cliVal !== null && cliVal !== undefined && cliVal !== '' ? Number(cliVal) : undefined;
+    const parsedActId = actVal !== null && actVal !== undefined && actVal !== '' ? Number(actVal) : undefined;
+
     const budget: Budget = {
       id: this.id > 0 ? this.id : 0,
       sku: this.id > 0 ? this.f['numero'].value : `B-${(this.f['clasificacion'].value || 'GEN').substring(0, 3).toUpperCase()}-${Math.floor(Math.random() * 900) + 100}`,
@@ -595,11 +732,11 @@ export class AddBudgetComponent implements OnInit {
       numero: this.f['numero'].value || `ORD-${Date.now()}`,
       fecha: new Date(this.f['fecha'].value),
       piezas: this.piezas,
-      productoId: Number(this.f['productoId'].value) || undefined,
-      activoId: Number(this.f['activoId'].value) || undefined,
+      productoId: parsedProdId,
+      activoId: parsedActId,
       cantidadGlobal: Number(this.f['cantidadGlobal'].value) || 1,
       delivery: Number(this.f['delivery'].value) || 0,
-      clienteId: Number(this.f['clienteId'].value) || undefined,
+      clienteId: parsedCliId,
       tasaFalloGlobal: Number(this.f['tasaFalloGlobal'].value) || 0,
       tiempoSetup: Number(this.f['tiempoSetup'].value) || 0,
       tiempoPostProcesado: Number(this.f['tiempoPostProcesado'].value) || 0,
@@ -607,6 +744,10 @@ export class AddBudgetComponent implements OnInit {
       costoMaquina: Number(this.f['costoMaquina'].value) || 0,
       costoOperador: 0
     };
+
+    (budget as unknown as Record<string, unknown>)['producto_id'] = parsedProdId ?? null;
+    (budget as unknown as Record<string, unknown>)['cliente_id'] = parsedCliId ?? null;
+    (budget as unknown as Record<string, unknown>)['activo_id'] = parsedActId ?? null;
 
     const request = this.id === 0
       ? this.budgetService.createBudget(budget)

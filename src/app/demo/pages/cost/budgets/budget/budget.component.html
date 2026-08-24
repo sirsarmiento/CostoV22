@@ -9,7 +9,7 @@
   </div>
   <div class="col-sm-6 text-sm-end mt-2 mt-sm-0">
     <button class="btn btn-primary d-inline-flex align-items-center gap-2" (click)="openAdd()">
-      <i class="ti ti-plus-circle fs-5"></i> Generar Presupuesto
+      <i class="ti ti-file-plus fs-5"></i> Generar Presupuesto
     </button>
   </div>
 </div>
@@ -43,13 +43,13 @@
                   Clasificación <i class="ti fs-6" [class]="getSortClass('clasificacion')"></i>
                 </th>
                 <th style="cursor: pointer;" (click)="sortData('descripcion')">
-                  Descripción <i class="ti fs-6" [class]="getSortClass('descripcion')"></i>
-                </th>
-                <th style="cursor: pointer;" (click)="sortData('numero')">
-                  Número <i class="ti fs-6" [class]="getSortClass('numero')"></i>
+                  Descripción / Proyecto <i class="ti fs-6" [class]="getSortClass('descripcion')"></i>
                 </th>
                 <th style="cursor: pointer;" (click)="sortData('fecha')">
                   Fecha <i class="ti fs-6" [class]="getSortClass('fecha')"></i>
+                </th>
+                <th style="cursor: pointer;" (click)="sortData('costoTotalFinal')">
+                  Total Presupuesto <i class="ti fs-6" [class]="getSortClass('costoTotalFinal')"></i>
                 </th>
                 <th class="text-center">Acciones</th>
               </tr>
@@ -58,30 +58,41 @@
               @for (row of paginatedBudgets; track row.id) {
                 <tr 
                   (click)="selectedRow = selectedRow === row ? null : row"
-                  [class.table-primary]="selectedRow?.id === row.id"
+                  [class.table-primary]="selectedRow && selectedRow.id === row.id"
                   style="cursor: pointer;">
-                  <td class="font-monospace fw-bold text-primary">{{ row.sku || 'N/A' }}</td>
+                  <td class="fw-bold">{{ row.numero || ('PRE-' + row.id) }}</td>
                   <td>
                     <span 
-                      class="badge"
-                      [class.bg-light-success]="row.clasificacion === 'Producto'"
+                      class="badge" 
+                      [class.bg-light-success]="row.clasificacion === 'Proyecto'"
                       [class.bg-light-info]="row.clasificacion === 'Servicio'"
-                      [class.bg-light-warning]="row.clasificacion === 'Proyecto'">
+                      [class.bg-light-primary]="row.clasificacion === 'Producto'">
                       {{ row.clasificacion }}
                     </span>
                   </td>
-                  <td>{{ row.descripcion }}</td>
-                  <td>{{ row.numero }}</td>
-                  <td>{{ row.fecha | date: 'dd-MM-yyyy' }}</td>
+                  <td>
+                    <div class="cell-name-clamp" [attr.title]="row.descripcion">{{ row.descripcion }}</div>
+                  </td>
+                  <td>{{ row.fecha | date: 'dd/MM/yyyy' }}</td>
+                  <td class="fw-bold text-success">${{ (row.costoTotalFinal || 0) | number: '1.2-2' }}</td>
                   <td class="text-center" (click)="$event.stopPropagation()">
                     <div class="btn-group btn-group-sm">
-                      <button class="btn btn-icon btn-light-primary" (click)="onEdit(row)" title="Editar">
+                      <button 
+                        class="btn btn-icon btn-light-info" 
+                        (click)="onFormule(row)" 
+                        title="Ver Resumen / Detalle">
+                        <i class="ti ti-eye fs-5"></i>
+                      </button>
+                      <button 
+                        class="btn btn-icon btn-light-primary" 
+                        (click)="onEdit(row)" 
+                        title="Editar">
                         <i class="ti ti-edit fs-5"></i>
                       </button>
-                      <button class="btn btn-icon btn-light-info" (click)="onFormule(row)" title="Ver Fórmulas/Resultados">
-                        <i class="ti ti-calculator fs-5"></i>
-                      </button>
-                      <button class="btn btn-icon btn-light-danger" (click)="onDelete(row.id, row.descripcion)" title="Eliminar">
+                      <button 
+                        class="btn btn-icon btn-light-danger" 
+                        (click)="onDelete(row.id, row.descripcion)" 
+                        title="Eliminar">
                         <i class="ti ti-trash fs-5"></i>
                       </button>
                     </div>
@@ -90,7 +101,7 @@
               } @empty {
                 <tr>
                   <td colspan="6" class="text-center py-4 text-muted">
-                    No se encontraron presupuestos.
+                    No se encontraron presupuestos registrados.
                   </td>
                 </tr>
               }

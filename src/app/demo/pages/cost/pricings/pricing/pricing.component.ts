@@ -11,6 +11,7 @@ import { ConfigService } from '../../../../../core/services/cost/config.service'
 import { ProductService } from '../../../../../core/services/cost/product.service';
 import { AssetService } from '../../../../../core/services/cost/asset.service';
 import { FixeService } from '../../../../../core/services/cost/fixe.service';
+import Swal from 'sweetalert2';
 
 
 @Component({
@@ -34,6 +35,9 @@ export class PricingComponent implements OnInit {
   
   totalDirectoPrecio = 0;
   indirectoProrrateadoPrecio = 0;
+  capacidadHorasMaquina = 160;
+  tasaHorariaMaquina = 0;
+  horasTotalesProducto = 0;
 
   // Punto de Equilibrio (Derecha)
   idProdEquilibrio: number | null = null;
@@ -67,12 +71,27 @@ export class PricingComponent implements OnInit {
       fixes: this.fixeService.getFixes()
     }).subscribe({
       next: (data) => {
+        let capacidadTotal = 0;
         // Cargar Configuración
-        if (data.configs.length > 0) {
-          const config = data.configs[0];
-          this.minMargenGanancia = config.margenGanancia || 0;
-          this.margenDeseado = this.minMargenGanancia;
+        if (data.configs && data.configs.length > 0) {
+          const configObj = data.configs[0];
+          const configRec = configObj as unknown as Record<string, unknown>;
+          this.minMargenGanancia = Number(configRec['margenGanancia'] ?? configRec['minMargenGanancia'] ?? configRec['margen_ganancia']) || 0;
+          if (!this.margenDeseado || this.margenDeseado < this.minMargenGanancia) {
+            this.margenDeseado = this.minMargenGanancia;
+          }
+
+          if (configObj.parametros && Array.isArray(configObj.parametros)) {
+            configObj.parametros.forEach((machine) => {
+              const unidad = machine.unidad?.toLowerCase().trim() || '';
+              if (unidad.includes('hora') || unidad.includes('hs') || unidad === '') {
+                capacidadTotal += (Number(machine.horasUso) || 0) * (Number(machine.prodMaxHoras) || 0);
+              }
+            });
+          }
         }
+
+        this.capacidadHorasMaquina = capacidadTotal > 0 ? capacidadTotal : 160;
 
         this.productos = data.products;
         const activos = data.assets;
@@ -92,6 +111,7 @@ export class PricingComponent implements OnInit {
 
         // Costos Fijos Totales Operativos (Generales)
         this.costosFijosTotales = this.totalFijoIndirecto + this.totalDepreciacionMensual;
+        this.tasaHorariaMaquina = this.costosFijosTotales / (this.capacidadHorasMaquina || 160);
         
         const numProductos = this.productos.length || 1;
         this.fijosIndirectosProrrateados = this.costosFijosTotales / numProductos;
@@ -117,32 +137,70 @@ export class PricingComponent implements OnInit {
     const prod = this.productos.find(p => p.id == this.idProdPrecio);
     
     if (prod) {
+      let costoPiezas = 0;
+      let totalHorasImpresion = 0;
+
+      if (prod.piezasBase && Array.isArray(prod.piezasBase)) {
+        prod.piezasBase.forEach((p: Record<string, unknown>) => {
+          const g = Number(p['gramos']) || 0;
+          const precioMat = Number(p['precioMaterial']) || 0;
+          costoPiezas += g * precioMat;
+
+          const h = Number(p['horas']) || 0;
+          const min = Number(p['minutos']) || 0;
+          totalHorasImpresion += h + (min / 60);
+        });
+      }
+
+      const prepMin = Number(prod.prepSlicing) || 0;
+      const postMin = Number(prod.postProcesado) || 0;
+      const totalHorasSetup = (prepMin + postMin) / 60;
+      this.horasTotalesProducto = totalHorasImpresion + totalHorasSetup;
+
+      if (this.horasTotalesProducto <= 0) {
+        this.horasTotalesProducto = 1;
+      }
+
       const costosDirectos = this.allFixes.filter(f => 
         f.producto == prod.id && (f.tipo === 'Variable' || f.tipo === 'Fijo')
       );
-      this.totalDirectoPrecio = costosDirectos.reduce((sum, f) => sum + (Number(f.precio) || 0), 0);
-      const numProductos = this.productos.length || 1; 
+      const totalFixesDirectos = costosDirectos.reduce((sum, f) => sum + (Number(f.precio) || 0), 0);
+      this.totalDirectoPrecio = totalFixesDirectos + costoPiezas;
 
-      this.indirectoProrrateadoPrecio = (this.totalFijoIndirecto + this.totalDepreciacionMensual) / numProductos;
+      this.tasaHorariaMaquina = (this.totalFijoIndirecto + this.totalDepreciacionMensual) / (this.capacidadHorasMaquina || 160);
+      this.indirectoProrrateadoPrecio = this.tasaHorariaMaquina * this.horasTotalesProducto;
       this.costoUnitarioPrecio = this.totalDirectoPrecio + this.indirectoProrrateadoPrecio;
 
-      // Escala de Margen Variable Automática
-      if (this.costoUnitarioPrecio <= 5) {
-        this.margenDeseado = 300;
-      } else if (this.costoUnitarioPrecio <= 20) {
-        this.margenDeseado = 100;
-      } else if (this.costoUnitarioPrecio <= 30) {
-        this.margenDeseado = 50;
-      } else {
-        this.margenDeseado = 30;
-      }
+      const prodMargin = Number(prod.margenGanancia);
+      const defaultMargin = (!isNaN(prodMargin) && prodMargin > 0) ? prodMargin : this.minMargenGanancia;
+      this.margenDeseado = defaultMargin < this.minMargenGanancia ? this.minMargenGanancia : defaultMargin;
 
       this.calcularPrecioSugerido();
+      if (!this.idProdEquilibrio) {
+        this.idProdEquilibrio = prod.id || null;
+        this.precioVentaManual = Math.round(this.precioSugerido * 100) / 100;
+        this.onProductoEquilibrioChange();
+      }
     } else {
       this.totalDirectoPrecio = 0;
       this.indirectoProrrateadoPrecio = 0;
       this.costoUnitarioPrecio = 0;
       this.precioSugerido = 0;
+      this.horasTotalesProducto = 0;
+    }
+  }
+
+  onMargenBlur() {
+    if (this.margenDeseado < this.minMargenGanancia) {
+      this.margenDeseado = this.minMargenGanancia;
+      this.calcularPrecioSugerido();
+      Swal.fire({
+        icon: 'info',
+        title: 'Margen Mínimo Requerido',
+        text: `El margen de ganancia no puede ser menor al mínimo configurado en Perfil (${this.minMargenGanancia}%). Se ha ajustado automáticamente.`,
+        timer: 3000,
+        showConfirmButton: false
+      });
     }
   }
 

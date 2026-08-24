@@ -117,19 +117,35 @@ export class AddProductComponent implements OnInit {
 
   actualizarMinMargenGanancia() {
     const perfilId = this.form.get('perfil')?.value;
-    if (perfilId) {
-      const selectedConfig = this.configs.find(c => c.id == perfilId);
-      if (selectedConfig) {
-        this.minMargenGanancia = Number(selectedConfig.margenGanancia) || 0;
-      }
+    const cfg = (perfilId ? this.configs.find(c => c.id == perfilId) : this.configs[0]) as unknown as Record<string, unknown> | undefined;
+    if (cfg) {
+      this.minMargenGanancia = Number(cfg['margenGanancia'] ?? cfg['minMargenGanancia'] ?? cfg['margen_ganancia']) || 0;
     }
 
     const control = this.form.get('margenGanancia');
     if (control) {
       control.setValidators([Validators.min(this.minMargenGanancia), Validators.max(100)]);
       control.updateValueAndValidity();
-      if (!control.value || control.value < this.minMargenGanancia) {
+      const valNum = Number(control.value) || 0;
+      if (!control.value || valNum < this.minMargenGanancia) {
         control.setValue(this.minMargenGanancia);
+      }
+    }
+  }
+
+  onMargenBlur() {
+    const control = this.form?.get('margenGanancia');
+    if (control) {
+      const val = Number(control.value) || 0;
+      if (val < this.minMargenGanancia) {
+        control.setValue(this.minMargenGanancia);
+        Swal.fire({
+          icon: 'info',
+          title: 'Margen Mínimo Requerido',
+          text: `El margen de ganancia no puede ser menor al mínimo configurado en Perfil (${this.minMargenGanancia}%). Se ha ajustado automáticamente.`,
+          timer: 3000,
+          showConfirmButton: false
+        });
       }
     }
   }

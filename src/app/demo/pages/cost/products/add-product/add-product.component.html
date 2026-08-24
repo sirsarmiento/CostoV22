@@ -226,7 +226,7 @@
               </div>
               <div class="col-md-3">
                 <label class="form-label">Margen de Ganancia (%)</label>
-                <input type="number" class="form-control" formControlName="margenGanancia" [min]="minMargenGanancia" placeholder="0">
+                <input type="number" class="form-control" formControlName="margenGanancia" [min]="minMargenGanancia" (blur)="onMargenBlur()" placeholder="0">
                 <small class="text-muted" style="font-size: 0.75rem;">Mínimo permitido: {{ minMargenGanancia }}%</small>
               </div>
 

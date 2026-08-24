@@ -232,7 +232,7 @@ export class BudgetComponent implements OnInit {
     (row.piezas || []).forEach(p => {
       const pRec = p as unknown as Record<string, unknown>;
       if (p.tipo === 'Del Inventario') {
-        const actId = p.assetId ?? pRec['activo_id'] ?? pRec['activo'] ?? pRec['id'];
+        const actId = p.activo ?? pRec['activo_id'] ?? pRec['activo'] ?? pRec['id'];
         let val = 0;
         if (actId) {
           const foundAsset = this.allAssets.find(a => a.id == actId);

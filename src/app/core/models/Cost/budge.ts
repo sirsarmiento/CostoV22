@@ -7,17 +7,16 @@ export class Budget { //Presupuesto
     numero!: string;
     fecha!: Date;
     piezas?: Parts[];
-    productoId?: number | null;
+    producto?: number | null;
     costoOperador?: number;
     costoMaquina?: number;
     tasaFalloGlobal?: number;
     tiempoSetup?: number;
     margenGanancia?: number;
     tiempoPostProcesado?: number;
-    activoId?: number;
     cantidadGlobal?: number;
     delivery?: number;
-    clienteId?: number;
+    cliente?: number;
     costoTotalFinal?: number;
 }
 
@@ -26,7 +25,6 @@ export class Parts{ //Piezas
     tipo?: string;
     nombre?: string;
     cantidad?: number;
-    assetId?: number;
     materialTipo!: string;
     materialDisplayName?: string;
     gramos!: number;
@@ -35,7 +33,9 @@ export class Parts{ //Piezas
     minutos!: number;
     precioMaterial?: number;
     tiempoPostProcesado?: number;
-    maquinaId?: number;
+    producto?: number;
+    activo?: number;
+    maquina?: number;
     maquinaNombre?: string;
 }
 

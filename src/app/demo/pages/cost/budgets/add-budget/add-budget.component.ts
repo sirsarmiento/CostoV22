@@ -290,15 +290,15 @@ export class AddBudgetComponent implements OnInit {
       tipo: tipo,
       nombre: nombre.toUpperCase(),
       cantidad: cantidad,
-      assetId: assetId || undefined,
       materialTipo: materialDisplayName || 'Sin material',
       materialDisplayName: materialDisplayName,
       precioMaterial: precioMaterial,
       gramos: gramos,
       horas: horas,
       minutos: minutos,
-      maquinaId: maquinaId,
-      maquinaNombre: maquinaNombre
+      activo: assetId || undefined,
+      maquina: maquinaId,
+      producto: 0, //falta pasar el id del producto si es que se tiene
     };
 
     this.piezaCounter++;
@@ -359,8 +359,8 @@ export class AddBudgetComponent implements OnInit {
     this.piezas.forEach(pieza => {
       const cant = Number(pieza.cantidad) || 1;
       if (pieza.tipo === 'Del Inventario') {
-        const foundCirc = this.activosCirculantes.find(a => a.id == pieza.assetId);
-        const foundMob = this.assetsMobiliario.find(a => a.id == pieza.assetId);
+        const foundCirc = this.activosCirculantes.find(a => a.id == pieza.activo);
+        const foundMob = this.assetsMobiliario.find(a => a.id == pieza.activo);
         const asset = foundCirc || foundMob;
         if (asset) {
           const val = Number(asset.valorUnitario) || Number(asset.costoInicial) || 0;
@@ -531,18 +531,18 @@ export class AddBudgetComponent implements OnInit {
     return piezasList.map(p => {
       const pObj = p as unknown as Record<string, unknown>;
       
-      const maqId = p.maquinaId ?? pObj['maquina_id'] ?? pObj['maquina'];
+      const maqId = p.maquina ?? pObj['maquina_id'] ?? pObj['maquina'];
       if (maqId) {
-        p.maquinaId = Number(maqId);
+        p.maquina = Number(maqId);
         const foundMaq = this.maquinasList.find(m => m.id == maqId);
         if (foundMaq) {
           p.maquinaNombre = foundMaq.nombre;
         }
       }
 
-      const actId = p.assetId ?? pObj['activo_id'] ?? pObj['activo'] ?? pObj['material_id'] ?? pObj['materialId'];
+      const actId = p.activo ?? pObj['activo_id'] ?? pObj['activo'] ?? pObj['material_id'] ?? pObj['materialId'];
       if (actId) {
-        p.assetId = Number(actId);
+        p.activo = Number(actId);
         const foundCirc = this.activosCirculantes.find(a => a.id == actId);
         const foundMob = this.assetsMobiliario.find(a => a.id == actId);
         const assetObj = foundCirc || foundMob;
@@ -732,11 +732,10 @@ export class AddBudgetComponent implements OnInit {
       numero: this.f['numero'].value || `ORD-${Date.now()}`,
       fecha: new Date(this.f['fecha'].value),
       piezas: this.piezas,
-      productoId: parsedProdId,
-      activoId: parsedActId,
+      producto: parsedProdId,
       cantidadGlobal: Number(this.f['cantidadGlobal'].value) || 1,
       delivery: Number(this.f['delivery'].value) || 0,
-      clienteId: parsedCliId,
+      cliente: parsedCliId,
       tasaFalloGlobal: Number(this.f['tasaFalloGlobal'].value) || 0,
       tiempoSetup: Number(this.f['tiempoSetup'].value) || 0,
       tiempoPostProcesado: Number(this.f['tiempoPostProcesado'].value) || 0,

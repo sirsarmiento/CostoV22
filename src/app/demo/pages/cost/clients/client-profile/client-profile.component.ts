@@ -86,7 +86,7 @@ export class ClientProfileComponent implements OnInit {
     this.budgetService.getBudgets().subscribe({
       next: (budgets: Budget[]) => {
         const clientBudgets = (budgets || []).filter(b => 
-          b.clienteId == this.clientId || ((b as unknown as Record<string, unknown>)['cliente_id']) == this.clientId
+          b.cliente == this.clientId || ((b as unknown as Record<string, unknown>)['cliente_id']) == this.clientId
         );
 
         this.history = clientBudgets.map(b => {

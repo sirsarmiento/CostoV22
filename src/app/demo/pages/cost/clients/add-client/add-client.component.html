@@ -1,0 +1,104 @@
+<div class="row mb-4">
+  <div class="col-12">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a routerLink="/clients">Clientes</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ id > 0 ? 'Editar' : 'Crear' }}</li>
+      </ol>
+    </nav>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <form [formGroup]="form" (ngSubmit)="save()">
+          <div class="row g-3">
+            
+            <!-- Nombre -->
+            <div class="col-md-6">
+              <label class="form-label">Nombre</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                formControlName="nombre" 
+                placeholder="Ej. Empresa Alpha"
+                [class.is-invalid]="submitted && f['nombre'].errors">
+              @if (submitted && f['nombre'].errors) {
+                <div class="invalid-feedback d-block">El nombre es requerido</div>
+              }
+            </div>
+
+            <!-- Apellido -->
+            <div class="col-md-6">
+              <label class="form-label">Apellido / Razón Social</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                formControlName="apellido" 
+                placeholder="Ej. S.A. o Pérez"
+                [class.is-invalid]="submitted && f['apellido'].errors">
+              @if (submitted && f['apellido'].errors) {
+                <div class="invalid-feedback d-block">El apellido o razón social es requerido</div>
+              }
+            </div>
+
+            <!-- Email -->
+            <div class="col-md-6">
+              <label class="form-label">Correo Electrónico</label>
+              <input 
+                type="email" 
+                class="form-control" 
+                formControlName="email" 
+                placeholder="contacto@ejemplo.com"
+                [class.is-invalid]="submitted && f['email'].errors">
+              @if (submitted && f['email'].errors) {
+                <div class="invalid-feedback d-block">Ingrese un correo electrónico válido</div>
+              }
+            </div>
+
+            <!-- Teléfono -->
+            <div class="col-md-6">
+              <label class="form-label">Teléfono</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                formControlName="telefono" 
+                placeholder="+58 412 000 0000">
+            </div>
+
+            <!-- Dirección -->
+            <div class="col-12">
+              <label class="form-label">Dirección</label>
+              <textarea 
+                class="form-control" 
+                formControlName="direccion" 
+                rows="3" 
+                placeholder="Av. Principal, Edificio Central, Oficina 4B..."></textarea>
+            </div>
+
+          </div>
+
+          <!-- Botones de Acción -->
+          <div class="row mt-4 pt-3 border-top">
+            <div class="col-12 d-flex justify-content-end gap-2">
+              <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-1" type="button" (click)="volver()">
+                <i class="ti ti-rotate-clockwise fs-5"></i> Regresar
+              </button>
+              <button class="btn btn-primary d-inline-flex align-items-center gap-1" type="submit" [disabled]="loading">
+                @if (!loading) {
+                  <i class="ti ti-device-floppy fs-5"></i>
+                  <span>{{ id > 0 ? 'Actualizar Cliente' : 'Guardar Cliente' }}</span>
+                } @else {
+                  <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                  <span>Guardando...</span>
+                }
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

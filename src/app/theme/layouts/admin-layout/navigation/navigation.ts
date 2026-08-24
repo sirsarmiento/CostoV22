@@ -54,6 +54,7 @@ export const NavigationItems: NavigationItem[] = [
         icon: 'setting',
         breadcrumbs: false
       },
+      /* Comentado por el momento
       {
         id: 'roles',
         title: 'Roles de Seguridad',
@@ -63,6 +64,7 @@ export const NavigationItems: NavigationItem[] = [
         icon: 'lock',
         breadcrumbs: false
       },
+      */
       {
         id: 'users',
         title: 'Usuarios',
@@ -134,6 +136,15 @@ export const NavigationItems: NavigationItem[] = [
         classes: 'nav-item',
         url: '/budgets',
         icon: 'audit',
+        breadcrumbs: false
+      },
+      {
+        id: 'clients',
+        title: 'Clientes',
+        type: 'item',
+        classes: 'nav-item',
+        url: '/clients',
+        icon: 'team',
         breadcrumbs: false
       }
     ]

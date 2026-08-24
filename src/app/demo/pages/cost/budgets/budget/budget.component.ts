@@ -4,6 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { Budget } from '../../../../../core/models/Cost/budge';
 import { BudgetService } from '../../../../../core/services/cost/budget.service';
+import { ConfigService } from '../../../../../core/services/cost/config.service';
+import { FixeService } from '../../../../../core/services/cost/fixe.service';
+import { AssetService } from '../../../../../core/services/cost/asset.service';
+import { Asset } from '../../../../../core/models/Cost/asset';
+import { forkJoin } from 'rxjs';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -15,6 +20,9 @@ import Swal from 'sweetalert2';
 export class BudgetComponent implements OnInit {
   private router = inject(Router);
   private budgetService = inject(BudgetService);
+  private configService = inject(ConfigService);
+  private fixeService = inject(FixeService);
+  private assetService = inject(AssetService);
   private cdr = inject(ChangeDetectorRef);
   loading = true;
   selectedRow: Budget | null = null;
@@ -22,6 +30,9 @@ export class BudgetComponent implements OnInit {
   allBudgets: Budget[] = [];
   filteredBudgets: Budget[] = [];
   paginatedBudgets: Budget[] = [];
+  allAssets: Asset[] = [];
+  capacidadHorasMaquina = 160;
+  totalFijoIndirecto = 0;
 
   searchTerm = '';
   currentPage = 1;
@@ -33,8 +44,36 @@ export class BudgetComponent implements OnInit {
 
   Math = Math;
 
-
   ngOnInit(): void {
+    forkJoin({
+      configs: this.configService.getConfigs(),
+      fixes: this.fixeService.getFixes(),
+      assets: this.assetService.getAssets()
+    }).subscribe(data => {
+      if (data.configs && data.configs.length > 0) {
+        const configObj = data.configs[0];
+        let capacidad = 0;
+        if (configObj.parametros && Array.isArray(configObj.parametros)) {
+          configObj.parametros.forEach((machine) => {
+            const unidad = machine.unidad?.toLowerCase().trim() || '';
+            if (unidad.includes('hora') || unidad.includes('hs') || unidad === '') {
+              capacidad += (Number(machine.horasUso) || 0) * (Number(machine.prodMaxHoras) || 0);
+            }
+          });
+        }
+        this.capacidadHorasMaquina = capacidad > 0 ? capacidad : 160;
+      }
+
+      if (data.fixes && data.fixes.length > 0) {
+        const indirectos = data.fixes.filter(item => item.clasificacion === 'Indirecto');
+        this.totalFijoIndirecto = indirectos.reduce((total, item) => total + (Number(item.precio) || 0), 0);
+      }
+
+      if (data.assets) {
+        this.allAssets = data.assets;
+      }
+    });
+
     this.getBudgets();
   }
 
@@ -95,15 +134,14 @@ export class BudgetComponent implements OnInit {
       return 0;
     });
 
-    this.filteredBudgets = temp;
-
-    // Paginación
-    this.totalPages = Math.ceil(this.filteredBudgets.length / this.pageSize) || 1;
-    this.totalPagesArray = Array.from({ length: this.totalPages }, (_, i) => i + 1);
+    this.totalPages = Math.ceil(temp.length / this.pageSize) || 1;
     if (this.currentPage > this.totalPages) this.currentPage = this.totalPages;
+    
+    this.totalPagesArray = Array.from({ length: this.totalPages }, (_, i) => i + 1);
 
     const startIndex = (this.currentPage - 1) * this.pageSize;
-    this.paginatedBudgets = this.filteredBudgets.slice(startIndex, startIndex + this.pageSize);
+    const endIndex = startIndex + this.pageSize;
+    this.paginatedBudgets = temp.slice(startIndex, endIndex);
   }
 
   setPage(page: number) {
@@ -133,20 +171,22 @@ export class BudgetComponent implements OnInit {
   }
 
   onEdit(row: Budget) {
-    // Transferir datos al formulario a través del state del router
     this.router.navigate(['/budgets/add-budget'], { state: { edit_budget: row } });
   }
 
   openAdd() {
-    // Navegar sin state (nuevo registro)
     this.router.navigate(['/budgets/add-budget']);
   }
 
   onDelete(id: number | undefined, descripcion: string) {
-    if (id === undefined) return;
+    if (!id) return;
     Swal.fire({
-      title: `¿Estás seguro que deseas eliminar el presupuesto de "${descripcion}"?`,
-      showDenyButton: true,
+      title: '¿Eliminar Presupuesto?',
+      text: `¿Está seguro de eliminar el presupuesto "${descripcion}"?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc3545',
+      cancelButtonColor: '#6c757d',
       confirmButtonText: `Eliminar`,
       denyButtonText: `Cancelar`
     }).then((result) => {
@@ -163,37 +203,82 @@ export class BudgetComponent implements OnInit {
   }
 
   onFormule(row: Budget) {
-    // Totales Físicos
-    const totalGramos = (row.piezas || []).reduce((sum, p) => sum + (Number(p.gramos) || 0), 0);
-    const totalHorasRaw = (row.piezas || []).reduce((sum, p) => sum + (Number(p.horas) || 0), 0);
-    const totalMinutosRaw = (row.piezas || []).reduce((sum, p) => sum + (Number(p.minutos) || 0), 0);
+    const rowRec = row as unknown as Record<string, unknown>;
 
-    // Formatear tiempo
-    const extraHours = Math.floor(totalMinutosRaw / 60);
+    // Totales Físicos
+    let totalGramos = 0;
+    let totalHorasRaw = 0;
+    let totalMinutosRaw = 0;
+
+    (row.piezas || []).forEach(p => {
+      totalGramos += Number(p.gramos) || 0;
+      totalHorasRaw += Number(p.horas) || 0;
+      totalMinutosRaw += Number(p.minutos) || 0;
+    });
+
+    const prepMin = Number(row.tiempoSetup) || 0;
+    const postMin = Number(row.tiempoPostProcesado) || 0;
+
+    const totalMinutosCompleto = totalMinutosRaw + prepMin + postMin;
+    const extraHours = Math.floor(totalMinutosCompleto / 60);
     const finalHoras = totalHorasRaw + extraHours;
-    const finalMinutos = totalMinutosRaw % 60;
+    const finalMinutos = totalMinutosCompleto % 60;
     const totalTiempoHoras = finalHoras + (finalMinutos / 60);
 
-    // Cálculos de costos base
-    const rawMaterialCost = (row.piezas || []).reduce((sum, p) => sum + ((Number(p.gramos) || 0) * (Number(p.precioMaterial) || 0)), 0);
-    const totalCostoMaterial = rawMaterialCost * (1 + ((Number(row.tasaFalloGlobal) || 0) / 100));
-    const totalCostoMaquina = (Number(row.costoMaquina) || 0) * totalTiempoHoras;
-    const totalCostoIndirecto = Number(row.costoOperador) || 0;
+    // 1. Costo Materiales con Merma
+    let rawMaterialCost = 0;
+    let totalCostoInventario = 0;
 
-    const baseCost = totalCostoMaterial + totalCostoMaquina + totalCostoIndirecto;
+    (row.piezas || []).forEach(p => {
+      const pRec = p as unknown as Record<string, unknown>;
+      if (p.tipo === 'Del Inventario') {
+        const actId = p.assetId ?? pRec['activo_id'] ?? pRec['activo'] ?? pRec['id'];
+        let val = 0;
+        if (actId) {
+          const foundAsset = this.allAssets.find(a => a.id == actId);
+          if (foundAsset) {
+            val = Number(foundAsset.valorUnitario) || Number(foundAsset.costoInicial) || Number((foundAsset as unknown as Record<string, unknown>)['precio']) || 0;
+          }
+        }
+        if (val <= 0) {
+          val = Number(pRec['costoInicial'] ?? pRec['valorUnitario'] ?? pRec['precio'] ?? p.precioMaterial) || 0;
+        }
+        const cant = Number(p.cantidad) || 1;
+        totalCostoInventario += val * cant;
+      } else {
+        const g = Number(p.gramos) || 0;
+        const pm = Number(p.precioMaterial) || 0;
+        rawMaterialCost += g * pm;
+      }
+    });
+
+    const totalCostoMaterial = rawMaterialCost * (1 + ((Number(row.tasaFalloGlobal) || 0) / 100));
+
+    // 2. Costo Operativo Máquina
+    const totalCostoMaquina = (Number(row.costoMaquina) || 0) * totalTiempoHoras;
+
+    // 3. Costo Indirecto Prorrateado (CIF)
+    const tasaCIFHora = this.totalFijoIndirecto / (this.capacidadHorasMaquina || 160);
+    const totalCostoIndirecto = Number(rowRec['costoIndirectoProrrateado']) || Number(rowRec['costoIndirecto']) || (tasaCIFHora * totalTiempoHoras);
+
+    // 4. Costo Total Base
+    const baseCost = totalCostoMaterial + totalCostoMaquina + totalCostoIndirecto + totalCostoInventario;
+
     const margin = Number(row.margenGanancia) || 0;
     const factor = margin / 100;
     const suggestedPrice = factor >= 1 ? baseCost / 0.0001 : baseCost / (1 - factor);
+
+    const deliveryCost = Number(row.delivery) || Number(rowRec['delivery']) || 0;
+    const cantidadGlobal = Number(row.cantidadGlobal) || Number(rowRec['cantidadGlobal']) || 1;
+    const totalBudgetFinal = (suggestedPrice * cantidadGlobal) + deliveryCost;
 
     // Construir tabla de piezas
     const piezasRows = (row.piezas || []).map(p => {
       const g = Number(p.gramos) || 0;
       const h = Number(p.horas) || 0;
       const min = Number(p.minutos) || 0;
-      const matCost = g * (Number(p.precioMaterial) || 0);
+      const matCost = p.tipo === 'Del Inventario' ? 0 : g * (Number(p.precioMaterial) || 0);
       const maqCost = (Number(row.costoMaquina) || 0) * (h + (min / 60));
-      const pBase = matCost + maqCost; // Simplified individual base cost
-      const pPrice = factor >= 1 ? pBase / 0.0001 : pBase / (1 - factor);
 
       return `
         <tr>
@@ -202,20 +287,16 @@ export class BudgetComponent implements OnInit {
           <td>${h}</td>
           <td>${min}</td>
           <td>$${matCost.toFixed(2)}</td>
-          <td>$${maqCost.toFixed(2)}</td>
-          <td class="fw-bold text-primary">$${pPrice.toFixed(2)}</td>
+          <td class="fw-bold text-primary">$${maqCost.toFixed(2)}</td>
         </tr>
       `;
     }).join('');
 
-    // HTML del modal completo
     Swal.fire({
       title: `<div class="text-start text-primary fw-bold fs-5">Estudio de Presupuesto</div>`,
       html: `
         <div class="text-start" style="font-family: 'Inter', sans-serif; font-size: 0.85rem;">
-          
           <div class="row g-3 mb-3">
-            <!-- Datos Generales -->
             <div class="col-md-7">
               <div class="card border-0 shadow-sm h-100 bg-light">
                 <div class="card-header bg-transparent border-bottom-0 pt-3 pb-1 text-start">
@@ -239,10 +320,6 @@ export class BudgetComponent implements OnInit {
                     <span class="fw-medium text-dark">${row.descripcion || ''}</span>
                   </div>
                   <div class="d-flex justify-content-between border-bottom border-secondary border-opacity-10 py-1">
-                    <span class="text-muted" style="font-size: 0.8rem;">Equipo de Impresión:</span>
-                    <span class="fw-medium text-dark">N/A</span>
-                  </div>
-                  <div class="d-flex justify-content-between border-bottom border-secondary border-opacity-10 py-1">
                     <span class="text-muted" style="font-size: 0.8rem;">Tasa de Fallo (Merma):</span>
                     <span class="text-danger fw-medium">${row.tasaFalloGlobal || 0}%</span>
                   </div>
@@ -257,8 +334,6 @@ export class BudgetComponent implements OnInit {
                 </div>
               </div>
             </div>
-
-            <!-- Panel Azul -->
             <div class="col-md-5">
               <div class="card h-100 border-0 text-white shadow-sm" style="background-color: #2b5fe8; border-radius: 8px;">
                 <div class="card-body text-start p-3 d-flex flex-column">
@@ -268,7 +343,6 @@ export class BudgetComponent implements OnInit {
                       <i class="ti ti-currency-dollar fs-6 text-white"></i>
                     </div>
                   </div>
-                  
                   <div class="d-flex justify-content-between mb-1" style="font-size: 0.8rem;">
                     <span class="text-white-50">Costo de Materiales (con merma):</span>
                     <span class="fw-medium">$${totalCostoMaterial.toFixed(2)}</span>
@@ -277,25 +351,40 @@ export class BudgetComponent implements OnInit {
                     <span class="text-white-50">Costo Operativo Máquina:</span>
                     <span class="fw-medium">$${totalCostoMaquina.toFixed(2)}</span>
                   </div>
-                  <div class="d-flex justify-content-between mb-2 border-bottom border-white border-opacity-25 pb-2" style="font-size: 0.8rem;">
+                  <div class="d-flex justify-content-between mb-1" style="font-size: 0.8rem;">
                     <span class="text-white-50">Costo Indirecto Prorrateado:</span>
                     <span class="fw-medium">$${totalCostoIndirecto.toFixed(2)}</span>
                   </div>
-                  <div class="d-flex justify-content-between mb-auto" style="font-size: 0.8rem;">
-                    <span class="text-white-50">Costo Total Base:</span>
+                  ${totalCostoInventario > 0 ? `
+                  <div class="d-flex justify-content-between mb-1" style="font-size: 0.8rem;">
+                    <span class="text-white-50">Costo Piezas Inventario:</span>
+                    <span class="fw-medium">$${totalCostoInventario.toFixed(2)}</span>
+                  </div>
+                  ` : ''}
+                  <div class="d-flex justify-content-between mb-2 border-bottom border-white border-opacity-25 pb-2" style="font-size: 0.8rem;">
+                    <span class="text-white-50">Costo Unitario Base:</span>
                     <span class="fw-bold">$${baseCost.toFixed(2)}</span>
                   </div>
-
-                  <div class="mt-3 pt-2 border-top border-white border-opacity-25">
-                    <div class="text-white-50 mb-1" style="font-size: 0.75rem;">Precio Sugerido (Margen ${margin}%)</div>
-                    <div class="fs-3 fw-bold">$${suggestedPrice.toFixed(2)}</div>
+                  <div class="mt-2 pt-2 border-top border-white border-opacity-25">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                      <span class="text-white-50" style="font-size: 0.75rem;">Precio Sugerido Unitario:</span>
+                      <span class="fw-bold text-white fs-5">$${suggestedPrice.toFixed(2)}</span>
+                    </div>
+                    ${deliveryCost > 0 ? `
+                    <div class="d-flex justify-content-between align-items-center mb-1" style="font-size: 0.75rem;">
+                      <span class="text-white-50">Costo de Delivery:</span>
+                      <span class="fw-medium text-white">$${deliveryCost.toFixed(2)}</span>
+                    </div>
+                    ` : ''}
+                    <div class="pt-2 border-top border-white border-opacity-25 mt-2">
+                      <div class="text-white-50 mb-1" style="font-size: 0.7rem;">Presupuesto Total Final</div>
+                      <div class="fs-4 fw-bold text-warning">$${totalBudgetFinal.toFixed(2)}</div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-
-          <!-- Especificaciones Físicas -->
           <div class="mb-3">
             <h6 class="fw-bold mb-2 text-dark fs-6"><i class="ti ti-layers-intersect me-2 text-muted"></i>Especificaciones Físicas Totales</h6>
             <div class="row g-2">
@@ -340,8 +429,6 @@ export class BudgetComponent implements OnInit {
               </div>
             </div>
           </div>
-
-          <!-- Tabla de Piezas -->
           <div>
             <h6 class="fw-bold mb-2 text-dark fs-6"><i class="ti ti-list-details me-2 text-muted"></i>Desglose por Pieza</h6>
             <div class="table-responsive rounded shadow-sm border border-light">
@@ -353,17 +440,15 @@ export class BudgetComponent implements OnInit {
                     <th class="fw-semibold border-0 text-white py-2">Horas</th>
                     <th class="fw-semibold border-0 text-white py-2">Minutos</th>
                     <th class="fw-semibold border-0 text-white py-2">Costo Material</th>
-                    <th class="fw-semibold border-0 text-white py-2">Costo Máquina</th>
-                    <th class="fw-semibold border-0 text-white py-2 pe-2">Precio Sugerido</th>
+                    <th class="fw-semibold border-0 text-white py-2 pe-2">Costo Máquina</th>
                   </tr>
                 </thead>
                 <tbody>
-                  ${piezasRows || '<tr><td colspan="7" class="text-muted py-2">No hay piezas en este presupuesto</td></tr>'}
+                  ${piezasRows || '<tr><td colspan="6" class="text-muted py-2">No hay piezas en este presupuesto</td></tr>'}
                 </tbody>
               </table>
             </div>
           </div>
-
         </div>
       `,
       customClass: {

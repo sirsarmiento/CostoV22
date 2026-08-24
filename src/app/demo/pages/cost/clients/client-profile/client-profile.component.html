@@ -1,0 +1,142 @@
+<div class="row mb-4">
+  <div class="col-sm-6">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a routerLink="/clients">Clientes</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Perfil de Cliente</li>
+      </ol>
+    </nav>
+  </div>
+  <div class="col-sm-6 text-sm-end mt-2 mt-sm-0">
+    <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" (click)="volver()">
+      <i class="ti ti-arrow-left fs-5"></i> Volver a la lista
+    </button>
+  </div>
+</div>
+
+@if (clientInfo) {
+  <div class="row">
+    <!-- Informacion General Client Card -->
+    <div class="col-lg-4 mb-4">
+      <div class="card h-100">
+        <div class="card-body text-center p-4">
+          
+          <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center mx-auto mb-3 shadow-sm fw-bold fs-3" style="width: 72px; height: 72px; letter-spacing: 1px;">
+            {{ clientInitials }}
+          </div>
+
+          <h4 class="mb-1 text-dark">{{ clientInfo.nombre }} {{ clientInfo.apellido }}</h4>
+          <span class="badge bg-light-success text-success mb-4">Cliente Activo</span>
+
+          <div class="border-top pt-3 text-start">
+            
+            <div class="d-flex align-items-center mb-3">
+              <div class="avtar avtar-s bg-light-secondary text-secondary me-3">
+                <i class="ti ti-mail fs-5"></i>
+              </div>
+              <div>
+                <small class="text-muted d-block">Correo Electrónico</small>
+                <span class="fw-semibold text-dark">{{ clientInfo.email || 'No registrado' }}</span>
+              </div>
+            </div>
+
+            <div class="d-flex align-items-center mb-3">
+              <div class="avtar avtar-s bg-light-secondary text-secondary me-3">
+                <i class="ti ti-phone fs-5"></i>
+              </div>
+              <div>
+                <small class="text-muted d-block">Teléfono de Contacto</small>
+                <span class="fw-semibold text-dark">{{ clientInfo.telefono || 'No registrado' }}</span>
+              </div>
+            </div>
+
+            <div class="d-flex align-items-center mb-3">
+              <div class="avtar avtar-s bg-light-secondary text-secondary me-3">
+                <i class="ti ti-map-pin fs-5"></i>
+              </div>
+              <div>
+                <small class="text-muted d-block">Dirección Principal</small>
+                <span class="fw-semibold text-dark">{{ clientInfo.direccion || 'Sin dirección registrada' }}</span>
+              </div>
+            </div>
+
+            <div class="d-flex align-items-center mb-3">
+              <div class="avtar avtar-s bg-light-secondary text-secondary me-3">
+                <i class="ti ti-calendar fs-5"></i>
+              </div>
+              <div>
+                <small class="text-muted d-block">Fecha de Registro</small>
+                <span class="fw-semibold text-dark">{{ clientInfo.fechaRegistro || 'Reciente' }}</span>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="mt-4 pt-3 border-top d-grid">
+            <button class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2" (click)="editarCliente()">
+              <i class="ti ti-edit fs-5"></i> Editar Datos de Cliente
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Historial de Presupuestos Card -->
+    <div class="col-lg-8 mb-4">
+      <div class="card h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <div>
+            <h5 class="card-title mb-0">Historial de Presupuestos & Compras</h5>
+            <small class="text-muted">Proyectos y cotizaciones solicitadas por este cliente.</small>
+          </div>
+          <span class="badge bg-light-primary text-primary fs-6">{{ history.length }} Registro(s)</span>
+        </div>
+        <div class="card-body p-0">
+          
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>N° Presupuesto</th>
+                  <th>Fecha</th>
+                  <th>Proyecto / Descripción</th>
+                  <th>Clasificación</th>
+                  <th>Monto Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of history; track item.id) {
+                  <tr>
+                    <td><span class="fw-bold text-primary">#{{ item.numero }}</span></td>
+                    <td>{{ item.fecha | date: 'dd/MM/yyyy' }}</td>
+                    <td><div class="cell-name-clamp" [attr.title]="item.descripcion">{{ item.descripcion }}</div></td>
+                    <td>
+                      <span class="badge bg-light-info text-info">{{ item.clasificacion }}</span>
+                    </td>
+                    <td><span class="fw-bold text-success">${{ item.monto | number: '1.2-2' }}</span></td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="5" class="text-center py-5 text-muted">
+                      <i class="ti ti-file-off fs-1 d-block mb-2 text-muted"></i>
+                      Este cliente aún no registra presupuestos o cotizaciones asociadas.
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+} @else if (loading) {
+  <div class="text-center py-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Cargando perfil...</span>
+    </div>
+    <p class="text-muted mt-2">Cargando datos del cliente...</p>
+  </div>
+}

@@ -109,6 +109,18 @@ const routes: Routes = [
         loadComponent: () => import('./demo/pages/cost/budgets/add-budget/add-budget.component').then((c) => c.AddBudgetComponent)
       },
       {
+        path: 'clients',
+        loadComponent: () => import('./demo/pages/cost/clients/clients-list/clients-list.component').then((c) => c.ClientsListComponent)
+      },
+      {
+        path: 'clients/add-client',
+        loadComponent: () => import('./demo/pages/cost/clients/add-client/add-client.component').then((c) => c.AddClientComponent)
+      },
+      {
+        path: 'clients/profile/:id',
+        loadComponent: () => import('./demo/pages/cost/clients/client-profile/client-profile.component').then((c) => c.ClientProfileComponent)
+      },
+      {
         path: 'password/change-pass',
         loadComponent: () => import('./demo/pages/password/change-pass/change-pass.component').then((c) => c.ChangePassComponent)
       }

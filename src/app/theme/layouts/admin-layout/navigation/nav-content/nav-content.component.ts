@@ -27,7 +27,8 @@ import {
   DollarOutline,
   DatabaseOutline,
   AuditOutline,
-  CalculatorOutline
+  CalculatorOutline,
+  TeamOutline
 } from '@ant-design/icons-angular/icons';
 import { NgScrollbarModule } from 'ngx-scrollbar';
 
@@ -73,7 +74,8 @@ export class NavContentComponent implements OnInit {
         DollarOutline,
         DatabaseOutline,
         AuditOutline,
-        CalculatorOutline
+        CalculatorOutline,
+        TeamOutline
       ]
     );
     this.navigations = NavigationItems;

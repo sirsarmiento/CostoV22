@@ -59,10 +59,23 @@ export class ProductComponent implements OnInit {
         const productsList = data.products;
 
         this.allProducts = productsList.map(p => {
-          const config = configs.find(c => c.id === p.perfil);
+          let perfilId: number | null = null;
+          let rawName = '';
+
+          if (typeof p.perfil === 'object' && p.perfil !== null) {
+            const pObj = p.perfil as unknown as Record<string, unknown>;
+            perfilId = Number(pObj['id']) || null;
+            rawName = (pObj['nombre'] as string) || (pObj['descripcion'] as string) || '';
+          } else if (p.perfil !== null && p.perfil !== undefined) {
+            perfilId = Number(p.perfil) || null;
+          }
+
+          const config = configs.find(c => String(c.id) === String(perfilId));
+          const finalName = rawName || (config ? config.nombre : (configs.length > 0 ? configs[0].nombre : 'Sin Empresa'));
+
           return {
             ...p,
-            perfilName: config ? config.nombre : 'Sin Empresa'
+            perfilName: finalName
           };
         });
 

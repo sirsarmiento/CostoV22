@@ -9,7 +9,7 @@
   </div>
   <div class="col-sm-6 text-sm-end mt-2 mt-sm-0">
     <button class="btn btn-primary d-inline-flex align-items-center gap-2" (click)="openAdd()">
-      <i class="ti ti-box-seam fs-5"></i> Nuevo Producto
+      <i class="ti ti-plus fs-5"></i> Nuevo Producto
     </button>
   </div>
 </div>
@@ -78,9 +78,6 @@
                 <th style="cursor: pointer;" (click)="sortData('clasificacion')">
                   Clasificación <i class="ti fs-6" [class]="getSortClass('clasificacion')"></i>
                 </th>
-                <th style="cursor: pointer;" (click)="sortData('perfilName')">
-                  Empresa <i class="ti fs-6" [class]="getSortClass('perfilName')"></i>
-                </th>
                 <th class="text-center">Acciones</th>
               </tr>
             </thead>
@@ -104,27 +101,18 @@
                       {{ row.clasificacion }}
                     </span>
                   </td>
-                  <td>{{ row.perfilName }}</td>
                   <td class="text-center" (click)="$event.stopPropagation()">
-                    <div class="btn-group btn-group-sm">
-                      <button 
-                        class="btn btn-icon btn-light-primary" 
-                        (click)="onEdit(row)" 
-                        title="Editar">
-                        <i class="ti ti-edit fs-5"></i>
-                      </button>
-                      <button 
-                        class="btn btn-icon btn-light-danger" 
-                        (click)="onDelete(row.id, row.nombre)" 
-                        title="Eliminar">
-                        <i class="ti ti-trash fs-5"></i>
-                      </button>
-                    </div>
+                    <button 
+                      class="btn btn-icon btn-light-primary" 
+                      (click)="onEdit(row)" 
+                      title="Editar">
+                      <i class="ti ti-edit fs-5"></i>
+                    </button>
                   </td>
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="6" class="text-center py-4 text-muted">
+                  <td colspan="5" class="text-center py-4 text-muted">
                     No se encontraron elementos para esta categoría.
                   </td>
                 </tr>

@@ -68,7 +68,7 @@ export class ProductService {
       localStorage.setItem('cost_products', JSON.stringify(products));
       return of(undefined);
     }
-    return this.http.delete<void>(`${environment.apiUrl}/product/${id}`);
+    return this.http.delete<void>(`${environment.apiUrl}/producto/${id}`);
   }
 
   addWithReturn(data: Product): Observable<Product> {

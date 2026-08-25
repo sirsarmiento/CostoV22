@@ -10,6 +10,7 @@ import { AssetService } from '../../../../../core/services/cost/asset.service';
 import { Asset } from '../../../../../core/models/Cost/asset';
 import { forkJoin } from 'rxjs';
 import Swal from 'sweetalert2';
+import { calculateBudgetTotals, normalizeBudget } from '../../../../../core/utils/budget-calculator';
 
 @Component({
   selector: 'app-budget',
@@ -72,16 +73,23 @@ export class BudgetComponent implements OnInit {
       if (data.assets) {
         this.allAssets = data.assets;
       }
+      this.getBudgets();
+    }, () => {
+      this.getBudgets();
     });
-
-    this.getBudgets();
   }
 
   getBudgets() {
     this.loading = true;
     this.budgetService.getBudgets().subscribe({
       next: (data) => {
-        this.allBudgets = data;
+        this.allBudgets = (data || []).map(b => {
+          const norm = normalizeBudget(b);
+          return {
+            ...norm,
+            costoTotalFinal: this.calcularTotalPresupuesto(norm)
+          };
+        });
         this.filteredBudgets = [...this.allBudgets];
         this.applyFilterAndPagination();
        
@@ -93,6 +101,50 @@ export class BudgetComponent implements OnInit {
         this.loading = false;
       }
     });
+  }
+
+  getRateMaquina(row: Budget): number {
+    const rowRec = row as unknown as Record<string, unknown>;
+    const rate = Number(row.costoMaquina ?? rowRec['costo_maquina'] ?? rowRec['costoMaquinaHora'] ?? rowRec['tasaMaquina']) || 0;
+    if (rate > 0) return rate;
+
+    if (row.piezas) {
+      for (const p of row.piezas) {
+        const pRec = p as unknown as Record<string, unknown>;
+        const maqId = p.maquina ?? pRec['maquina_id'] ?? pRec['activo_id'];
+        if (maqId) {
+          const maq = this.allAssets.find(a => a.id == maqId);
+          if (maq) {
+            const consumo = Number(maq.consumoMaquina) || 0;
+            const tarifa = Number(maq.tarifa) || 0;
+            const mantenimiento = Number(maq.costoMantenimiento) || 0;
+            const calc = (consumo / 1000 * tarifa) + mantenimiento;
+            if (calc > 0) return calc;
+          }
+        }
+      }
+    }
+
+    const firstMaq = this.allAssets.find(a => (a as unknown as Record<string, unknown>)['clasificacion'] === 'Maquinaria' || (a as unknown as Record<string, unknown>)['tipo'] === 'Maquinaria');
+    if (firstMaq) {
+      const consumo = Number(firstMaq.consumoMaquina) || 0;
+      const tarifa = Number(firstMaq.tarifa) || 0;
+      const mantenimiento = Number(firstMaq.costoMantenimiento) || 0;
+      const calc = (consumo / 1000 * tarifa) + mantenimiento;
+      if (calc > 0) return calc;
+    }
+
+    return 15.75;
+  }
+
+  calcularTotalPresupuesto(row: Budget): number {
+    const res = calculateBudgetTotals(
+      row,
+      this.allAssets,
+      this.totalFijoIndirecto,
+      this.capacidadHorasMaquina
+    );
+    return res.costoTotalFinal;
   }
 
   onSearchChange() {
@@ -203,89 +255,42 @@ export class BudgetComponent implements OnInit {
   }
 
   onFormule(row: Budget) {
-    const rowRec = row as unknown as Record<string, unknown>;
+    const norm = normalizeBudget(row);
+    const res = calculateBudgetTotals(
+      norm,
+      this.allAssets,
+      this.totalFijoIndirecto,
+      this.capacidadHorasMaquina
+    );
 
-    // Totales Físicos
-    let totalGramos = 0;
-    let totalHorasRaw = 0;
-    let totalMinutosRaw = 0;
+    const totalGramos = res.totalGramos;
+    const finalHoras = res.totalHoras;
+    const finalMinutos = res.totalMinutos;
+    const totalCostoMaterial = res.totalCostoMaterial;
+    const totalCostoMaquina = res.totalCostoMaquina;
+    const totalCostoIndirecto = res.costoIndirectoAsignado;
+    const depreciacionAsignada = res.depreciacionAsignada;
+    const totalCostoInventario = res.totalCostoInventario;
+    const baseCost = res.costoTotalUnitarioBase;
+    const suggestedPrice = res.precioSugeridoUnitario;
+    const deliveryCost = res.delivery;
+    const totalBudgetFinal = res.costoTotalFinal;
 
-    (row.piezas || []).forEach(p => {
-      totalGramos += Number(p.gramos) || 0;
-      totalHorasRaw += Number(p.horas) || 0;
-      totalMinutosRaw += Number(p.minutos) || 0;
-    });
-
-    const prepMin = Number(row.tiempoSetup) || 0;
-    const postMin = Number(row.tiempoPostProcesado) || 0;
-
-    const totalMinutosCompleto = totalMinutosRaw + prepMin + postMin;
-    const extraHours = Math.floor(totalMinutosCompleto / 60);
-    const finalHoras = totalHorasRaw + extraHours;
-    const finalMinutos = totalMinutosCompleto % 60;
-    const totalTiempoHoras = finalHoras + (finalMinutos / 60);
-
-    // 1. Costo Materiales con Merma
-    let rawMaterialCost = 0;
-    let totalCostoInventario = 0;
-
-    (row.piezas || []).forEach(p => {
+    const piezasRows = (norm.piezas || []).map(p => {
       const pRec = p as unknown as Record<string, unknown>;
-      if (p.tipo === 'Del Inventario') {
-        const actId = p.activo ?? pRec['activo_id'] ?? pRec['activo'] ?? pRec['id'];
-        let val = 0;
-        if (actId) {
-          const foundAsset = this.allAssets.find(a => a.id == actId);
-          if (foundAsset) {
-            val = Number(foundAsset.valorUnitario) || Number(foundAsset.costoInicial) || Number((foundAsset as unknown as Record<string, unknown>)['precio']) || 0;
-          }
-        }
-        if (val <= 0) {
-          val = Number(pRec['costoInicial'] ?? pRec['valorUnitario'] ?? pRec['precio'] ?? p.precioMaterial) || 0;
-        }
-        const cant = Number(p.cantidad) || 1;
-        totalCostoInventario += val * cant;
-      } else {
-        const g = Number(p.gramos) || 0;
-        const pm = Number(p.precioMaterial) || 0;
-        rawMaterialCost += g * pm;
-      }
-    });
-
-    const totalCostoMaterial = rawMaterialCost * (1 + ((Number(row.tasaFalloGlobal) || 0) / 100));
-
-    // 2. Costo Operativo Máquina
-    const totalCostoMaquina = (Number(row.costoMaquina) || 0) * totalTiempoHoras;
-
-    // 3. Costo Indirecto Prorrateado (CIF)
-    const tasaCIFHora = this.totalFijoIndirecto / (this.capacidadHorasMaquina || 160);
-    const totalCostoIndirecto = Number(rowRec['costoIndirectoProrrateado']) || Number(rowRec['costoIndirecto']) || (tasaCIFHora * totalTiempoHoras);
-
-    // 4. Costo Total Base
-    const baseCost = totalCostoMaterial + totalCostoMaquina + totalCostoIndirecto + totalCostoInventario;
-
-    const margin = Number(row.margenGanancia) || 0;
-    const factor = margin / 100;
-    const suggestedPrice = factor >= 1 ? baseCost / 0.0001 : baseCost / (1 - factor);
-
-    const deliveryCost = Number(row.delivery) || Number(rowRec['delivery']) || 0;
-    const cantidadGlobal = Number(row.cantidadGlobal) || Number(rowRec['cantidadGlobal']) || 1;
-    const totalBudgetFinal = (suggestedPrice * cantidadGlobal) + deliveryCost;
-
-    // Construir tabla de piezas
-    const piezasRows = (row.piezas || []).map(p => {
-      const g = Number(p.gramos) || 0;
-      const h = Number(p.horas) || 0;
-      const min = Number(p.minutos) || 0;
-      const matCost = p.tipo === 'Del Inventario' ? 0 : g * (Number(p.precioMaterial) || 0);
-      const maqCost = (Number(row.costoMaquina) || 0) * (h + (min / 60));
+      const cant = Number(pRec['cantidad'] ?? p.cantidad) || 1;
+      const g = (Number(pRec['gramos'] ?? p.gramos) || 0) * cant;
+      const h = Number(pRec['horas'] ?? p.horas) || 0;
+      const min = Number(pRec['minutos'] ?? p.minutos) || 0;
+      const matCost = p.tipo === 'Del Inventario' ? 0 : g * (Number(pRec['precioMaterial'] ?? p.precioMaterial) || 0);
+      const maqCost = res.costoMaquinaRate * ((h + (min / 60)) * cant);
 
       return `
         <tr>
-          <td class="text-start fw-medium">${p.nombre || 'Pieza'}</td>
+          <td class="text-start fw-medium">${p.nombre || 'Pieza'} ${cant > 1 ? `(x${cant})` : ''}</td>
           <td>${g.toFixed(2)}</td>
-          <td>${h}</td>
-          <td>${min}</td>
+          <td>${h * cant}</td>
+          <td>${min * cant}</td>
           <td>$${matCost.toFixed(2)}</td>
           <td class="fw-bold text-primary">$${maqCost.toFixed(2)}</td>
         </tr>
@@ -305,31 +310,31 @@ export class BudgetComponent implements OnInit {
                 <div class="card-body px-3 py-2 text-start">
                   <div class="d-flex justify-content-between border-bottom border-secondary border-opacity-10 py-1">
                     <span class="text-muted" style="font-size: 0.8rem;">Clasificación:</span>
-                    <span class="fw-medium text-dark">${row.clasificacion || ''}</span>
+                    <span class="fw-medium text-dark">${norm.clasificacion || ''}</span>
                   </div>
                   <div class="d-flex justify-content-between border-bottom border-secondary border-opacity-10 py-1">
                     <span class="text-muted" style="font-size: 0.8rem;">Nro. de Orden:</span>
-                    <span class="fw-medium text-dark">${row.numero || ''}</span>
+                    <span class="fw-medium text-dark">${norm.numero || ''}</span>
                   </div>
                   <div class="d-flex justify-content-between border-bottom border-secondary border-opacity-10 py-1">
                     <span class="text-muted" style="font-size: 0.8rem;">Fecha:</span>
-                    <span class="fw-medium text-dark">${row.fecha ? new Date(row.fecha).toLocaleDateString() : ''}</span>
+                    <span class="fw-medium text-dark">${norm.fecha ? new Date(norm.fecha).toLocaleDateString() : ''}</span>
                   </div>
                   <div class="d-flex justify-content-between border-bottom border-secondary border-opacity-10 py-1">
                     <span class="text-muted" style="font-size: 0.8rem;">Descripción:</span>
-                    <span class="fw-medium text-dark">${row.descripcion || ''}</span>
+                    <span class="fw-medium text-dark">${norm.descripcion || ''}</span>
                   </div>
                   <div class="d-flex justify-content-between border-bottom border-secondary border-opacity-10 py-1">
                     <span class="text-muted" style="font-size: 0.8rem;">Tasa de Fallo (Merma):</span>
-                    <span class="text-danger fw-medium">${row.tasaFalloGlobal || 0}%</span>
+                    <span class="text-danger fw-medium">${norm.tasaFalloGlobal || 0}%</span>
                   </div>
                   <div class="d-flex justify-content-between border-bottom border-secondary border-opacity-10 py-1">
                     <span class="text-muted" style="font-size: 0.8rem;">Prep/Slicing:</span>
-                    <span class="fw-medium text-dark">${row.tiempoSetup || 0} min</span>
+                    <span class="fw-medium text-dark">${res.tiempoSetupMin} min</span>
                   </div>
                   <div class="d-flex justify-content-between pt-1">
                     <span class="text-muted" style="font-size: 0.8rem;">Post-procesado:</span>
-                    <span class="fw-medium text-dark">${row.tiempoPostProcesado || 0} min</span>
+                    <span class="fw-medium text-dark">${res.tiempoPostProcesadoMin} min</span>
                   </div>
                 </div>
               </div>
@@ -355,6 +360,12 @@ export class BudgetComponent implements OnInit {
                     <span class="text-white-50">Costo Indirecto Prorrateado:</span>
                     <span class="fw-medium">$${totalCostoIndirecto.toFixed(2)}</span>
                   </div>
+                  ${depreciacionAsignada > 0 ? `
+                  <div class="d-flex justify-content-between mb-1" style="font-size: 0.8rem;">
+                    <span class="text-white-50">Depreciación Prorrateada:</span>
+                    <span class="fw-medium">$${depreciacionAsignada.toFixed(2)}</span>
+                  </div>
+                  ` : ''}
                   ${totalCostoInventario > 0 ? `
                   <div class="d-flex justify-content-between mb-1" style="font-size: 0.8rem;">
                     <span class="text-white-50">Costo Piezas Inventario:</span>

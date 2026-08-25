@@ -15,6 +15,7 @@ import { FixeService } from '../../../../../core/services/cost/fixe.service';
 import { ClientService } from '../../../../../core/services/cost/client.service';
 import { forkJoin } from 'rxjs';
 import Swal from 'sweetalert2';
+import { calculateBudgetTotals, getNumFromRecord } from '../../../../../core/utils/budget-calculator';
 
 @Component({
   selector: 'app-add-budget',
@@ -176,8 +177,9 @@ export class AddBudgetComponent implements OnInit {
 
         const costoInicial = Number(machine.costoInicial) || 0;
         const valorResidual = Number(machine.valorResidual) || 0;
-        const vidaUtil = Number(machine.vidaUtil) > 0 ? Number(machine.vidaUtil) : 1;
-        this.tasaDepreciacionMaquina = (costoInicial - valorResidual) / vidaUtil;
+        const vidaUtilAnos = Number(machine.vidaUtil) > 0 ? Number(machine.vidaUtil) : 1;
+        const vidaUtilHoras = vidaUtilAnos * 1920;
+        this.tasaDepreciacionMaquina = (costoInicial - valorResidual) / vidaUtilHoras;
         return;
       }
     }
@@ -226,7 +228,7 @@ export class AddBudgetComponent implements OnInit {
   addPart() {
     let nombre: string;
     const cantidad = Number(this.form.get('piezaCantidad')?.value) || 1;
-    let assetId: number | null;
+    let activoId: number | undefined;
     let gramos = 0;
     let horas = 0;
     let minutos = 0;
@@ -244,7 +246,7 @@ export class AddBudgetComponent implements OnInit {
         return;
       }
       nombre = this.assetsMobiliario.find(a => a.id == asset)?.nombre || 'Activo';
-      assetId = Number(asset);
+      activoId = Number(asset);
     } else {
       nombre = this.form.get('piezaFabricada')?.value;
       gramos = Number(this.form.get('piezaGramos')?.value) || 0;
@@ -262,7 +264,7 @@ export class AddBudgetComponent implements OnInit {
         Swal.fire('Por Favor', 'Debe seleccionar un material para la pieza fabricada', 'info');
         return;
       }
-      assetId = Number(matId);
+      activoId = Number(matId);
       precioMaterial = Number(this.form.get('piezaPrecioMaterial')?.value) || 0;
       
       const assetCirc = this.activosCirculantes.find(a => a.id == matId);
@@ -296,9 +298,10 @@ export class AddBudgetComponent implements OnInit {
       gramos: gramos,
       horas: horas,
       minutos: minutos,
-      activo: assetId || undefined,
+      activo: activoId || undefined,
       maquina: maquinaId,
-      producto: 0, //falta pasar el id del producto si es que se tiene
+      maquinaNombre: maquinaNombre,
+      producto: 0,
     };
 
     this.piezaCounter++;
@@ -317,16 +320,24 @@ export class AddBudgetComponent implements OnInit {
   autoFillFromProduct(productId: number) {
     const product = this.productosList.find(p => p.id == productId);
     if (product) {
+      const pRec = product as unknown as Record<string, unknown>;
+      const prepValue = getNumFromRecord(pRec, ['prepSlicing', 'tiempoSetup', 'prep_slicing', 'tiempo_setup'], Number(product.prepSlicing) || 0);
+      const postValue = getNumFromRecord(pRec, ['postProcesado', 'tiempoPostProcesado', 'post_procesado', 'tiempo_post_procesado'], Number(product.postProcesado) || 0);
+      const tasaValue = getNumFromRecord(pRec, ['tasaFallo', 'tasaFalloGlobal', 'tasa_fallo', 'tasa_fallo_global'], Number(product.tasaFallo) || 0);
+      const margenValue = getNumFromRecord(pRec, ['margenGanancia', 'margen_ganancia'], Number(product.margenGanancia) || this.minMargenGanancia);
+
       this.form.patchValue({
         descripcion: product.descripcion || product.nombre,
-        tasaFalloGlobal: product.tasaFallo || 0,
-        tiempoSetup: product.prepSlicing || 0,
-        tiempoPostProcesado: product.postProcesado || 0,
-        margenGanancia: product.margenGanancia || this.minMargenGanancia
+        tasaFalloGlobal: Number(tasaValue) || 0,
+        tiempoSetup: Number(prepValue) || 0,
+        tiempoPostProcesado: Number(postValue) || 0,
+        margenGanancia: Number(margenValue) || this.minMargenGanancia
       });
 
-      if (product.piezasBase && Array.isArray(product.piezasBase) && product.piezasBase.length > 0) {
-        this.piezas = product.piezasBase.map((pb: Record<string, unknown>, index: number) => {
+      const rawPiezas = pRec['piezas'] ?? pRec['piezasBase'] ?? pRec['piezas_base'] ?? product.piezasBase ?? [];
+      const piezasList = Array.isArray(rawPiezas) ? rawPiezas : [];
+      if (piezasList.length > 0) {
+        this.piezas = piezasList.map((pb: Record<string, unknown>, index: number) => {
           return {
             id: index + 1,
             tipo: (pb['tipo'] as string) || 'Fabricada',
@@ -350,73 +361,15 @@ export class AddBudgetComponent implements OnInit {
   }
 
   getTotales() {
-    let rawMaterialCost = 0;
-    let totalCostoInventario = 0;
-    let totalTiempoHoras = 0;
-
-    const costoMaquinaRate = Number(this.form?.get('costoMaquina')?.value) || 0;
-
-    this.piezas.forEach(pieza => {
-      const cant = Number(pieza.cantidad) || 1;
-      if (pieza.tipo === 'Del Inventario') {
-        const foundCirc = this.activosCirculantes.find(a => a.id == pieza.activo);
-        const foundMob = this.assetsMobiliario.find(a => a.id == pieza.activo);
-        const asset = foundCirc || foundMob;
-        if (asset) {
-          const val = Number(asset.valorUnitario) || Number(asset.costoInicial) || 0;
-          totalCostoInventario += val * cant;
-        } else {
-          totalCostoInventario += (Number(pieza.precioMaterial) || 0) * cant;
-        }
-      } else {
-        rawMaterialCost += ((Number(pieza.gramos) || 0) * (Number(pieza.precioMaterial) || 0)) * cant;
-        const tiempoPieza = (Number(pieza.horas) || 0) + ((Number(pieza.minutos) || 0) / 60);
-        totalTiempoHoras += (tiempoPieza * cant);
-      }
-    });
-
-    const tasaFallo = Number(this.form?.get('tasaFalloGlobal')?.value) || 0;
-    const totalCostoMaterial = rawMaterialCost * (1 + (tasaFallo / 100));
-
-    // Incluir tiempo extra de setup y post-procesado al tiempo de máquina
-    const tiempoExtraHoras = ((Number(this.form?.get('tiempoSetup')?.value) || 0) + (Number(this.form?.get('tiempoPostProcesado')?.value) || 0)) / 60;
-    totalTiempoHoras += tiempoExtraHoras;
-
-    const totalCostoMaquina = costoMaquinaRate * totalTiempoHoras;
-
-    const costoIndirectoAsignado = this.tasaCIF * totalTiempoHoras;
-    const depreciacionAsignada = this.tasaDepreciacionMaquina * totalTiempoHoras;
-    const costoTotalUnitarioBase = totalCostoMaterial + totalCostoMaquina + costoIndirectoAsignado + depreciacionAsignada + totalCostoInventario;
-
-    const margen = Number(this.form?.get('margenGanancia')?.value) || 0;
-    const factorGanancia = margen < 1 ? margen : margen / 100;
-    const precioSugeridoUnitario = factorGanancia >= 1
-      ? costoTotalUnitarioBase / 0.0001
-      : costoTotalUnitarioBase / (1 - factorGanancia);
-
-    const cantidadGlobal = Number(this.form?.get('cantidadGlobal')?.value) || 1;
-    const delivery = Number(this.form?.get('delivery')?.value) || 0;
-    const costoTotalFinal = (precioSugeridoUnitario * cantidadGlobal) + delivery;
-
-    const totalGramos = this.piezas.reduce((sum, pieza) => sum + ((Number(pieza.gramos) || 0) * (Number(pieza.cantidad) || 1)), 0);
-    const totalHoras = Math.floor(totalTiempoHoras);
-    const totalMinutos = Math.round((totalTiempoHoras - totalHoras) * 60);
-
-    return {
-      totalGramos,
-      totalHoras,
-      totalMinutos,
-      totalCostoMaterial,
-      totalCostoMaquina,
-      costoIndirectoAsignado,
-      depreciacionAsignada,
-      totalCostoInventario,
-      costoTotalUnitarioBase,
-      precioSugeridoUnitario,
-      cantidadGlobal,
-      delivery,
-      costoTotalFinal
-    };
+    const rawBudget = this.form ? { ...this.form.value, piezas: this.piezas } : { piezas: this.piezas };
+    return calculateBudgetTotals(
+      rawBudget,
+      [...this.maquinasList, ...this.assetsMobiliario, ...this.activosCirculantes],
+      this.totalFijoIndirecto,
+      this.capacidadHorasMaquina,
+      Number(this.form?.get('costoMaquina')?.value) || 0,
+      this.tasaDepreciacionMaquina
+    );
   }
 
   generateUniqueId(): number {
@@ -498,21 +451,50 @@ export class AddBudgetComponent implements OnInit {
         parsedActivoId = Number(rawAct) || null;
       }
 
+      const dRec = data as Record<string, unknown>;
+      const getFirstNonZero = (obj: Record<string, unknown> | null | undefined, keys: string[]): number => {
+        if (!obj) return 0;
+        for (const k of keys) {
+          if (obj[k] !== undefined && obj[k] !== null && obj[k] !== '') {
+            const num = Number(obj[k]);
+            if (!isNaN(num) && num > 0) return num;
+          }
+        }
+        return 0;
+      };
+
+      let setupValue = getFirstNonZero(dRec, ['tiempoSetup', 'prepSlicing', 'tiempo_setup', 'prep_slicing']);
+      let postValue = getFirstNonZero(dRec, ['postProcesado', 'tiempoPostProcesado', 'tiempo_post_procesado', 'post_procesado']);
+      let tasaValue = getFirstNonZero(dRec, ['tasaFallo', 'tasaFalloGlobal', 'tasa_fallo_global', 'tasa_fallo']);
+      let margenValue = getFirstNonZero(dRec, ['margenGanancia', 'margen_ganancia']);
+
+      if (parsedProductoId) {
+        const linkedProd = this.productosList.find(p => p.id == parsedProductoId);
+        if (linkedProd) {
+          const pRec = linkedProd as unknown as Record<string, unknown>;
+          if (setupValue === 0) setupValue = getFirstNonZero(pRec, ['prepSlicing', 'tiempoSetup', 'prep_slicing', 'tiempo_setup']) || Number(linkedProd.prepSlicing) || 0;
+          if (postValue === 0) postValue = getFirstNonZero(pRec, ['postProcesado', 'tiempoPostProcesado', 'post_procesado', 'tiempo_post_procesado']) || Number(linkedProd.postProcesado) || 0;
+          if (tasaValue === 0) tasaValue = getFirstNonZero(pRec, ['tasaFallo', 'tasaFalloGlobal', 'tasa_fallo_global', 'tasa_fallo']) || Number(linkedProd.tasaFallo) || 0;
+          if (margenValue === 0) margenValue = getFirstNonZero(pRec, ['margenGanancia', 'margen_ganancia']) || Number(linkedProd.margenGanancia) || this.minMargenGanancia;
+        }
+      }
+      if (margenValue === 0) margenValue = this.minMargenGanancia;
+
       this.form.patchValue({
-        clasificacion: (data as Record<string, unknown>)['clasificacion'],
+        clasificacion: dRec['clasificacion'],
         productoId: parsedProductoId,
-        descripcion: (data as Record<string, unknown>)['descripcion'],
-        numero: (data as Record<string, unknown>)['numero'],
+        descripcion: dRec['descripcion'],
+        numero: dRec['numero'],
         fecha: dateStr,
         activoId: parsedActivoId,
-        cantidadGlobal: (data as Record<string, unknown>)['cantidadGlobal'] || 1,
-        delivery: (data as Record<string, unknown>)['delivery'] || 0,
+        cantidadGlobal: dRec['cantidadGlobal'] || 1,
+        delivery: dRec['delivery'] || 0,
         clienteId: parsedClienteId,
-        tasaFalloGlobal: (data as Record<string, unknown>)['tasaFalloGlobal'] || 0,
-        tiempoSetup: (data as Record<string, unknown>)['tiempoSetup'] || 0,
-        tiempoPostProcesado: (data as Record<string, unknown>)['tiempoPostProcesado'] || 0,
-        margenGanancia: (data as Record<string, unknown>)['margenGanancia'] !== undefined ? (data as Record<string, unknown>)['margenGanancia'] : this.minMargenGanancia
-      });
+        tasaFalloGlobal: tasaValue,
+        tiempoSetup: setupValue,
+        tiempoPostProcesado: postValue,
+        margenGanancia: margenValue
+      }, { emitEvent: false });
 
       this.id = Number((data as Record<string, unknown>)['id']) || 0;
       this.piezas = this.resolvePiezasDisplay(((data as Record<string, unknown>)['piezas'] as Parts[]) || []);
@@ -559,7 +541,7 @@ export class AddBudgetComponent implements OnInit {
         }
       }
 
-      return p;
+      return { ...p, fromDb: true };
     });
   }
 
@@ -718,35 +700,59 @@ export class AddBudgetComponent implements OnInit {
 
     const prodVal = this.f['productoId']?.value;
     const cliVal = this.f['clienteId']?.value;
-    const actVal = this.f['activoId']?.value;
 
     const parsedProdId = prodVal !== null && prodVal !== undefined && prodVal !== '' ? Number(prodVal) : undefined;
     const parsedCliId = cliVal !== null && cliVal !== undefined && cliVal !== '' ? Number(cliVal) : undefined;
-    const parsedActId = actVal !== null && actVal !== undefined && actVal !== '' ? Number(actVal) : undefined;
 
-    const budget: Budget = {
+    const mappedPiezas = this.piezas.map((p, idx) => {
+      const pObj = p as unknown as Record<string, unknown>;
+      const actId = p.activo ?? pObj['activo_id'] ?? pObj['assetId'] ?? pObj['materialId'];
+      const maqId = p.maquina ?? pObj['maquina_id'] ?? pObj['maquinaId'];
+      const prodId = p.producto ?? pObj['producto_id'] ?? pObj['productoId'] ?? parsedProdId;
+      const pieceObj: Record<string, unknown> = {
+        nombre: String(p.nombre || `PIEZA ${idx + 1}`).trim(),
+        gramos: Number(p.gramos) || 0,
+        metros: Number(p.metros) || 0,
+        horas: Number(p.horas) || 0,
+        minutos: Number(p.minutos) || 0,
+        precioMaterial: Number(p.precioMaterial ?? pObj['precio_material']) || 0,
+        tipo: String(p.tipo || 'Producción').trim(),
+        cantidad: Number(p.cantidad) || 1,
+        producto: prodId ? Number(prodId) : null,
+        activo: actId ? Number(actId) : null,
+        maquina: maqId ? Number(maqId) : null
+      };
+
+      if (pObj['fromDb'] && p.id && Number(p.id) > 0) {
+        pieceObj['id'] = Number(p.id);
+      }
+
+      return pieceObj;
+    });
+
+    const budgetPayload: Record<string, unknown> = {
       id: this.id > 0 ? this.id : 0,
       sku: this.id > 0 ? this.f['numero'].value : `B-${(this.f['clasificacion'].value || 'GEN').substring(0, 3).toUpperCase()}-${Math.floor(Math.random() * 900) + 100}`,
       clasificacion: this.f['clasificacion'].value,
       descripcion: this.f['descripcion'].value,
-      numero: this.f['numero'].value || `ORD-${Date.now()}`,
-      fecha: new Date(this.f['fecha'].value),
-      piezas: this.piezas,
-      producto: parsedProdId,
+      numero: this.f['numero'].value,
+      fecha: this.f['fecha'].value,
+      costoOperador: Number(this.f['costoOperador'].value) || 0,
+      costoMaquina: Number(this.f['costoMaquina'].value) || 0,
+      tasaFalloGlobal: Number(this.f['tasaFalloGlobal'].value) || 0,
+      tiempoSetup: Number(this.f['tiempoSetup'].value) || 0,
+      margenGanancia: Number(this.f['margenGanancia'].value) || 0,
+      tiempoPostProcesado: Number(this.f['tiempoPostProcesado'].value) || 0,
       cantidadGlobal: Number(this.f['cantidadGlobal'].value) || 1,
       delivery: Number(this.f['delivery'].value) || 0,
       cliente: parsedCliId,
-      tasaFalloGlobal: Number(this.f['tasaFalloGlobal'].value) || 0,
-      tiempoSetup: Number(this.f['tiempoSetup'].value) || 0,
-      tiempoPostProcesado: Number(this.f['tiempoPostProcesado'].value) || 0,
-      margenGanancia: Number(this.f['margenGanancia'].value) || 0,
-      costoMaquina: Number(this.f['costoMaquina'].value) || 0,
-      costoOperador: 0
+      producto: parsedProdId,
+      piezas: mappedPiezas
     };
 
-    (budget as unknown as Record<string, unknown>)['producto_id'] = parsedProdId ?? null;
-    (budget as unknown as Record<string, unknown>)['cliente_id'] = parsedCliId ?? null;
-    (budget as unknown as Record<string, unknown>)['activo_id'] = parsedActId ?? null;
+    console.log('>>> PAYLOAD DE PRESUPUESTO A ENVIAR AL SERVIDOR:', JSON.stringify(budgetPayload, null, 2));
+
+    const budget = budgetPayload as unknown as Budget;
 
     const request = this.id === 0
       ? this.budgetService.createBudget(budget)

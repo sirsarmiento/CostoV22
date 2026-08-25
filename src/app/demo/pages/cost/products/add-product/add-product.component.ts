@@ -162,11 +162,15 @@ export class AddProductComponent implements OnInit {
             a.categoria?.toLowerCase().trim() === 'mobiliario'
           );
           this.activosCirculantes = assets.filter((a: Asset) => 
-            a.tipo?.toLowerCase().trim() === 'circulante'
+            a.tipo?.toLowerCase().trim() === 'circulante' ||
+            a.tipo?.toLowerCase().trim() === 'herramienta' ||
+            a.tipo === ''
           );
           this.categoriasMaterial = [...new Set(
-            this.activosCirculantes.map(a => a.categoria).filter(Boolean)
-          )] as string[];
+            this.activosCirculantes.map(a => a.categoria).filter((c): c is string => !!c)
+          )];
+          this.materialesFiltradosCirculantes = [...this.activosCirculantes];
+          this.form.get('piezaMaterialId')?.enable();
           this.cdr.detectChanges();
         }
       }
@@ -177,16 +181,17 @@ export class AddProductComponent implements OnInit {
     if (categoria) {
       this.materialesPorCategoria = this.activosCirculantes.filter(a => a.categoria === categoria);
       this.subcategoriasMaterial = [...new Set(
-        this.materialesPorCategoria.map(a => a.subcategoria || ((a as unknown as Record<string, string>)['subCategoria'])).filter(Boolean)
-      )] as string[];
+        this.materialesPorCategoria.map(a => a.subcategoria || ((a as unknown as Record<string, string>)['subCategoria'])).filter((s): s is string => !!s)
+      )];
       this.materialesFiltradosCirculantes = [...this.materialesPorCategoria];
     } else {
       this.materialesPorCategoria = [];
       this.subcategoriasMaterial = [];
-      this.materialesFiltradosCirculantes = [];
+      this.materialesFiltradosCirculantes = [...this.activosCirculantes];
     }
     this.form.get('piezaMaterialSubcategoria')?.setValue('');
     this.form.get('piezaMaterialId')?.setValue(null);
+    this.form.get('piezaMaterialId')?.enable();
   }
 
   onPiezaSubcategoriaChange(subcategoria: string) {
@@ -195,7 +200,7 @@ export class AddProductComponent implements OnInit {
         (a.subcategoria || ((a as unknown as Record<string, string>)['subCategoria'])) === subcategoria
       );
     } else {
-      this.materialesFiltradosCirculantes = [...this.materialesPorCategoria];
+      this.materialesFiltradosCirculantes = this.materialesPorCategoria.length > 0 ? [...this.materialesPorCategoria] : [...this.activosCirculantes];
     }
     this.form.get('piezaMaterialId')?.setValue(null);
   }
@@ -206,10 +211,10 @@ export class AddProductComponent implements OnInit {
       if (asset) {
         const uMedida = asset.unidadMedida?.toLowerCase().trim();
         const valUnit = Number(asset.valorUnitario) || 0;
-        let precioPorGramo = 0;
+        let precioPorGramo: number;
         if (uMedida === 'kg' || uMedida === 'kilo' || uMedida === 'kilogramo') {
           precioPorGramo = valUnit / 1000;
-        } else if (uMedida === 'gramos' || uMedida === 'gramo') {
+        } else {
           precioPorGramo = valUnit;
         }
         this.form.get('piezaPrecioMaterial')?.setValue(precioPorGramo);
@@ -224,10 +229,10 @@ export class AddProductComponent implements OnInit {
     const cantidad = Number(this.form.get('piezaCantidad')?.value) || 1;
     let nombre: string;
     let assetId: number | null;
-    let gramos: number | null = null;
-    let horas: number | null = null;
-    let minutos: number | null = null;
-    let precioMaterial: number | null = null;
+    let gramos: number;
+    let horas: number;
+    let minutos: number;
+    let precioMaterial: number;
     let materialDisplayName = '';
     let maquinaId: number | undefined = undefined;
     let maquinaNombre: string | undefined = undefined;
@@ -238,11 +243,19 @@ export class AddProductComponent implements OnInit {
         Swal.fire('Atención', 'Seleccione un activo del inventario.', 'warning');
         return;
       }
-      nombre = this.assetsMobiliario.find(a => a.id == asset)?.nombre || 'Activo';
+      const foundMob = this.assetsMobiliario.find(a => a.id == asset);
+      const foundCirc = this.activosCirculantes.find(a => a.id == asset);
+      const foundAsset = foundMob || foundCirc;
+      nombre = foundAsset?.nombre || 'Activo Inventario';
       assetId = Number(asset);
+      gramos = 0;
+      horas = 0;
+      minutos = 0;
+      precioMaterial = Number(foundAsset?.valorUnitario) || Number(foundAsset?.costoInicial) || 0;
+      materialDisplayName = nombre;
     } else {
       nombre = this.form.get('piezaFabricada')?.value;
-      gramos = Number(this.form.get('piezaGramos')?.value);
+      gramos = Number(this.form.get('piezaGramos')?.value) || 0;
       horas = Number(this.form.get('piezaHoras')?.value);
       minutos = Number(this.form.get('piezaMinutos')?.value);
       
@@ -383,8 +396,9 @@ export class AddProductComponent implements OnInit {
       piezaMinutos: [''],
       piezaMaterialCategoria: [''],
       piezaMaterialSubcategoria: [''],
-      piezaMaterialId: [{value: null, disabled: true}],
-      piezaPrecioMaterial: ['']
+      piezaMaterialId: [{value: null, disabled: false}],
+      piezaPrecioMaterial: [''],
+      activoId: [null]
     });
 
     this.form.get('piezaMaterialCategoria')?.valueChanges.subscribe(val => this.onPiezaCategoriaChange(val));
@@ -409,13 +423,42 @@ export class AddProductComponent implements OnInit {
       const perfilId = typeof data.perfil === 'object' ? (data.perfil as { id?: number })?.id : Number(data.perfil);
       this.form.get('perfil')?.setValue(perfilId || null);
       
-      this.form.get('periodo')?.setValue(data.periodo);
-      this.form.get('prepSlicing')?.setValue(data.prepSlicing || '');
-      this.form.get('postProcesado')?.setValue(data.postProcesado || 0);
-      this.form.get('tasaFallo')?.setValue(data.tasaFallo || 0);
-      this.form.get('margenGanancia')?.setValue(data.margenGanancia || this.minMargenGanancia);
+      const dRec = data as unknown as Record<string, unknown>;
+      const prepVal = dRec['tiempoSetup'] ?? dRec['prepSlicing'] ?? dRec['tiempo_setup'] ?? dRec['prep_slicing'] ?? '';
+      const postVal = dRec['postProcesado'] ?? dRec['post_procesado'] ?? dRec['tiempo_post_procesado'] ?? dRec['tiempoPostProcesado'] ?? 0;
+      const tasaVal = dRec['tasaFallo'] ?? dRec['tasa_fallo'] ?? dRec['tasaFalloGlobal'] ?? 0;
+      const margenVal = dRec['margenGanancia'] ?? dRec['margen_ganancia'] ?? this.minMargenGanancia;
+
+      this.form.get('prepSlicing')?.setValue(prepVal);
+      this.form.get('postProcesado')?.setValue(postVal);
+      this.form.get('tasaFallo')?.setValue(tasaVal);
+      this.form.get('margenGanancia')?.setValue(margenVal);
       
-      this.piezasPendientes = data.piezasBase || [];
+      const rawPiezas = dRec['piezasProducto'] ?? dRec['piezas'] ?? dRec['piezasBase'] ?? dRec['piezas_base'] ?? data.piezasBase ?? [];
+      const piezasArray = Array.isArray(rawPiezas) ? rawPiezas : [];
+      this.piezasPendientes = piezasArray.map(p => {
+        const pObj = p as unknown as Record<string, unknown>;
+        const maqId = pObj['maquina'] ?? pObj['maquinaId'] ?? pObj['maquina_id'];
+        let maqName = pObj['maquinaNombre'] as string | undefined;
+        if (maqId && !maqName) {
+          const found = this.maquinasList.find(m => m.id == maqId);
+          if (found) maqName = found.nombre;
+        }
+        const actId = pObj['activo'] ?? pObj['assetId'] ?? pObj['activo_id'];
+        let matName = pObj['materialDisplayName'] as string | undefined;
+        if (actId && !matName) {
+          const foundMat = this.activosCirculantes.find(a => a.id == actId);
+          if (foundMat) matName = foundMat.nombre;
+        }
+        return {
+          ...pObj,
+          fromDb: true,
+          maquinaId: maqId ? Number(maqId) : undefined,
+          maquinaNombre: maqName,
+          assetId: actId ? Number(actId) : undefined,
+          materialDisplayName: matName
+        };
+      });
       this.id = data.id;
 
       this.loadCostosAsociados(data.id);
@@ -441,7 +484,62 @@ export class AddProductComponent implements OnInit {
 
     this.loading = true;
 
-    const product: Product = {
+    const mappedPiezas = this.piezasPendientes.map((p, idx) => {
+      const pObj = p as Record<string, unknown>;
+      const actId = pObj['activo'] ?? pObj['assetId'] ?? pObj['activo_id'];
+      const maqId = pObj['maquina'] ?? pObj['maquinaId'] ?? pObj['maquina_id'];
+      const numAct = (actId !== null && actId !== undefined && actId !== '') ? Number(actId) : null;
+      const numMaq = (maqId !== null && maqId !== undefined && maqId !== '') ? Number(maqId) : null;
+      
+      let nom = String(pObj['nombre'] || '').trim();
+      if (!nom || nom === 'null' || nom === 'undefined') {
+        if (numAct) {
+          const foundMob = this.assetsMobiliario.find(a => a.id == numAct);
+          const foundCirc = this.activosCirculantes.find(a => a.id == numAct);
+          nom = (foundMob || foundCirc)?.nombre || `PIEZA ${idx + 1}`;
+        } else {
+          nom = `PIEZA ${idx + 1}`;
+        }
+      }
+
+      let tip = String(pObj['tipo'] || '').trim();
+      if (!tip || tip === 'null' || tip === 'undefined') {
+        tip = numAct && !numMaq ? 'Del Inventario' : 'Producción';
+      }
+
+      const gVal = Number(pObj['gramos']) || 0;
+      const mVal = Number(pObj['metros'] ?? pObj['metro']) || 0;
+      const hVal = Number(pObj['horas']) || 0;
+      const minVal = Number(pObj['minutos']) || 0;
+      const matPrice = Number(pObj['precioMaterial'] ?? pObj['precio_material']) || 0;
+      const cant = Number(pObj['cantidad']) || 1;
+
+      const piece: Record<string, unknown> = {
+        nombre: nom,
+        gramos: gVal,
+        metros: mVal,
+        horas: hVal,
+        minutos: minVal,
+        precioMaterial: matPrice,
+        tipo: tip,
+        cantidad: cant,
+        activo: numAct,
+        maquina: numMaq
+      };
+
+      if (pObj['fromDb'] && pObj['id'] && Number(pObj['id']) > 0) {
+        piece['id'] = Number(pObj['id']);
+      }
+
+      return piece;
+    });
+
+    const prepNum = Number(this.form.get('prepSlicing')?.value) || 0;
+    const postNum = Number(this.form.get('postProcesado')?.value) || 0;
+    const tasaNum = Number(this.form.get('tasaFallo')?.value) || 0;
+    const margenNum = Number(this.form.get('margenGanancia')?.value) || 0;
+
+    const productPayload: Record<string, unknown> = {
       id: this.id > 0 ? this.id : 0,
       nombre: this.form.get('nombre')?.value,
       sku: this.form.get('sku')?.value,
@@ -450,12 +548,16 @@ export class AddProductComponent implements OnInit {
       medida: this.form.get('medida')?.value,
       perfil: Number(this.form.get('perfil')?.value) || 0,
       periodo: this.form.get('periodo')?.value,
-      prepSlicing: Number(this.form.get('prepSlicing')?.value) || 0,
-      postProcesado: Number(this.form.get('postProcesado')?.value) || 0,
-      tasaFallo: Number(this.form.get('tasaFallo')?.value) || 0,
-      margenGanancia: Number(this.form.get('margenGanancia')?.value) || 0,
-      piezasBase: this.piezasPendientes
+      tasaFallo: tasaNum,
+      tiempoSetup: prepNum,
+      postProcesado: postNum,
+      margenGanancia: margenNum,
+      piezasProducto: mappedPiezas
     };
+
+    console.log('>>> PAYLOAD DE PRODUCTO A ENVIAR AL SERVIDOR:', JSON.stringify(productPayload, null, 2));
+
+    const product = productPayload as unknown as Product;
 
     let productReq$: Observable<Product>;
 
@@ -480,7 +582,9 @@ export class AddProductComponent implements OnInit {
       error: (err) => {
         console.error('Error saving product base:', err);
         this.loading = false;
-        Swal.fire('Error', 'No se pudo guardar la información del producto.', 'error');
+        const serverErr = err?.error?.error || err?.error?.message || err?.message;
+        const detailMsg = typeof serverErr === 'string' ? serverErr : JSON.stringify(serverErr || 'No se pudo guardar la información del producto.');
+        Swal.fire('Error al Guardar', detailMsg, 'error');
       }
     });
   }

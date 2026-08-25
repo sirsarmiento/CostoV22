@@ -136,7 +136,7 @@
               <h6 class="mb-3 text-muted text-sm fw-bold"><i class="ti ti-plus"></i> Detalle de Piezas / Componentes</h6>
               
               <div class="row g-2 align-items-end">
-                <div class="col-md-3">
+                <div class="col-md-2">
                   <label class="form-label text-xs mb-1">Tipo de Pieza</label>
                   <ng-select formControlName="piezaTipo" [clearable]="false" [searchable]="false" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
                     <ng-option value="Del Inventario">Del Inventario</ng-option>
@@ -144,13 +144,8 @@
                   </ng-select>
                 </div>
 
-                <div class="col-md-2">
-                  <label class="form-label text-xs mb-1">Cantidad</label>
-                  <input type="number" min="1" class="form-control form-control-sm" formControlName="piezaCantidad">
-                </div>
-
                 @if (f['piezaTipo'].value === 'Del Inventario') {
-                  <div class="col-md-5">
+                  <div class="col-md-6">
                     <label class="form-label text-xs mb-1">Activo del Inventario</label>
                     <ng-select formControlName="piezaInventario" placeholder="Seleccione activo mobiliario..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
                       @for (asset of assetsMobiliario; track asset.id) {
@@ -158,18 +153,22 @@
                       }
                     </ng-select>
                   </div>
+                  <div class="col-md-2">
+                    <label class="form-label text-xs mb-1">Cantidad</label>
+                    <input type="number" min="1" class="form-control form-control-sm" formControlName="piezaCantidad">
+                  </div>
                   <div class="col-auto d-flex align-items-end">
                     <button class="btn btn-primary btn-square-icon" type="button" (click)="addPart()" title="Agregar Pieza">
                       <i class="ti ti-plus fs-4"></i>
                     </button>
                   </div>
                 } @else {
-                  <div class="col-md-3">
+                  <div class="col-md-4">
                     <label class="form-label text-xs mb-1">Nombre Pieza Fabricada</label>
                     <input type="text" class="form-control form-control-sm" formControlName="piezaFabricada" placeholder="Ej: Pieza 1">
                   </div>
 
-                  <div class="col-md-3">
+                  <div class="col-md-4">
                     <label class="form-label text-xs mb-1">Máquina de Fabricación</label>
                     <ng-select formControlName="activoId" placeholder="-- Sin máquina --" [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
                       @for (maq of maquinasList; track maq.id) {
@@ -178,47 +177,59 @@
                     </ng-select>
                   </div>
 
+                  <div class="col-md-2">
+                    <label class="form-label text-xs mb-1">Cantidad</label>
+                    <input type="number" min="1" class="form-control form-control-sm" formControlName="piezaCantidad">
+                  </div>
+
                   <!-- Fila 2 para Pieza Fabricada -->
-                  <div class="col-md-3">
+                  <div [class.col-md-2]="f['piezaMaterialSubcategoria'].value || (f['piezaMaterialCategoria'].value && subcategoriasMaterial.length === 0)"
+                       [class.col-md-3]="f['piezaMaterialCategoria'].value && subcategoriasMaterial.length > 0 && !f['piezaMaterialSubcategoria'].value"
+                       [class.col-md-6]="!f['piezaMaterialCategoria'].value">
                     <label class="form-label text-xs mb-1">Categoría Material</label>
-                    <ng-select formControlName="piezaMaterialCategoria" placeholder="Seleccione..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
+                    <ng-select formControlName="piezaMaterialCategoria" placeholder="Seleccione categoría..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
                       @for (cat of categoriasMaterial; track cat) {
                         <ng-option [value]="cat">{{ cat }}</ng-option>
                       }
                     </ng-select>
                   </div>
 
-                  <div class="col-md-3">
-                    <label class="form-label text-xs mb-1">Subcategoría</label>
-                    <ng-select formControlName="piezaMaterialSubcategoria" placeholder="-- Todas --" [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
-                      @for (sub of subcategoriasMaterial; track sub) {
-                        <ng-option [value]="sub">{{ sub }}</ng-option>
-                      }
-                    </ng-select>
-                  </div>
+                  @if (f['piezaMaterialCategoria'].value && subcategoriasMaterial.length > 0) {
+                    <div [class.col-md-2]="f['piezaMaterialSubcategoria'].value"
+                         [class.col-md-3]="!f['piezaMaterialSubcategoria'].value">
+                      <label class="form-label text-xs mb-1">Subcategoría</label>
+                      <ng-select formControlName="piezaMaterialSubcategoria" placeholder="Seleccione subcategoría..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
+                        @for (sub of subcategoriasMaterial; track sub) {
+                          <ng-option [value]="sub">{{ sub }}</ng-option>
+                        }
+                      </ng-select>
+                    </div>
+                  }
 
-                  <div class="col-md-3">
-                    <label class="form-label text-xs mb-1">Material Insumo</label>
-                    <ng-select formControlName="piezaMaterialId" placeholder="Seleccione..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
-                      @for (m of materialesFiltrados; track m.id) {
-                        <ng-option [value]="m.id">{{ m.nombre }}</ng-option>
-                      }
-                    </ng-select>
-                  </div>
+                  @if (f['piezaMaterialSubcategoria'].value || (f['piezaMaterialCategoria'].value && subcategoriasMaterial.length === 0)) {
+                    <div class="col-md-4">
+                      <label class="form-label text-xs mb-1">Material Insumo</label>
+                      <ng-select formControlName="piezaMaterialId" placeholder="Seleccione material..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
+                        @for (m of materialesFiltrados; track m.id) {
+                          <ng-option [value]="m.id">{{ m.nombre }}</ng-option>
+                        }
+                      </ng-select>
+                    </div>
+                  }
 
                   <div class="col-md-1">
                     <label class="form-label text-xs mb-1">Gramos</label>
-                    <input type="number" class="form-control form-control-sm" formControlName="piezaGramos">
+                    <input type="number" class="form-control form-control-sm px-1" formControlName="piezaGramos">
                   </div>
 
                   <div class="col-md-1">
                     <label class="form-label text-xs mb-1">Horas</label>
-                    <input type="number" class="form-control form-control-sm" formControlName="piezaHoras">
+                    <input type="number" class="form-control form-control-sm px-1" formControlName="piezaHoras">
                   </div>
 
                   <div class="col-md-1">
                     <label class="form-label text-xs mb-1">Minutos</label>
-                    <input type="number" class="form-control form-control-sm" formControlName="piezaMinutos">
+                    <input type="number" class="form-control form-control-sm px-1" formControlName="piezaMinutos">
                   </div>
 
                   <div class="col-auto d-flex align-items-end">

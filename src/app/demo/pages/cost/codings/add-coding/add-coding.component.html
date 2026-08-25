@@ -20,14 +20,17 @@
               <div class="row g-3">
                 <div class="col-12">
                   <label class="form-label">Categoría (CAT)</label>
-                  <select 
-                    class="form-select"
+                  <ng-select 
                     formControlName="categoria"
+                    placeholder="Seleccione..."
+                    [clearable]="false"
+                    [searchable]="false"
+                    appendTo="body"
                     (change)="onCategoryChange()">
                     @for (cat of opcionesCategorias; track cat.value) {
-                      <option [value]="cat.value">{{ cat.label }}</option>
+                      <ng-option [value]="cat.value">{{ cat.label }}</ng-option>
                     }
-                  </select>
+                  </ng-select>
                 </div>
 
                 @if (form.get('categoria')?.value === 'PF') {
@@ -93,14 +96,17 @@
 
                 <div class="col-md-6">
                   <label class="form-label">Tecnología (TEC)</label>
-                  <select 
-                    class="form-select"
+                  <ng-select 
                     formControlName="tecnologia"
+                    placeholder="Seleccione..."
+                    [clearable]="false"
+                    [searchable]="false"
+                    appendTo="body"
                     [class.is-invalid]="submitted && f['tecnologia'].errors">
                     @for (tec of opcionesTecnologias; track tec.value) {
-                      <option [value]="tec.value">{{ tec.label }}</option>
+                      <ng-option [value]="tec.value">{{ tec.label }}</ng-option>
                     }
-                  </select>
+                  </ng-select>
                   @if (submitted && f['tecnologia'].errors?.['required']) {
                     <div class="invalid-feedback d-block">Seleccione la tecnología.</div>
                   }
@@ -109,14 +115,17 @@
                 @if (form.get('familia')?.value !== 'MLD') {
                   <div class="col-md-6">
                     <label class="form-label">Material (MAT)</label>
-                    <select 
-                      class="form-select"
+                    <ng-select 
                       formControlName="material"
+                      placeholder="Seleccione..."
+                      [clearable]="false"
+                      [searchable]="false"
+                      appendTo="body"
                       [class.is-invalid]="submitted && f['material'].errors">
                       @for (mat of opcionesMateriales; track mat.value) {
-                        <option [value]="mat.value">{{ mat.label }}</option>
+                        <ng-option [value]="mat.value">{{ mat.label }}</ng-option>
                       }
-                    </select>
+                    </ng-select>
                     @if (submitted && f['material'].errors?.['required']) {
                       <div class="invalid-feedback d-block">Seleccione el material.</div>
                     }
@@ -170,13 +179,16 @@
                         <div [formGroupName]="i" class="row g-2 mb-2 align-items-end">
                           <div class="col-md-4">
                             <label class="form-label text-sm mb-1">Material {{ i + 1 }}</label>
-                            <select 
-                              class="form-select form-select-sm"
-                              formControlName="material">
+                            <ng-select 
+                              formControlName="material"
+                              placeholder="Seleccione..."
+                              [clearable]="false"
+                              [searchable]="false"
+                              appendTo="body">
                               @for (mat of opcionesMateriales; track mat.value) {
-                                <option [value]="mat.value">{{ mat.label }}</option>
+                                <ng-option [value]="mat.value">{{ mat.label }}</ng-option>
                               }
-                            </select>
+                            </ng-select>
                           </div>
                           <div class="col-md-3">
                             <label class="form-label text-sm mb-1">Cantidad</label>
@@ -184,13 +196,16 @@
                           </div>
                           <div class="col-md-3">
                             <label class="form-label text-sm mb-1">Unidad</label>
-                            <select 
-                              class="form-select form-select-sm"
-                              formControlName="unidad">
+                            <ng-select 
+                              formControlName="unidad"
+                              placeholder="Unidad..."
+                              [clearable]="false"
+                              [searchable]="false"
+                              appendTo="body">
                               @for (u of opcionesUnidades; track u.value) {
-                                <option [value]="u.value">{{ u.label }}</option>
+                                <ng-option [value]="u.value">{{ u.label }}</ng-option>
                               }
-                            </select>
+                            </ng-select>
                           </div>
                           <div class="col-md-2 d-flex gap-1 justify-content-end">
                             @if (materialesMolde.length > 1) {

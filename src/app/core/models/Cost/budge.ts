@@ -17,6 +17,7 @@ export class Budget { //Presupuesto
     cantidadGlobal?: number;
     delivery?: number;
     cliente?: number;
+    activo?: number;
     costoTotalFinal?: number;
 }
 

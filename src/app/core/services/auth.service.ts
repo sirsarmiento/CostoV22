@@ -52,7 +52,7 @@ export class AuthService extends HttpService {
     const now = new Date();
     const item = {
       user: value,
-      expiry: now.getTime() + environment.ttl,
+      expiry: now.getTime() + (Number((environment as unknown as Record<string, unknown>)['ttl']) || 86400000),
     }
     console.log('user >>>>', item);
     localStorage.setItem(environment.localstorage.userKey, JSON.stringify(item));

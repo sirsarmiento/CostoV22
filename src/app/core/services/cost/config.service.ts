@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
+import { Observable, of, shareReplay, tap } from 'rxjs';
 import { map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { Config } from '../../models/Cost/config';
@@ -11,6 +11,11 @@ import { Config } from '../../models/Cost/config';
 export class ConfigService {
   private http = inject(HttpClient);
   private url = `${environment.apiUrl}/perfil`;
+  private cachedConfigs$: Observable<Config[]> | null = null;
+
+  clearCache() {
+    this.cachedConfigs$ = null;
+  }
 
   private getMockConfigs(): Config[] {
     const stored = localStorage.getItem('cost_configs');
@@ -26,12 +31,17 @@ export class ConfigService {
     if (environment.useMocks) {
       return of(this.getMockConfigs());
     }
-    return this.http.get<{ data?: Config[] } | Config[]>(this.url).pipe(
-      map(res => (Array.isArray(res) ? res : res.data) || [])
-    );
+    if (!this.cachedConfigs$) {
+      this.cachedConfigs$ = this.http.get<{ data?: Config[] } | Config[]>(this.url).pipe(
+        map(res => (Array.isArray(res) ? res : res.data) || []),
+        shareReplay(1)
+      );
+    }
+    return this.cachedConfigs$;
   }
 
   createConfig(config: Config): Observable<Config> {
+    this.clearCache();
     if (environment.useMocks) {
       const configs = this.getMockConfigs();
       const newId = configs.length > 0 ? Math.max(...configs.map(c => c.id || 0)) + 1 : 1;
@@ -42,10 +52,11 @@ export class ConfigService {
     }
     const payload: Partial<Config> = { ...config };
     delete payload.id;
-    return this.http.post<Config>(this.url, payload);
+    return this.http.post<Config>(this.url, payload).pipe(tap(() => this.clearCache()));
   }
 
   updateConfig(id: number, config: Config): Observable<Config> {
+    this.clearCache();
     if (environment.useMocks) {
       const configs = this.getMockConfigs();
       const index = configs.findIndex(c => c.id === id);
@@ -54,20 +65,21 @@ export class ConfigService {
         localStorage.setItem('cost_configs', JSON.stringify(configs));
         return of(configs[index]);
       }
-      return of(config); // Si no se encuentra, retornamos igual para evitar errores
+      return of(config);
     }
     const payload: Partial<Config> = { ...config };
     delete payload.id;
-    return this.http.put<Config>(`${environment.apiUrl}/perfil/${id}`, payload);
+    return this.http.put<Config>(`${environment.apiUrl}/perfil/${id}`, payload).pipe(tap(() => this.clearCache()));
   }
 
   deleteConfig(id: number): Observable<void> {
+    this.clearCache();
     if (environment.useMocks) {
       let configs = this.getMockConfigs();
       configs = configs.filter(c => c.id !== id);
       localStorage.setItem('cost_configs', JSON.stringify(configs));
       return of(undefined);
     }
-    return this.http.delete<void>(`${environment.apiUrl}/config/${id}`);
+    return this.http.delete<void>(`${environment.apiUrl}/config/${id}`).pipe(tap(() => this.clearCache()));
   }
 }

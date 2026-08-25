@@ -19,6 +19,11 @@ const routes: Routes = [
         pathMatch: 'full'
       },
       {
+        path: 'dashboard',
+        redirectTo: 'dashboard/default',
+        pathMatch: 'full'
+      },
+      {
         path: 'dashboard/default',
         loadComponent: () => import('./demo/dashboard/default/default.component').then((c) => c.DefaultComponent)
       },

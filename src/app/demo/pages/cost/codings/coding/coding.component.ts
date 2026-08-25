@@ -253,6 +253,55 @@ export class CodingComponent implements OnInit {
     this.router.navigate(['/codings/add-coding']);
   }
 
+  onPreviewSKU(row: SkuCoding) {
+    const skuCode = row.sku || row.codigo || 'N/A';
+    const prodName = row.producto?.nombre || row.servicio?.nombre || row.proyecto?.nombre || row.productName || 'Producto / Servicio';
+    
+    let catalogCode: string;
+    const parts = skuCode.split('-');
+    if (parts.length >= 4) {
+      catalogCode = parts.slice(3).join('-');
+    } else {
+      const famStr = typeof row.familia === 'string' ? row.familia : row.familia?.codigo || '???';
+      const subStr = typeof row.subfamilia === 'string' ? row.subfamilia : row.subfamilia?.codigo || '';
+      catalogCode = `${famStr}${subStr ? '-' + subStr : ''}-001`;
+    }
+
+    Swal.fire({
+      title: `<span style="font-size: 1.15rem; color: #4680ff;" class="fw-bold"><i class="ti ti-eye me-1"></i> Previsualización de Código</span>`,
+      html: `
+        <div class="p-3 text-center" style="background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-radius: 12px;">
+          <h6 class="fw-bold text-dark mb-3">${prodName}</h6>
+          
+          <div class="mb-3 bg-white p-3 rounded-3 border shadow-sm position-relative mt-2">
+            <span class="position-absolute top-0 start-50 translate-middle badge bg-primary px-3 text-xs fw-bold rounded-pill" style="letter-spacing: 0.5px;">
+              CÓDIGO ASIGNADO (SKU)
+            </span>
+            <span class="fs-4 fw-bold text-primary font-monospace d-block pt-2" style="letter-spacing: 1.2px;">
+              ${skuCode}
+            </span>
+          </div>
+
+          <div class="bg-white p-3 rounded-3 border shadow-sm position-relative mt-3">
+            <span class="position-absolute top-0 start-50 translate-middle badge bg-success px-3 text-xs fw-bold rounded-pill" style="letter-spacing: 0.5px;">
+              CÓDIGO CATÁLOGO
+            </span>
+            <span class="fs-4 fw-bold text-success font-monospace d-block pt-2" style="letter-spacing: 1.2px;">
+              ${catalogCode}
+            </span>
+          </div>
+
+          <div class="mt-3 pt-2 text-muted small border-top border-dashed">
+            <i class="ti ti-barcode me-1"></i> SISTEMA AUTOMÁTICO DE CODIFICACIÓN
+          </div>
+        </div>
+      `,
+      showConfirmButton: true,
+      confirmButtonText: 'Cerrar',
+      confirmButtonColor: '#4680ff'
+    });
+  }
+
   onEditSKU(row: SkuCoding) {
     // Transferir datos al formulario a través del state del router
     this.router.navigate(['/codings/add-coding'], { state: { edit_coding: row } });

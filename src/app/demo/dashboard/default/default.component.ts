@@ -17,6 +17,7 @@ import { IconService } from '@ant-design/icons-angular';
 import { FallOutline, GiftOutline, MessageOutline, RiseOutline, SettingOutline } from '@ant-design/icons-angular/icons';
 
 // Servicios del Calculador de Costos
+import { ConfigService } from 'src/app/core/services/cost/config.service';
 import { ProductService } from 'src/app/core/services/cost/product.service';
 import { FixeService } from 'src/app/core/services/cost/fixe.service';
 import { AssetService } from 'src/app/core/services/cost/asset.service';
@@ -32,14 +33,6 @@ import { Fixe } from 'src/app/core/models/Cost/fixe';
     FormsModule,
     RouterLink,
     NgSelectModule
-    /* COMPONENTES DE MANTIS COMENTADOS
-    CardComponent,
-    IconDirective,
-    MonthlyBarChartComponent,
-    IncomeOverviewChartComponent,
-    AnalyticsChartComponent,
-    SalesReportChartComponent
-    */
   ],
   templateUrl: './default.component.html',
   styleUrls: ['./default.component.scss']
@@ -63,6 +56,7 @@ export class DefaultComponent implements OnInit {
   totalDepreciacionMensual: number = 0;
   totalFijoIndirecto: number = 0;
 
+  private configService = inject(ConfigService);
   private productService = inject(ProductService);
   private fixeService = inject(FixeService);
   private assetService = inject(AssetService);
@@ -78,17 +72,18 @@ export class DefaultComponent implements OnInit {
 
   loadAllData(): void {
     forkJoin({
+      configs: this.configService.getConfigs(),
       products: this.productService.getProducts(),
       fixes: this.fixeService.getFixes(),
       assets: this.assetService.getAssets()
-    }).subscribe(({ products, fixes, assets }) => {
-      // 1. Cargar Costos Fijos
+    }).subscribe(({ configs, products, fixes, assets }) => {
+      // Cargar Costos Fijos
       this.costItems = fixes;
       this.filteredCostItems = [...this.costItems];
       const fijosIndirectos = this.costItems.filter(item => item.clasificacion === 'Indirecto');
       this.totalFijoIndirecto = fijosIndirectos.reduce((total, item) => total + Number(item.precio), 0);
 
-      // 2. Cargar Activos
+      // Cargar Activos
       const datosNormalizados = assets.map((item) => ({
         ...item,
         costoInicial: this.normalizarNumero(item.costoInicial),
@@ -97,9 +92,34 @@ export class DefaultComponent implements OnInit {
       }));
       this.calcularTotales(datosNormalizados);
 
-      // 3. Cargar Productos y Detonar Cálculos
-      this.products = products;
+      // Mapear perfilName a cada producto
+      const configList = configs || [];
+      this.products = (products || []).map(p => {
+        let perfilId: number | null = null;
+        let rawName = '';
+
+        if (typeof p.perfil === 'object' && p.perfil !== null) {
+          const pObj = p.perfil as unknown as Record<string, unknown>;
+          perfilId = Number(pObj['id']) || null;
+          rawName = (pObj['nombre'] as string) || (pObj['descripcion'] as string) || '';
+        } else if (p.perfil !== null && p.perfil !== undefined) {
+          perfilId = Number(p.perfil) || null;
+        }
+
+        const config = configList.find(c => String(c.id) === String(perfilId));
+        const finalName = rawName || (config ? config.nombre : (configList.length > 0 ? configList[0].nombre : 'General'));
+
+        return {
+          ...p,
+          perfilName: finalName
+        };
+      });
+
       this.extractUniquePerfilNames();
+      if (this.perfilesNames.length === 0 || (this.perfilesNames.length === 1 && !this.perfilesNames[0])) {
+        this.perfilesNames = configList.length > 0 ? configList.map(c => c.nombre) : ['General'];
+      }
+
       if (this.perfilesNames.length > 0) {
         this.selectedPerfilName = this.perfilesNames[0];
         this.onPerfilNameChange();
@@ -180,7 +200,7 @@ export class DefaultComponent implements OnInit {
       return sum + (isNaN(precioNum) ? 0 : precioNum);
     }, 0);
 
-    // 2. Calcular la prorrata de gastos indirectos y depreciación
+    // Calcular la prorrata de gastos indirectos y depreciación
     let indirecto = 0;
     if (this.totalProducto > 0) {
       indirecto = (this.totalFijoIndirecto + this.totalDepreciacionMensual) / this.totalProducto;

@@ -19,7 +19,8 @@
           "options": {
             "allowedCommonJsDependencies": [
               "bezier-easing",
-              "apexcharts"
+              "apexcharts",
+              "sweetalert2"
             ],
             "outputPath": {
               "base": "dist",
@@ -33,7 +34,8 @@
             "assets": [
               "src/favicon.ico",
               "src/assets",
-              "src/fake-data"
+              "src/fake-data",
+              "src/.htaccess"
             ],
             "styles": [
               "node_modules/ngx-toastr/toastr.css",

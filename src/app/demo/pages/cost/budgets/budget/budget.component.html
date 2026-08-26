@@ -78,6 +78,14 @@
                   <td class="text-center" (click)="$event.stopPropagation()">
                     <div class="btn-group btn-group-sm">
                       <button 
+                        class="btn btn-icon" 
+                        [class.btn-light-primary]="row.cliente || row.clienteId"
+                        [class.btn-light-secondary]="!row.cliente && !row.clienteId"
+                        (click)="onOpenClientModal(row)" 
+                        [title]="(row.cliente || row.clienteId) ? 'Ver Ficha de Cliente' : 'Cliente no registrado (Clic para registrar)'">
+                        <i class="ti fs-5" [class.ti-user-check]="row.cliente || row.clienteId" [class.ti-user-plus]="!row.cliente && !row.clienteId" [class.text-primary]="row.cliente || row.clienteId" [class.text-muted]="!row.cliente && !row.clienteId"></i>
+                      </button>
+                      <button 
                         class="btn btn-icon btn-light-info" 
                         (click)="onFormule(row)" 
                         title="Ver Resumen / Detalle">
@@ -143,3 +151,90 @@
     </div>
   </div>
 </div>
+
+<!-- MODAL: FICHA / REGISTRO DE CLIENTE -->
+@if (showClientModal) {
+  <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);" (click)="closeClientModal()">
+    <div class="modal-dialog modal-dialog-centered" (click)="$event.stopPropagation()">
+      <div class="modal-content shadow border-0">
+        <div class="modal-header py-3 text-white" [class.bg-primary]="isClientRegistered" [class.bg-secondary]="!isClientRegistered">
+          <h5 class="modal-title text-white fs-5 fw-bold d-flex align-items-center gap-2">
+            <i class="ti fs-4" [class.ti-user-check]="isClientRegistered" [class.ti-user-plus]="!isClientRegistered"></i>
+            {{ isClientRegistered ? 'Ficha de Cliente Oficial' : 'Datos del Cliente (Sin Registrar)' }}
+          </h5>
+          <button type="button" class="btn-close btn-close-white" (click)="closeClientModal()"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label fw-bold">Nombre</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                [(ngModel)]="selectedClientData.nombre" 
+                [readonly]="isClientRegistered">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Cédula / RIF</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                [(ngModel)]="selectedClientData.rifCedula" 
+                [readonly]="isClientRegistered"
+                placeholder="No especificado">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Categoría</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                [(ngModel)]="selectedClientData.categoria" 
+                [readonly]="isClientRegistered"
+                placeholder="Sin categoría">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Teléfono</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                [(ngModel)]="selectedClientData.telefono" 
+                [readonly]="isClientRegistered"
+                placeholder="No especificado">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Email</label>
+              <input 
+                type="email" 
+                class="form-control" 
+                [(ngModel)]="selectedClientData.email" 
+                [readonly]="isClientRegistered"
+                placeholder="No especificado">
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Dirección</label>
+              <textarea 
+                class="form-control" 
+                rows="2" 
+                [(ngModel)]="selectedClientData.direccion" 
+                [readonly]="isClientRegistered"
+                placeholder="No especificada"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light border-top py-2 px-4">
+          <button class="btn btn-outline-secondary" type="button" (click)="closeClientModal()">Cerrar</button>
+          @if (!isClientRegistered) {
+            <button class="btn btn-primary" type="button" [disabled]="savingClient" (click)="registerClientFromModal()">
+              <i class="ti ti-user-check me-1"></i> Registrar Cliente
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+}

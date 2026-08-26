@@ -20,24 +20,20 @@
               <label class="form-label">Clasificación</label>
               <ng-select 
                 formControlName="clasificacion"
-                placeholder="Seleccione..."
-                [clearable]="false"
+                placeholder="Seleccione (opcional)..."
+                [clearable]="true"
                 [searchable]="false"
                 appendTo="body"
-                dropdownPosition="bottom"
-                [class.is-invalid]="submitted && f['clasificacion'].errors">
+                dropdownPosition="bottom">
                 <ng-option value="Proyecto">Proyecto</ng-option>
                 <ng-option value="Servicio">Servicio</ng-option>
                 <ng-option value="Producto">Producto</ng-option>
               </ng-select>
-              @if (submitted && f['clasificacion'].errors?.['required']) {
-                <div class="invalid-feedback d-block">Seleccione la clasificación</div>
-              }
             </div>
 
             @if (f['clasificacion'].value) {
               <div class="col-md-3">
-                <label class="form-label">Seleccione {{ f['clasificacion'].value }}</label>
+                <label class="form-label">Seleccione {{ f['clasificacion'].value }} (Opcional)</label>
                 <ng-select 
                   formControlName="productoId"
                   placeholder="Seleccione..."
@@ -48,38 +44,56 @@
                   bindLabel="nombre"
                   (change)="onProductSelect($event)"
                   appendTo="body"
-                  dropdownPosition="bottom"
-                  [class.is-invalid]="submitted && f['productoId'].errors">
+                  dropdownPosition="bottom">
                 </ng-select>
-                @if (submitted && f['productoId'].errors?.['required']) {
-                  <div class="invalid-feedback d-block">Seleccione un {{ f['clasificacion'].value.toLowerCase() }}</div>
-                }
               </div>
             }
 
             @if (f['clasificacion'].value !== 'Producto') {
               <div class="col-md-3">
                 <label class="form-label">Número de Orden</label>
-                <input type="text" class="form-control" formControlName="numero" maxlength="25" placeholder="Ej: ORD-001" [class.is-invalid]="submitted && f['numero'].errors">
-                @if (submitted && f['numero'].errors?.['required']) {
-                  <div class="invalid-feedback">Ingrese el número de la orden</div>
-                }
+                <input type="text" class="form-control" formControlName="numero" maxlength="25" placeholder="Ej: ORD-001">
               </div>
             }
 
             <div class="col-md-3">
               <label class="form-label">Cliente</label>
-              <ng-select 
-                formControlName="clienteId"
-                placeholder="-- Sin cliente --"
-                [clearable]="true"
-                [searchable]="true"
-                [items]="clientesList"
-                bindValue="id"
-                bindLabel="nombre"
-                appendTo="body"
-                dropdownPosition="bottom">
-              </ng-select>
+              <div class="d-flex gap-2">
+                <div class="flex-grow-1">
+                  @if (!isCreandoClienteNuevo) {
+                    <ng-select 
+                      formControlName="clienteId"
+                      placeholder="-- Sin cliente --"
+                      [clearable]="true"
+                      [searchable]="true"
+                      [items]="clientesList"
+                      bindValue="id"
+                      bindLabel="nombre"
+                      appendTo="body"
+                      dropdownPosition="bottom">
+                    </ng-select>
+                  } @else {
+                    <div class="input-group">
+                      <input 
+                        type="text" 
+                        class="form-control" 
+                        formControlName="clienteNombreTexto" 
+                        placeholder="Nombre del cliente..."
+                        readonly>
+                      <button class="btn btn-outline-secondary" type="button" (click)="openClienteModal()" title="Editar datos">
+                        <i class="ti ti-edit fs-5"></i>
+                      </button>
+                    </div>
+                  }
+                </div>
+                <button 
+                  type="button" 
+                  class="btn btn-primary btn-square-icon"
+                  (click)="!isCreandoClienteNuevo ? openClienteModal() : clearClienteNuevo()" 
+                  [title]="isCreandoClienteNuevo ? 'Limpiar y seleccionar de la lista' : 'Agregar datos de cliente nuevo'">
+                  <i class="ti fs-4" [class.ti-plus]="!isCreandoClienteNuevo" [class.ti-list]="isCreandoClienteNuevo"></i>
+                </button>
+              </div>
             </div>
 
             <div class="col-md-3">
@@ -108,7 +122,17 @@
           <div class="row g-3 mb-4 pb-3 border-bottom bg-light p-2 rounded">
             <div class="col-md-3">
               <label class="form-label text-sm mb-1 fw-bold text-secondary">Tasa de Fallo (%)</label>
-              <input type="number" class="form-control form-control-sm" formControlName="tasaFalloGlobal" min="0" max="100">
+              <ng-select 
+                formControlName="tasaFalloGlobal"
+                placeholder="Seleccione tasa..."
+                [clearable]="true"
+                [searchable]="false"
+                appendTo="body"
+                class="ng-select-sm">
+                <ng-option [value]="5">5%</ng-option>
+                <ng-option [value]="12">12%</ng-option>
+                <ng-option [value]="25">25%</ng-option>
+              </ng-select>
             </div>
             <div class="col-md-3">
               <label class="form-label text-sm mb-1 fw-bold text-secondary">Prep/Slicing (min)</label>
@@ -402,3 +426,82 @@
     </div>
   </div>
 </div>
+
+<!-- MODAL: DATOS DEL CLIENTE / PROSPECTO -->
+@if (showClienteModal) {
+  <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);" (click)="closeClienteModal()">
+    <div class="modal-dialog modal-dialog-centered" (click)="$event.stopPropagation()">
+      <div class="modal-content shadow border-0">
+        <div class="modal-header bg-primary text-white py-3">
+          <h5 class="modal-title text-white fs-5 fw-bold d-flex align-items-center gap-2">
+            <i class="ti ti-user-plus fs-4"></i> Datos del Cliente
+          </h5>
+          <button type="button" class="btn-close btn-close-white" (click)="closeClienteModal()"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label fw-bold">Nombre <span class="text-danger">*</span></label>
+              <input 
+                type="text" 
+                class="form-control" 
+                [(ngModel)]="tempClienteData.nombre" 
+                placeholder="Ej. Juan Pérez o Inversiones Alpha">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Cédula / RIF</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                [(ngModel)]="tempClienteData.rifCedula" 
+                placeholder="Ej. V-12345678">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Categoría</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                [(ngModel)]="tempClienteData.categoria" 
+                placeholder="Ej. Frecuente, VIP...">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Teléfono</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                [(ngModel)]="tempClienteData.telefono" 
+                placeholder="Ej. +58 412 1234567">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Email</label>
+              <input 
+                type="email" 
+                class="form-control" 
+                [(ngModel)]="tempClienteData.email" 
+                placeholder="cliente@ejemplo.com">
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Dirección</label>
+              <textarea 
+                class="form-control" 
+                rows="2" 
+                [(ngModel)]="tempClienteData.direccion" 
+                placeholder="Dirección fiscal o de entrega..."></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light border-top py-2 px-4">
+          <button class="btn btn-outline-secondary" type="button" (click)="closeClienteModal()">Cancelar</button>
+          <button class="btn btn-primary" type="button" (click)="confirmClienteModal()">
+            <i class="ti ti-check me-1"></i> Asignar al Presupuesto
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}

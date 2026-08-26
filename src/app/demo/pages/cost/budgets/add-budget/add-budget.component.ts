@@ -59,6 +59,52 @@ export class AddBudgetComponent implements OnInit {
   categoriasMaterial: string[] = [];
   subcategoriasMaterial: string[] = [];
 
+  isCreandoClienteNuevo = false;
+  showClienteModal = false;
+  tempClienteData = {
+    nombre: '',
+    rifCedula: '',
+    categoria: '',
+    telefono: '',
+    email: '',
+    direccion: ''
+  };
+
+  openClienteModal() {
+    if (!this.tempClienteData.nombre) {
+      this.tempClienteData.nombre = String(this.form?.get('clienteNombreTexto')?.value || '');
+    }
+    this.showClienteModal = true;
+  }
+
+  closeClienteModal() {
+    this.showClienteModal = false;
+  }
+
+  confirmClienteModal() {
+    if (!this.tempClienteData.nombre.trim()) {
+      Swal.fire('Error', 'Ingrese el nombre del cliente.', 'warning');
+      return;
+    }
+    this.isCreandoClienteNuevo = true;
+    this.form.get('clienteId')?.setValue(null);
+    this.form.get('clienteNombreTexto')?.setValue(this.tempClienteData.nombre.trim());
+    this.showClienteModal = false;
+  }
+
+  clearClienteNuevo() {
+    this.isCreandoClienteNuevo = false;
+    this.form.get('clienteNombreTexto')?.setValue('');
+    this.tempClienteData = {
+      nombre: '',
+      rifCedula: '',
+      categoria: '',
+      telefono: '',
+      email: '',
+      direccion: ''
+    };
+  }
+
   constructor() {
     this.myFormValues();
   }
@@ -138,8 +184,7 @@ export class AddBudgetComponent implements OnInit {
       );
       this.activosCirculantes = data.assets.filter(asset => 
         asset.tipo?.toLowerCase().trim() === 'circulante' ||
-        asset.tipo?.toLowerCase().trim() === 'herramienta' ||
-        asset.tipo === ''
+        asset.tipo?.toLowerCase().trim() === 'material'
       );
       this.categoriasMaterial = [...new Set(
         this.activosCirculantes.map(a => a.categoria).filter((c): c is string => !!c)
@@ -547,7 +592,7 @@ export class AddBudgetComponent implements OnInit {
 
   myFormValues() {
     this.form = this.formBuilder.group({
-      clasificacion: ['', Validators.required],
+      clasificacion: [''],
       productoId: [''],
       descripcion: ['', Validators.required],
       numero: [''],
@@ -555,6 +600,8 @@ export class AddBudgetComponent implements OnInit {
       cantidadGlobal: [1, [Validators.required, Validators.min(1)]],
       delivery: [0, [Validators.min(0)]],
       clienteId: [null],
+      clienteNombreTexto: [''],
+      guardarClienteEnBd: [false],
 
       nombre: [`PIEZA ${this.piezaCounter}`],
       piezaTipo: ['Del Inventario'],
@@ -687,10 +734,6 @@ export class AddBudgetComponent implements OnInit {
   onSubmit() {
     this.submitted = true;
 
-    if (this.f['clasificacion'].value === 'Producto' && !this.f['productoId']?.value) {
-      this.f['productoId']?.setErrors({ required: true });
-    }
-
     if (this.form.invalid) {
       Swal.fire('Error', 'Complete los datos obligatorios del presupuesto.', 'error');
       return;
@@ -703,6 +746,8 @@ export class AddBudgetComponent implements OnInit {
 
     const parsedProdId = prodVal !== null && prodVal !== undefined && prodVal !== '' ? Number(prodVal) : undefined;
     const parsedCliId = cliVal !== null && cliVal !== undefined && cliVal !== '' ? Number(cliVal) : undefined;
+
+    const clienteTexto = String(this.f['clienteNombreTexto']?.value || '').trim();
 
     const mappedPiezas = this.piezas.map((p, idx) => {
       const pObj = p as unknown as Record<string, unknown>;
@@ -733,19 +778,22 @@ export class AddBudgetComponent implements OnInit {
     const budgetPayload: Record<string, unknown> = {
       id: this.id > 0 ? this.id : 0,
       sku: this.id > 0 ? this.f['numero'].value : `B-${(this.f['clasificacion'].value || 'GEN').substring(0, 3).toUpperCase()}-${Math.floor(Math.random() * 900) + 100}`,
-      clasificacion: this.f['clasificacion'].value,
+      clasificacion: this.f['clasificacion'].value || 'General',
       descripcion: this.f['descripcion'].value,
       numero: this.f['numero'].value,
       fecha: this.f['fecha'].value,
-      costoOperador: Number(this.f['costoOperador'].value) || 0,
-      costoMaquina: Number(this.f['costoMaquina'].value) || 0,
-      tasaFalloGlobal: Number(this.f['tasaFalloGlobal'].value) || 0,
-      tiempoSetup: Number(this.f['tiempoSetup'].value) || 0,
-      margenGanancia: Number(this.f['margenGanancia'].value) || 0,
-      tiempoPostProcesado: Number(this.f['tiempoPostProcesado'].value) || 0,
-      cantidadGlobal: Number(this.f['cantidadGlobal'].value) || 1,
-      delivery: Number(this.f['delivery'].value) || 0,
+      costoOperador: Number(this.f['costoOperador']?.value) || 0,
+      costoMaquina: Number(this.f['costoMaquina']?.value) || 0,
+      tasaFalloGlobal: Number(this.f['tasaFalloGlobal']?.value) || 0,
+      tiempoSetup: Number(this.f['tiempoSetup']?.value) || 0,
+      margenGanancia: Number(this.f['margenGanancia']?.value) || 0,
+      tiempoPostProcesado: Number(this.f['tiempoPostProcesado']?.value) || 0,
+      cantidadGlobal: Number(this.f['cantidadGlobal']?.value) || 1,
+      delivery: Number(this.f['delivery']?.value) || 0,
       cliente: parsedCliId,
+      clienteNombre: clienteTexto || undefined,
+      nombreCliente: clienteTexto || undefined,
+      clienteDetalle: this.isCreandoClienteNuevo ? { ...this.tempClienteData } : undefined,
       producto: parsedProdId,
       piezas: mappedPiezas
     };

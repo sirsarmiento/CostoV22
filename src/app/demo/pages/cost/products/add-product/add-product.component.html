@@ -222,7 +222,16 @@
               </div>
               <div class="col-md-3">
                 <label class="form-label">Tasa de Fallo (%)</label>
-                <input type="number" class="form-control" formControlName="tasaFallo" placeholder="0">
+                <ng-select 
+                  formControlName="tasaFallo"
+                  placeholder="Seleccione tasa..."
+                  [clearable]="true"
+                  [searchable]="false"
+                  appendTo="body">
+                  <ng-option [value]="5">5%</ng-option>
+                  <ng-option [value]="12">12%</ng-option>
+                  <ng-option [value]="25">25%</ng-option>
+                </ng-select>
               </div>
               <div class="col-md-3">
                 <label class="form-label">Margen de Ganancia (%)</label>

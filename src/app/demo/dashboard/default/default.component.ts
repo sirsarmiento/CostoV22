@@ -193,21 +193,44 @@ export class DefaultComponent implements OnInit {
     this.calcularTotal();
   }
 
+  capacidadHoras = 160;
+  tasaCifPorHora = 0;
+  costoCifProducto = 0;
+
   calcularTotal(): void {
     // 1. Sumar los costos directos de la tabla
-    this.totalPrecio = this.filteredCostItems.reduce((sum, item) => {
+    const costoDirecto = this.filteredCostItems.reduce((sum, item) => {
       const precioNum = Number(item.precio);
       return sum + (isNaN(precioNum) ? 0 : precioNum);
     }, 0);
 
-    // Calcular la prorrata de gastos indirectos y depreciación
-    let indirecto = 0;
-    if (this.totalProducto > 0) {
-      indirecto = (this.totalFijoIndirecto + this.totalDepreciacionMensual) / this.totalProducto;
+    // 2. Calcular Tasa CIF por hora (Indirectos + Depreciación Mensual) / Capacidad Horas Máquina
+    const totalIndirectosMensuales = this.totalFijoIndirecto + this.totalDepreciacionMensual;
+    this.tasaCifPorHora = this.capacidadHoras > 0 ? totalIndirectosMensuales / this.capacidadHoras : 0;
+
+    // 3. Obtener el tiempo de máquina del producto seleccionado
+    const selectedProd = this.products.find(p => Number(p.id) === Number(this.selectedProductId));
+    let horasMaquinaProducto = 0;
+
+    if (selectedProd && selectedProd.piezasBase && Array.isArray(selectedProd.piezasBase)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      selectedProd.piezasBase.forEach((pieza: any) => {
+        const h = Number(pieza.horas) || 0;
+        const m = Number(pieza.minutos) || 0;
+        horasMaquinaProducto += h + (m / 60);
+      });
     }
 
-    // 3. Sumar el costo unitario real
-    this.totalPrecio += indirecto;
+    // Si no tiene piezas detalladas, asumimos 1 hora estimada
+    if (horasMaquinaProducto <= 0) {
+      horasMaquinaProducto = 1;
+    }
+
+    // 4. Aplicar la absorción CIF por tiempo de máquina
+    this.costoCifProducto = this.tasaCifPorHora * horasMaquinaProducto;
+
+    // 5. Costo Unitario Real
+    this.totalPrecio = costoDirecto + this.costoCifProducto;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -8,6 +8,7 @@ import { ConfigService } from '../../../../../core/services/cost/config.service'
 import { FixeService } from '../../../../../core/services/cost/fixe.service';
 import { AssetService } from '../../../../../core/services/cost/asset.service';
 import { Asset } from '../../../../../core/models/Cost/asset';
+import { ClientService } from '../../../../../core/services/cost/client.service';
 import { forkJoin } from 'rxjs';
 import Swal from 'sweetalert2';
 import { calculateBudgetTotals, normalizeBudget } from '../../../../../core/utils/budget-calculator';
@@ -24,9 +25,24 @@ export class BudgetComponent implements OnInit {
   private configService = inject(ConfigService);
   private fixeService = inject(FixeService);
   private assetService = inject(AssetService);
+  private clientService = inject(ClientService);
   private cdr = inject(ChangeDetectorRef);
   loading = true;
   selectedRow: Budget | null = null;
+
+  showClientModal = false;
+  isClientRegistered = false;
+  savingClient = false;
+  currentBudgetForModal: Budget | null = null;
+
+  selectedClientData = {
+    nombre: '',
+    rifCedula: '',
+    categoria: '',
+    telefono: '',
+    email: '',
+    direccion: ''
+  };
 
   allBudgets: Budget[] = [];
   filteredBudgets: Budget[] = [];
@@ -469,6 +485,125 @@ export class BudgetComponent implements OnInit {
       width: '950px',
       showCloseButton: true,
       showConfirmButton: false,
+    });
+  }
+
+  onOpenClientModal(row: Budget) {
+    this.currentBudgetForModal = row;
+    const rRec = row as unknown as Record<string, unknown>;
+    const cliObj = rRec['cliente'] ?? rRec['clienteId'] ?? rRec['cliente_id'];
+
+    if (cliObj && typeof cliObj === 'object') {
+      const cRec = cliObj as Record<string, unknown>;
+      this.isClientRegistered = true;
+      this.selectedClientData = {
+        nombre: `${cRec['nombre'] || ''} ${cRec['apellido'] || ''}`.trim() || String(cRec['nombre'] || ''),
+        rifCedula: String(cRec['rifCedula'] || cRec['rif_cedula'] || cRec['rif'] || cRec['cedula'] || ''),
+        categoria: String(cRec['categoria'] || ''),
+        telefono: String(cRec['telefono'] || ''),
+        email: String(cRec['email'] || ''),
+        direccion: String(cRec['direccion'] || '')
+      };
+    } else if (cliObj && (typeof cliObj === 'number' || typeof cliObj === 'string') && Number(cliObj) > 0) {
+      this.isClientRegistered = true;
+      const cId = Number(cliObj);
+      this.clientService.getClients().subscribe(clients => {
+        const found = clients.find(c => Number(c.id) === cId);
+        if (found) {
+          this.selectedClientData = {
+            nombre: `${found.nombre} ${found.apellido || ''}`.trim(),
+            rifCedula: found.rifCedula || '',
+            categoria: found.categoria || '',
+            telefono: found.telefono || '',
+            email: found.email || '',
+            direccion: found.direccion || ''
+          };
+        }
+      });
+    } else {
+      this.isClientRegistered = false;
+      const cliDetalle = (rRec['clienteDetalle'] ?? rRec['cliente_detalle']) as Record<string, unknown> | undefined;
+      const cliNombre = String(rRec['clienteNombre'] || rRec['nombreCliente'] || rRec['cliente_nombre'] || '').trim();
+
+      this.selectedClientData = {
+        nombre: cliDetalle ? String(cliDetalle['nombre'] || cliNombre) : cliNombre,
+        rifCedula: cliDetalle ? String(cliDetalle['rifCedula'] || cliDetalle['rif_cedula'] || '') : '',
+        categoria: cliDetalle ? String(cliDetalle['categoria'] || '') : '',
+        telefono: cliDetalle ? String(cliDetalle['telefono'] || '') : '',
+        email: cliDetalle ? String(cliDetalle['email'] || '') : '',
+        direccion: cliDetalle ? String(cliDetalle['direccion'] || '') : ''
+      };
+    }
+
+    this.showClientModal = true;
+  }
+
+  closeClientModal() {
+    this.showClientModal = false;
+    this.currentBudgetForModal = null;
+  }
+
+  registerClientFromModal() {
+    if (!this.selectedClientData.nombre.trim()) {
+      Swal.fire('Error', 'Ingrese el nombre del cliente.', 'warning');
+      return;
+    }
+
+    this.savingClient = true;
+    const parts = this.selectedClientData.nombre.trim().split(' ');
+    const firstWord = parts[0] || this.selectedClientData.nombre.trim();
+    const remainingWords = parts.slice(1).join(' ');
+
+    const newClientPayload = {
+      nombre: firstWord,
+      apellido: remainingWords,
+      rifCedula: this.selectedClientData.rifCedula,
+      categoria: this.selectedClientData.categoria,
+      telefono: this.selectedClientData.telefono,
+      email: this.selectedClientData.email,
+      direccion: this.selectedClientData.direccion
+    };
+
+    this.clientService.createClient(newClientPayload).subscribe({
+      next: (created: { id?: number | string }) => {
+        this.savingClient = false;
+        const newCliId = created && created.id ? Number(created.id) : undefined;
+
+        if (this.currentBudgetForModal && newCliId) {
+          const bId = Number(this.currentBudgetForModal.id);
+          const updatePayload: Record<string, unknown> = {
+            ...this.currentBudgetForModal,
+            cliente: newCliId,
+            clienteId: newCliId
+          };
+
+          this.budgetService.updateBudget(bId, updatePayload as unknown as Budget).subscribe({
+            next: () => {
+              Swal.fire('¡Registrado!', 'El cliente ha sido guardado oficialmente y vinculado al presupuesto.', 'success');
+              if (this.currentBudgetForModal) {
+                (this.currentBudgetForModal as unknown as Record<string, unknown>)['cliente'] = newCliId;
+                (this.currentBudgetForModal as unknown as Record<string, unknown>)['clienteId'] = newCliId;
+              }
+              this.isClientRegistered = true;
+              this.closeClientModal();
+              this.getBudgets();
+            },
+            error: () => {
+              Swal.fire('Error', 'Cliente registrado, pero ocurrió un error al actualizar el presupuesto.', 'warning');
+              this.closeClientModal();
+              this.getBudgets();
+            }
+          });
+        } else {
+          Swal.fire('¡Registrado!', 'El cliente ha sido guardado en el directorio.', 'success');
+          this.closeClientModal();
+        }
+      },
+      error: (err) => {
+        this.savingClient = false;
+        console.error(err);
+        Swal.fire('Error', 'No se pudo registrar el cliente.', 'error');
+      }
     });
   }
 }

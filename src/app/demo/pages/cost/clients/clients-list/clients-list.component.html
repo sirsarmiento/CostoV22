@@ -59,8 +59,18 @@
                   style="cursor: pointer;">
                   <td>
                     <div>
-                      <div class="fw-bold text-dark">{{ row.nombre }} {{ row.apellido }}</div>
-                      <small class="text-muted">{{ row.direccion || 'Sin dirección' }}</small>
+                      <div class="fw-bold text-dark d-flex align-items-center gap-2">
+                        <span>{{ row.nombre }} {{ row.apellido }}</span>
+                        @if (row.categoria) {
+                          <span class="badge bg-light-primary text-primary px-2 py-1" style="font-size: 0.75rem;">{{ row.categoria }}</span>
+                        }
+                      </div>
+                      <small class="text-muted">
+                        @if (row.rifCedula) {
+                          <span class="fw-medium me-2">{{ row.rifCedula }}</span>
+                        }
+                        {{ row.direccion || 'Sin dirección' }}
+                      </small>
                     </div>
                   </td>
                   <td>

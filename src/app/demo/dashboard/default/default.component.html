@@ -247,12 +247,12 @@
           <hr class="border-secondary border-opacity-25">
 
           <div class="d-flex justify-content-between align-items-center mt-3">
-            <span class="text-muted small">Cantidad de Productos en el Perfil:</span>
-            <strong class="text-primary fs-5">{{ totalProducto }} <span class="fs-6 fw-normal text-muted">unidades</span></strong>
+            <span class="text-muted small">Tasa CIF por Hora Máquina:</span>
+            <strong class="text-primary fs-5">${{ tasaCifPorHora | number: '1.2-2' }} <span class="fs-6 fw-normal text-muted">/ hora</span></strong>
           </div>
           
           <div class="alert alert-primary bg-light-primary border-0 mt-4 mb-0 p-3 text-center small rounded">
-            Estos gastos generales se dividen entre los <strong>{{ totalProducto }}</strong> productos del perfil para calcular el costo unitario real.
+            Se aplican <strong>${{ tasaCifPorHora | number: '1.2-2' }}/hora</strong> de Tasa CIF (Gastos Indirectos + Depreciación sobre {{ capacidadHoras }}h capacidad) asignados según las horas de máquina del producto.
           </div>
         </div>
       </div>

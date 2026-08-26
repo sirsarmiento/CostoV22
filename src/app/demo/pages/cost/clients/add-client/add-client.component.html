@@ -18,30 +18,36 @@
             
             <!-- Nombre -->
             <div class="col-md-6">
-              <label class="form-label">Nombre</label>
+              <label class="form-label">Nombre <span class="text-danger">*</span></label>
               <input 
                 type="text" 
                 class="form-control" 
-                formControlName="nombre" 
-                placeholder="Ej. Empresa Alpha"
-                [class.is-invalid]="submitted && f['nombre'].errors">
-              @if (submitted && f['nombre'].errors) {
+                formControlName="nombreRazonSocial" 
+                placeholder="Ej. Juan Pérez"
+                [class.is-invalid]="submitted && f['nombreRazonSocial'].errors">
+              @if (submitted && f['nombreRazonSocial'].errors) {
                 <div class="invalid-feedback d-block">El nombre es requerido</div>
               }
             </div>
 
-            <!-- Apellido -->
-            <div class="col-md-6">
-              <label class="form-label">Apellido / Razón Social</label>
+            <!-- Cédula / RIF -->
+            <div class="col-md-3">
+              <label class="form-label">Cédula / RIF</label>
               <input 
                 type="text" 
                 class="form-control" 
-                formControlName="apellido" 
-                placeholder="Ej. S.A. o Pérez"
-                [class.is-invalid]="submitted && f['apellido'].errors">
-              @if (submitted && f['apellido'].errors) {
-                <div class="invalid-feedback d-block">El apellido o razón social es requerido</div>
-              }
+                formControlName="rifCedula" 
+                placeholder="Ej. V-12345678 o J-12345678-9">
+            </div>
+
+            <!-- Categoría -->
+            <div class="col-md-3">
+              <label class="form-label">Categoría</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                formControlName="categoria" 
+                placeholder="Ej. VIP, General, Corporativo...">
             </div>
 
             <!-- Email -->

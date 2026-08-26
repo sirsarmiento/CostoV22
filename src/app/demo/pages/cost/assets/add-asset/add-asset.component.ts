@@ -54,7 +54,7 @@ export class AddAssetComponent implements OnInit {
         const tipoLimpio = rawTipo ? (rawTipo.charAt(0).toUpperCase() + rawTipo.slice(1).toLowerCase()) : 'Fijo';
         
         const rawCat = (data.categoria || '').toString().trim();
-        const catLimpia = rawCat ? (rawCat.charAt(0).toUpperCase() + rawCat.slice(1).toLowerCase()) : 'Mobiliario';
+        const catLimpia = rawCat;
 
         this.form.patchValue({
           nombre: data.nombre,
@@ -88,7 +88,7 @@ export class AddAssetComponent implements OnInit {
       nombre: ['', Validators.required],
       costoInicial: [{ value: '', disabled: false }, Validators.required],
       tipo: ['Fijo', Validators.required],
-      categoria: ['Mobiliario', Validators.required],
+      categoria: [''],
       subcategoria: [''],
       // Campos de Fijos
       valorResidual: [''],
@@ -108,11 +108,6 @@ export class AddAssetComponent implements OnInit {
 
     this.form.get('tipo')?.valueChanges.subscribe(tipo => {
       this.isSwitchingType = true;
-      if (tipo === 'Circulante' && this.form.get('categoria')?.value === 'Mobiliario') {
-        this.form.get('categoria')?.setValue('');
-      } else if (tipo === 'Fijo' && !this.form.get('categoria')?.value) {
-        this.form.get('categoria')?.setValue('Mobiliario');
-      }
       this.actualizarValidaciones(tipo);
       this.isSwitchingType = false;
     });
@@ -120,6 +115,11 @@ export class AddAssetComponent implements OnInit {
     this.form.get('categoria')?.valueChanges.subscribe(() => {
       this.actualizarValidaciones(this.form.get('tipo')?.value);
     });
+  }
+
+  get isEquipoCategory(): boolean {
+    const cat = String(this.form?.get('categoria')?.value || '').toLowerCase().trim();
+    return cat === 'equipo' || cat.includes('equipo') || cat.includes('máquina') || cat.includes('maquina') || cat.includes('cnc') || cat.includes('impresora') || cat.includes('herramienta');
   }
 
   private actualizarValidaciones(tipo: string) {
@@ -132,9 +132,8 @@ export class AddAssetComponent implements OnInit {
       this.setValidators(['valorUnitario', 'ubicacion'], []);
       this.form.get('costoInicial')?.enable();
 
-      const categoria = this.form.get('categoria')?.value;
-      if (categoria === 'Equipo') {
-        this.setValidators(camposEquipo, [Validators.required]);
+      if (this.isEquipoCategory) {
+        this.setValidators(camposEquipo, []);
       } else {
         this.setValidators(camposEquipo, []);
       }

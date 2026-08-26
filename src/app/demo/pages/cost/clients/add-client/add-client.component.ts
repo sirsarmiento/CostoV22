@@ -31,9 +31,12 @@ export class AddClientComponent implements OnInit {
     const editClient: Client | undefined = history?.state?.edit_client;
     if (editClient && editClient.id) {
       this.id = editClient.id;
+      const full = [editClient.nombre, editClient.apellido].filter(Boolean).join(' ');
+      const raw = editClient as unknown as Record<string, unknown>;
       this.form.patchValue({
-        nombre: editClient.nombre,
-        apellido: editClient.apellido,
+        nombreRazonSocial: full,
+        rifCedula: editClient.rifCedula || raw['rif'] || raw['cedula'] || '',
+        categoria: editClient.categoria || raw['categoria'] || 'General',
         email: editClient.email || '',
         telefono: editClient.telefono || '',
         direccion: editClient.direccion || ''
@@ -43,8 +46,9 @@ export class AddClientComponent implements OnInit {
 
   initForm() {
     this.form = this.fb.group({
-      nombre: ['', Validators.required],
-      apellido: ['', Validators.required],
+      nombreRazonSocial: ['', Validators.required],
+      rifCedula: [''],
+      categoria: ['General'],
       email: ['', [Validators.email]],
       telefono: [''],
       direccion: ['']
@@ -67,9 +71,21 @@ export class AddClientComponent implements OnInit {
     }
 
     this.loading = true;
+
+    const fullName = String(this.form.get('nombreRazonSocial')?.value || '').trim();
+    const parts = fullName.split(' ');
+    const firstWord = parts[0] || fullName;
+    const remainingWords = parts.slice(1).join(' ');
+
     const clientData: Client = {
       id: this.id > 0 ? this.id : undefined,
-      ...this.form.value
+      nombre: firstWord,
+      apellido: remainingWords,
+      rifCedula: this.form.get('rifCedula')?.value || '',
+      categoria: this.form.get('categoria')?.value || 'General',
+      email: this.form.get('email')?.value || '',
+      telefono: this.form.get('telefono')?.value || '',
+      direccion: this.form.get('direccion')?.value || ''
     };
 
     const req$ = this.id > 0 

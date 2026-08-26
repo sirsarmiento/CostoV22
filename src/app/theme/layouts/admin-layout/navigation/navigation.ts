@@ -130,21 +130,21 @@ export const NavigationItems: NavigationItem[] = [
         breadcrumbs: false
       },
       {
-        id: 'budgets',
-        title: 'Presupuestos',
-        type: 'item',
-        classes: 'nav-item',
-        url: '/budgets',
-        icon: 'audit',
-        breadcrumbs: false
-      },
-      {
         id: 'clients',
         title: 'Clientes',
         type: 'item',
         classes: 'nav-item',
         url: '/clients',
         icon: 'team',
+        breadcrumbs: false
+      },
+      {
+        id: 'budgets',
+        title: 'Presupuestos',
+        type: 'item',
+        classes: 'nav-item',
+        url: '/budgets',
+        icon: 'audit',
         breadcrumbs: false
       }
     ]

@@ -27,6 +27,7 @@ export class AssetComponent implements OnInit {
 
   totalFijos = 0;
   totalCirculantes = 0;
+  totalMateriales = 0;
 
   searchTerm = '';
   selectedCategory: string | null = null;
@@ -45,10 +46,17 @@ export class AssetComponent implements OnInit {
   }
 
   actualizarCategorias() {
-    const isFijoTab = this.activeTab === 'fijo';
     const assetsInTab = this.allAssets.filter(item => {
-      const isFijoItem = item.tipo?.toLowerCase().trim() === 'fijo' || (!item.tipo && item.vidaUtil > 0);
-      return isFijoTab ? isFijoItem : !isFijoItem;
+      const tipoLower = item.tipo?.toLowerCase().trim() || '';
+      const catLower = item.categoria?.toLowerCase().trim() || '';
+
+      if (this.activeTab === 'fijo') {
+        return tipoLower === 'fijo' || (!item.tipo && item.vidaUtil > 0);
+      } else if (this.activeTab === 'material') {
+        return tipoLower === 'material' || catLower.includes('material') || catLower.includes('insumo') || catLower.includes('filamento') || catLower.includes('resina');
+      } else {
+        return (tipoLower === 'circulante' || !item.tipo) && tipoLower !== 'fijo' && tipoLower !== 'material' && !catLower.includes('material') && !catLower.includes('insumo') && !catLower.includes('filamento') && !catLower.includes('resina');
+      }
     });
 
     const uniqueMap = new Map<string, string>();
@@ -141,9 +149,16 @@ export class AssetComponent implements OnInit {
   applyFilterAndPagination() {
     // Filtrar por tipo
     let temp = this.allAssets.filter(item => {
-      const isFijoTab = this.activeTab === 'fijo';
-      const isFijoItem = item.tipo?.toLowerCase().trim() === 'fijo' || (!item.tipo && item.vidaUtil > 0);
-      return isFijoTab ? isFijoItem : !isFijoItem;
+      const tipoLower = item.tipo?.toLowerCase().trim() || '';
+      const catLower = item.categoria?.toLowerCase().trim() || '';
+
+      if (this.activeTab === 'fijo') {
+        return tipoLower === 'fijo' || (!item.tipo && item.vidaUtil > 0);
+      } else if (this.activeTab === 'material') {
+        return tipoLower === 'material' || catLower.includes('material') || catLower.includes('insumo') || catLower.includes('filamento') || catLower.includes('resina');
+      } else {
+        return (tipoLower === 'circulante' || !item.tipo) && tipoLower !== 'fijo' && tipoLower !== 'material' && !catLower.includes('material') && !catLower.includes('insumo') && !catLower.includes('filamento') && !catLower.includes('resina');
+      }
     });
 
     // Filtrar por categoría
@@ -192,6 +207,8 @@ export class AssetComponent implements OnInit {
     // Totales
     if (this.activeTab === 'fijo') {
       this.totalFijos = this.filteredAssets.reduce((sum, item) => sum + (item.depMensual || 0), 0);
+    } else if (this.activeTab === 'material') {
+      this.totalMateriales = this.filteredAssets.reduce((sum, item) => sum + (item.costoInicial || 0), 0);
     } else {
       this.totalCirculantes = this.filteredAssets.reduce((sum, item) => sum + (item.costoInicial || 0), 0);
     }

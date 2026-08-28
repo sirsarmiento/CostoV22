@@ -181,6 +181,7 @@ export class AddFixeComponent implements OnInit {
 
   onSubmit() {
     this.submitted = true;
+    this.form.markAllAsTouched();
 
     const conceptoControl = this.form.get('concepto');
     const otroConceptoControl = this.form.get('otroConcepto');

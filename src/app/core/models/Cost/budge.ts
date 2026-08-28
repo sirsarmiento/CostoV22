@@ -22,6 +22,7 @@ export class Budget { //Presupuesto
     clienteDetalle?: Record<string, unknown>;
     activo?: number;
     costoTotalFinal?: number;
+    total?: number;
 }
 
 export class Parts{ //Piezas

@@ -208,6 +208,7 @@ export class AddConfigComponent implements OnInit {
 
   onSubmit() {
     this.submitted = true;
+    this.form.markAllAsTouched();
     if (this.form.invalid) {
       this.activeTab = 'perfil'; // Cambiar a la pestaña de datos requeridos
       Swal.fire('Error', 'Complete los datos obligatorios del perfil de la empresa.', 'error');

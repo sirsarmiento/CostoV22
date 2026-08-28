@@ -38,10 +38,38 @@ export class CommonsService {
     return resp.map((item: any) => new SelectOption(item.id, item.nombre));
   }
   async getAllRoles(): Promise<Array<SelectOption>> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const resp: any = await firstValueFrom(this.http.get(`${environment.apiUrl}/rol/list`));
-    const temp = resp[0] || [];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return temp.map((item: any) => new SelectOption(item.descripcion || item.name || item.rol, item.descripcion || item.name || item.rol));
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const resp: any = await firstValueFrom(this.http.get(`${environment.apiUrl}/rol/list`));
+      const temp = Array.isArray(resp) && resp.length > 0 ? (Array.isArray(resp[0]) ? resp[0] : resp) : [];
+      
+      const filtered: SelectOption[] = [];
+      const addedLabels = new Set<string>();
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      temp.forEach((item: any) => {
+        const rawVal = String(item.descripcion || item.name || item.rol || '').trim();
+        const upper = rawVal.toUpperCase();
+
+        if (upper.includes('ADMIN') && !addedLabels.has('Administrador')) {
+          filtered.push(new SelectOption(rawVal, 'Administrador'));
+          addedLabels.add('Administrador');
+        } else if ((upper.includes('REGULAR') || upper.includes('USER')) && !addedLabels.has('Regular')) {
+          filtered.push(new SelectOption(rawVal, 'Regular'));
+          addedLabels.add('Regular');
+        }
+      });
+
+      if (filtered.length > 0) {
+        return filtered;
+      }
+    } catch (e) {
+      console.error('Error fetching roles:', e);
+    }
+
+    return [
+      new SelectOption('ROLE_ADMINISTRADOR', 'Administrador'),
+      new SelectOption('ROLE_REGULAR', 'Regular')
+    ];
   }
 }

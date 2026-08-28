@@ -32,6 +32,8 @@ import {
 } from '@ant-design/icons-angular/icons';
 import { NgScrollbarModule } from 'ngx-scrollbar';
 
+import { AuthService } from 'src/app/core/services/auth.service';
+
 @Component({
   selector: 'app-nav-content',
   imports: [CommonModule, RouterModule, NavGroupComponent, NgScrollbarModule],
@@ -42,6 +44,7 @@ export class NavContentComponent implements OnInit {
   private location = inject(Location);
   private locationStrategy = inject(LocationStrategy);
   private iconService = inject(IconService);
+  private authService = inject(AuthService);
 
   // public props
   NavCollapsedMob = output();
@@ -83,9 +86,20 @@ export class NavContentComponent implements OnInit {
 
   // Life cycle events
   ngOnInit() {
+    this.filterNavigationByRole();
     if (this.windowWidth < 1025) {
       (document.querySelector('.coded-navbar') as HTMLDivElement)?.classList.add('menupos-static');
     }
+  }
+
+  filterNavigationByRole() {
+    const isAdmin = this.authService.isAdmin;
+    if (isAdmin) {
+      this.navigations = NavigationItems;
+    } else {
+      this.navigations = NavigationItems.filter(group => group.id !== 'admin');
+    }
+    this.navigation = this.navigations;
   }
 
   fireOutClick() {

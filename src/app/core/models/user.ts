@@ -213,37 +213,34 @@ export class User {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private static getPhonesUser(userPhones: any[]) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const phones = userPhones.map((item: any) => {
-            return { numero: item.numero };
+        const phones = (userPhones || []).map((item: any) => {
+            return { numero: typeof item === 'object' ? item.numero : item };
         });
         return phones;
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private static getRolesUser(userRoles: any[]) {
-        const roles = userRoles.map((item: string) => {
-            return { rol: item };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const roles = (userRoles || []).map((item: any) => {
+            const roleStr = typeof item === 'string' ? item : (item?.rol || item);
+            const cleanStr = typeof roleStr === 'string' ? roleStr : (roleStr?.rol || String(roleStr));
+            return { rol: cleanStr };
         });
         return roles;
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private static getNetworkUser(networks: any[]) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const arrayNetwork: any[] = [];
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        networks.forEach((net: any) => {
-            arrayNetwork.push({
-                tipo: parseInt(net.idTipo),
-                red: net.networkDir ? net.networkDir : ''
-
-            });
-
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const arrayNetwork: any[] = [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (networks || []).forEach((net: any) => {
+        arrayNetwork.push({
+          tipo: parseInt(net.idTipo),
+          red: net.networkDir ? net.networkDir : ''
         });
-
-        return arrayNetwork;
-
+      });
+      return arrayNetwork;
     }
-
 }

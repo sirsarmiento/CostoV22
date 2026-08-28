@@ -37,6 +37,27 @@ export class AuthService extends HttpService {
     return user;
   }
 
+  public get isAdmin(): boolean {
+    const user = this.currentUser;
+    if (!user || !user.roles) return true;
+
+    const roles = Array.isArray(user.roles) ? user.roles : [user.roles];
+    return roles.some((r: unknown) => {
+      let val = '';
+      if (typeof r === 'string') {
+        val = r;
+      } else if (r && typeof r === 'object') {
+        const rec = r as Record<string, unknown>;
+        val = String(rec['rol'] || rec['name'] || rec['value'] || '');
+      }
+      return val.toUpperCase().includes('ADMIN');
+    });
+  }
+
+  public get isRegular(): boolean {
+    return !this.isAdmin;
+  }
+
 
   /**
  * Save user data to localstorage

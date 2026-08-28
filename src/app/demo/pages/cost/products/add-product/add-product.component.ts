@@ -162,9 +162,7 @@ export class AddProductComponent implements OnInit {
             a.categoria?.toLowerCase().trim() === 'mobiliario'
           );
           this.activosCirculantes = assets.filter((a: Asset) => 
-            a.tipo?.toLowerCase().trim() === 'circulante' ||
-            a.tipo?.toLowerCase().trim() === 'herramienta' ||
-            a.tipo === ''
+            a.tipo?.toLowerCase().trim() === 'material'
           );
           this.categoriasMaterial = [...new Set(
             this.activosCirculantes.map(a => a.categoria).filter((c): c is string => !!c)
@@ -476,6 +474,7 @@ export class AddProductComponent implements OnInit {
 
   onSubmit() {
     this.submitted = true;
+    this.form.markAllAsTouched();
 
     if (this.form.invalid) {
       Swal.fire('Error', 'Complete los datos obligatorios del producto.', 'error');

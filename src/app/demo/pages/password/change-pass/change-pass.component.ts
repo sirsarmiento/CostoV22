@@ -28,6 +28,7 @@ export class ChangePassComponent {
 
   async onSubmit() {
     this.submitted = true;
+    this.form.markAllAsTouched();
 
     if (this.form.invalid) {
       return;

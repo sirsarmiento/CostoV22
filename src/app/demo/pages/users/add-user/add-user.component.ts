@@ -59,8 +59,8 @@ export class AddUserComponent implements OnInit, OnDestroy {
         this.commonsService.getAllRoles().then(res => this.roles = res).catch(e => {
           console.error('Error cargando roles', e);
           this.roles = [
-            new SelectOption('Administrador', 'Administrador'),
-            new SelectOption('Usuario Normal', 'Usuario Normal')
+            new SelectOption('ROLE_ADMINISTRADOR', 'Administrador'),
+            new SelectOption('ROLE_REGULAR', 'Regular')
           ];
         })
       ]);
@@ -214,12 +214,26 @@ export class AddUserComponent implements OnInit, OnDestroy {
     }
   }
 
-  setRolesSeleccionados(rolesGuardados: Array<string | { rol: string }>) {
+  private extractRoleName(r: unknown): string {
+    if (!r) return '';
+    if (typeof r === 'string') return r;
+    if (typeof r === 'object' && r !== null) {
+      const rec = r as Record<string, unknown>;
+      const inner = rec['rol'] || rec['name'] || rec['descripcion'] || rec['value'] || r;
+      if (typeof inner === 'string') return inner;
+      if (inner && typeof inner === 'object') return this.extractRoleName(inner);
+    }
+    return String(r);
+  }
+
+  setRolesSeleccionados(rolesGuardados: unknown[]) {
     const formArray = this.form.get('roles') as FormArray;
     formArray.clear(); 
+    if (!Array.isArray(rolesGuardados)) return;
+
     rolesGuardados.forEach(r => {
-      const roleName = typeof r === 'string' ? r : r.rol;
-      if (!formArray.value.includes(roleName)) {
+      const roleName = this.extractRoleName(r);
+      if (roleName && !formArray.value.includes(roleName)) {
         formArray.push(new FormControl(roleName));
       }
     });
@@ -227,7 +241,19 @@ export class AddUserComponent implements OnInit, OnDestroy {
 
   isChecked(value: string): boolean {
     const formArray = this.form.get('roles') as FormArray;
-    return formArray.value.includes(value);
+    const currentRoles: string[] = (formArray.value || [])
+      .map((r: unknown) => this.extractRoleName(r).toUpperCase())
+      .filter((r: string) => Boolean(r));
+
+    const valUpper = String(value || '').toUpperCase();
+
+    if (valUpper.includes('ADMIN')) {
+      return currentRoles.some(r => r.includes('ADMIN'));
+    }
+    if (valUpper.includes('REGULAR') || valUpper.includes('USER')) {
+      return currentRoles.some(r => r.includes('REGULAR') || r.includes('USER'));
+    }
+    return currentRoles.includes(valUpper);
   } 
 
   ngOnDestroy() {
@@ -268,6 +294,7 @@ export class AddUserComponent implements OnInit, OnDestroy {
 
   async onSubmit() {
     this.submitted = true;
+    this.form.markAllAsTouched();
 
     if (this.form.invalid) {
       Swal.fire('Error', 'Por favor, revise los campos marcados en rojo.', 'warning');
@@ -278,7 +305,6 @@ export class AddUserComponent implements OnInit, OnDestroy {
     
     // Armar roles format
     const formRoles = this.form.get('roles')?.value || [];
-    const rolesObj = formRoles.map((r: string) => ({ rol: r }));
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const user: any = {
@@ -295,7 +321,7 @@ export class AddUserComponent implements OnInit, OnDestroy {
       sex: this.f['sex'].value,
       email: this.f['email'].value,
       position: this.f['position'].value,
-      roles: rolesObj, 
+      roles: formRoles, 
       country: this.f['country'].value,
       state: this.f['state'].value,
       city: this.f['city'].value,

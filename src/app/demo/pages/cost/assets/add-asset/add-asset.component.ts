@@ -194,6 +194,7 @@ export class AddAssetComponent implements OnInit {
 
   onSubmit() {
     this.submitted = true;
+    this.form.markAllAsTouched();
 
     if (this.form.invalid) {
       Swal.fire('Error', 'Complete los datos obligatorios del activo.', 'error');

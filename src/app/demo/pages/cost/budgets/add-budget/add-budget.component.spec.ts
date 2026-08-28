@@ -60,8 +60,9 @@ describe('AddBudgetComponent', () => {
       delivery: 15
     });
 
-    // Simulamos tasa CIF de $5.00/hora y depreciación de $1.00/hora
-    component.tasaCIF = 5.00;
+    // Simulamos tasa CIF de $5.00/hora ($500 / 100h) y depreciación de $1.00/hora
+    component.totalFijoIndirecto = 500.00;
+    component.capacidadHorasMaquina = 100;
     component.tasaDepreciacionMaquina = 1.00;
 
     const totales = component.getTotales();

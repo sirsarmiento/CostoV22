@@ -30,18 +30,29 @@
               }
             </div>
 
-            <!-- Cédula / RIF -->
-            <div class="col-md-3">
-              <label class="form-label">Cédula / RIF</label>
+            <!-- Cédula (Nacionalidad + Nro. Documento) -->
+            <div class="col-md-2">
+              <label class="form-label">Nacionalidad <span class="text-danger">*</span></label>
+              <ng-select 
+                formControlName="nacionalidad" 
+                [clearable]="false" 
+                [searchable]="false"
+                [items]="nacionalidadesList"
+                appendTo="body">
+              </ng-select>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Nro. Documento</label>
               <input 
                 type="text" 
                 class="form-control" 
-                formControlName="rifCedula" 
-                placeholder="Ej. V-12345678 o J-12345678-9">
+                formControlName="nroDocumento" 
+                placeholder="Ej. 12345678">
             </div>
 
             <!-- Categoría -->
-            <div class="col-md-3">
+            <div class="col-md-6">
               <label class="form-label">Categoría</label>
               <input 
                 type="text" 
@@ -75,13 +86,13 @@
             </div>
 
             <!-- Dirección -->
-            <div class="col-12">
+            <div class="col-md-6">
               <label class="form-label">Dirección</label>
-              <textarea 
+              <input 
+                type="text" 
                 class="form-control" 
                 formControlName="direccion" 
-                rows="3" 
-                placeholder="Av. Principal, Edificio Central, Oficina 4B..."></textarea>
+                placeholder="Av. Principal, Edificio Central, Oficina 4B...">
             </div>
 
           </div>

@@ -36,9 +36,6 @@
           <table class="table table-hover align-middle mb-0 table-sm">
             <thead class="table-light table-sm">
               <tr>
-                <th style="cursor: pointer;" (click)="sortData('sku')">
-                  SKU <i class="ti fs-6" [class]="getSortClass('sku')"></i>
-                </th>
                 <th style="cursor: pointer;" (click)="sortData('clasificacion')">
                   Clasificación <i class="ti fs-6" [class]="getSortClass('clasificacion')"></i>
                 </th>
@@ -60,7 +57,6 @@
                   (click)="selectedRow = selectedRow === row ? null : row"
                   [class.table-primary]="selectedRow && selectedRow.id === row.id"
                   style="cursor: pointer;">
-                  <td class="fw-bold">{{ row.numero || ('PRE-' + row.id) }}</td>
                   <td>
                     <span 
                       class="badge" 
@@ -82,7 +78,7 @@
                         [class.btn-light-primary]="row.cliente || row.clienteId"
                         [class.btn-light-secondary]="!row.cliente && !row.clienteId"
                         (click)="onOpenClientModal(row)" 
-                        [title]="(row.cliente || row.clienteId) ? 'Ver Ficha de Cliente' : 'Cliente no registrado (Clic para registrar)'">
+                        [title]="(row.cliente || row.clienteId) ? 'Ver Ficha de Cliente' : 'Ver datos del cliente (Sin registrar en catálogo)'">
                         <i class="ti fs-5" [class.ti-user-check]="row.cliente || row.clienteId" [class.ti-user-plus]="!row.cliente && !row.clienteId" [class.text-primary]="row.cliente || row.clienteId" [class.text-muted]="!row.cliente && !row.clienteId"></i>
                       </button>
                       <button 
@@ -91,18 +87,20 @@
                         title="Ver Resumen / Detalle">
                         <i class="ti ti-eye fs-5"></i>
                       </button>
-                      <button 
-                        class="btn btn-icon btn-light-primary" 
-                        (click)="onEdit(row)" 
-                        title="Editar">
-                        <i class="ti ti-edit fs-5"></i>
-                      </button>
-                      <button 
-                        class="btn btn-icon btn-light-danger" 
-                        (click)="onDelete(row.id, row.descripcion)" 
-                        title="Eliminar">
-                        <i class="ti ti-trash fs-5"></i>
-                      </button>
+                      @if (authService.isAdmin) {
+                        <button 
+                          class="btn btn-icon btn-light-primary" 
+                          (click)="onEdit(row)" 
+                          title="Editar">
+                          <i class="ti ti-edit fs-5"></i>
+                        </button>
+                        <button 
+                          class="btn btn-icon btn-light-danger" 
+                          (click)="onDelete(row.id, row.descripcion)" 
+                          title="Eliminar">
+                          <i class="ti ti-trash fs-5"></i>
+                        </button>
+                      }
                     </div>
                   </td>
                 </tr>
@@ -152,19 +150,25 @@
   </div>
 </div>
 
-<!-- MODAL: FICHA / REGISTRO DE CLIENTE -->
+<!-- MODAL: FICHA / INFORMACION / REGISTRO DE CLIENTE -->
 @if (showClientModal) {
   <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);" (click)="closeClientModal()">
     <div class="modal-dialog modal-dialog-centered" (click)="$event.stopPropagation()">
       <div class="modal-content shadow border-0">
-        <div class="modal-header py-3 text-white" [class.bg-primary]="isClientRegistered" [class.bg-secondary]="!isClientRegistered">
+        <div class="modal-header py-3 bg-primary text-white">
           <h5 class="modal-title text-white fs-5 fw-bold d-flex align-items-center gap-2">
             <i class="ti fs-4" [class.ti-user-check]="isClientRegistered" [class.ti-user-plus]="!isClientRegistered"></i>
-            {{ isClientRegistered ? 'Ficha de Cliente Oficial' : 'Datos del Cliente (Sin Registrar)' }}
+            {{ isClientRegistered ? 'Información del Cliente' : 'Registrar Cliente para Presupuesto' }}
           </h5>
           <button type="button" class="btn-close btn-close-white" (click)="closeClientModal()"></button>
         </div>
         <div class="modal-body p-4">
+          @if (!isClientRegistered) {
+            <div class="alert alert-info py-2 px-3 mb-3 d-flex align-items-center gap-2" style="font-size: 0.85rem;">
+              <i class="ti ti-info-circle fs-5"></i>
+              <span>Este presupuesto no tiene un cliente registrado en el catálogo. Ingrese los datos a continuación para registrarlo y vincularlo.</span>
+            </div>
+          }
           <div class="row g-3">
             <div class="col-12">
               <label class="form-label fw-bold">Nombre</label>
@@ -172,18 +176,40 @@
                 type="text" 
                 class="form-control" 
                 [(ngModel)]="selectedClientData.nombre" 
-                [readonly]="isClientRegistered">
+                [readonly]="isClientRegistered"
+                [placeholder]="isClientRegistered ? '' : 'Ej: Juan Pérez'">
             </div>
 
-            <div class="col-md-6">
-              <label class="form-label">Cédula / RIF</label>
-              <input 
-                type="text" 
-                class="form-control" 
-                [(ngModel)]="selectedClientData.rifCedula" 
-                [readonly]="isClientRegistered"
-                placeholder="No especificado">
-            </div>
+            @if (isClientRegistered) {
+              <div class="col-md-6">
+                <label class="form-label">Cédula</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  [(ngModel)]="selectedClientData.rifCedula" 
+                  readonly
+                  placeholder="No especificada">
+              </div>
+            } @else {
+              <div class="col-md-3">
+                <label class="form-label">Nacionalidad</label>
+                <ng-select 
+                  [(ngModel)]="selectedClientData.nacionalidad" 
+                  [clearable]="false" 
+                  [searchable]="false"
+                  [items]="['V', 'E', 'J', 'G', 'P']"
+                  appendTo="body">
+                </ng-select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">Nro. Documento</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  [(ngModel)]="selectedClientData.nroDocumento" 
+                  placeholder="Ej: 12345678">
+              </div>
+            }
 
             <div class="col-md-6">
               <label class="form-label">Categoría</label>
@@ -192,7 +218,7 @@
                 class="form-control" 
                 [(ngModel)]="selectedClientData.categoria" 
                 [readonly]="isClientRegistered"
-                placeholder="Sin categoría">
+                [placeholder]="isClientRegistered ? 'Sin categoría' : 'Ej: VIP'">
             </div>
 
             <div class="col-md-6">
@@ -202,7 +228,7 @@
                 class="form-control" 
                 [(ngModel)]="selectedClientData.telefono" 
                 [readonly]="isClientRegistered"
-                placeholder="No especificado">
+                [placeholder]="isClientRegistered ? 'No especificado' : 'Ej: 0414-1234567'">
             </div>
 
             <div class="col-md-6">
@@ -212,7 +238,7 @@
                 class="form-control" 
                 [(ngModel)]="selectedClientData.email" 
                 [readonly]="isClientRegistered"
-                placeholder="No especificado">
+                [placeholder]="isClientRegistered ? 'No especificado' : 'Ej: cliente@email.com'">
             </div>
 
             <div class="col-12">
@@ -222,15 +248,17 @@
                 rows="2" 
                 [(ngModel)]="selectedClientData.direccion" 
                 [readonly]="isClientRegistered"
-                placeholder="No especificada"></textarea>
+                [placeholder]="isClientRegistered ? 'No especificada' : 'Ej: Av. Principal...'"></textarea>
             </div>
           </div>
         </div>
-        <div class="modal-footer bg-light border-top py-2 px-4">
-          <button class="btn btn-outline-secondary" type="button" (click)="closeClientModal()">Cerrar</button>
-          @if (!isClientRegistered) {
-            <button class="btn btn-primary" type="button" [disabled]="savingClient" (click)="registerClientFromModal()">
-              <i class="ti ti-user-check me-1"></i> Registrar Cliente
+        <div class="modal-footer bg-light border-top py-2 px-4 justify-content-end gap-2">
+          @if (isClientRegistered || !authService.isAdmin) {
+            <button class="btn btn-primary px-4" type="button" (click)="closeClientModal()">Cerrar</button>
+          } @else {
+            <button class="btn btn-outline-secondary px-3" type="button" (click)="closeClientModal()">Cancelar</button>
+            <button class="btn btn-primary px-4 d-inline-flex align-items-center gap-2" type="button" [disabled]="savingClient" (click)="registerClientFromModal()">
+              <i class="ti ti-user-plus fs-5"></i> Guardar y Registrar Cliente
             </button>
           }
         </div>

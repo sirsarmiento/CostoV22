@@ -2,8 +2,15 @@ import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
+import { forkJoin } from 'rxjs';
 import { ClientService } from '../../../../../core/services/cost/client.service';
+import { BudgetService } from '../../../../../core/services/cost/budget.service';
+import { AssetService } from '../../../../../core/services/cost/asset.service';
+import { ConfigService } from '../../../../../core/services/cost/config.service';
+import { FixeService } from '../../../../../core/services/cost/fixe.service';
 import { Client } from '../../../../../core/models/Cost/client';
+import { calculateBudgetTotals, normalizeBudget } from '../../../../../core/utils/budget-calculator';
+import { AuthService } from '../../../../../core/services/auth.service';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -14,8 +21,13 @@ import Swal from 'sweetalert2';
 })
 export class ClientsListComponent implements OnInit {
   private clientService = inject(ClientService);
+  private budgetService = inject(BudgetService);
+  private assetService = inject(AssetService);
+  private configService = inject(ConfigService);
+  private fixeService = inject(FixeService);
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
+  public authService = inject(AuthService);
 
   clients: Client[] = [];
   filteredClients: Client[] = [];
@@ -38,15 +50,75 @@ export class ClientsListComponent implements OnInit {
 
   loadClients() {
     this.loading = true;
-    this.clientService.getClients().subscribe({
-      next: (data) => {
-        this.clients = data || [];
+    forkJoin({
+      clientsList: this.clientService.getClients(),
+      budgetsList: this.budgetService.getBudgets(),
+      assetsList: this.assetService.getAssets(),
+      configsList: this.configService.getConfigs(),
+      fixesList: this.fixeService.getFixes()
+    }).subscribe({
+      next: ({ clientsList, budgetsList, assetsList, configsList, fixesList }) => {
+        let capacidadHorasMaquina = 160;
+        let totalFijoIndirecto = 0;
+
+        const configObj = (configsList || [])[0];
+        if (configObj && configObj.parametros && Array.isArray(configObj.parametros)) {
+          let capacidad = 0;
+          configObj.parametros.forEach((machine) => {
+            const unidad = machine.unidad?.toLowerCase().trim() || '';
+            if (unidad.includes('hora') || unidad.includes('hs') || unidad === '') {
+              capacidad += (Number(machine.horasUso) || 0) * (Number(machine.prodMaxHoras) || 0);
+            }
+          });
+          capacidadHorasMaquina = capacidad > 0 ? capacidad : 160;
+        }
+
+        if (fixesList && fixesList.length > 0) {
+          const indirectos = fixesList.filter(item => item.clasificacion === 'Indirecto');
+          totalFijoIndirecto = indirectos.reduce((total, item) => total + (Number(item.precio) || 0), 0);
+        }
+
+        const rawClients = clientsList || [];
+        const rawBudgets = budgetsList || [];
+
+        this.clients = rawClients.map(c => {
+          const cId = Number(c.id);
+          const matchedBudgets = rawBudgets.filter(b => {
+            const bCli = b.cliente ?? (b as unknown as Record<string, unknown>)['cliente_id'];
+            if (typeof bCli === 'object' && bCli !== null) {
+              return Number((bCli as Record<string, unknown>)['id']) === cId;
+            }
+            return Number(bCli) === cId;
+          });
+
+          const totalComprasSum = matchedBudgets.reduce((acc, b) => {
+            const bRec = b as unknown as Record<string, unknown>;
+            const storedTotal = Number(bRec['total']);
+            if (storedTotal && storedTotal > 0) {
+              return acc + storedTotal;
+            }
+            const norm = normalizeBudget(b);
+            const res = calculateBudgetTotals(
+              norm,
+              assetsList || [],
+              totalFijoIndirecto,
+              capacidadHorasMaquina
+            );
+            return acc + res.costoTotalFinal;
+          }, 0);
+
+          return {
+            ...c,
+            totalCompras: totalComprasSum
+          };
+        });
+
         this.applyFilterAndPagination();
         this.loading = false;
         this.cdr.detectChanges();
       },
       error: (err) => {
-        console.error('Error loading clients:', err);
+        console.error('Error loading clients data:', err);
         this.loading = false;
         Swal.fire('Error', 'No se pudieron cargar los clientes', 'error');
       }

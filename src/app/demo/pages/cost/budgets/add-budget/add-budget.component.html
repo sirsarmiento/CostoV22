@@ -51,7 +51,7 @@
 
             @if (f['clasificacion'].value !== 'Producto') {
               <div class="col-md-3">
-                <label class="form-label">Número de Orden</label>
+                <label class="form-label">Número de Orden <span class="text-muted fw-normal">(Opcional)</span></label>
                 <input type="text" class="form-control" formControlName="numero" maxlength="25" placeholder="Ej: ORD-001">
               </div>
             }
@@ -70,29 +70,37 @@
                       bindValue="id"
                       bindLabel="nombre"
                       appendTo="body"
-                      dropdownPosition="bottom">
+                      dropdownPosition="bottom"
+                      [class.is-invalid]="submitted && f['clienteId'].errors">
                     </ng-select>
                   } @else {
-                    <div class="input-group">
-                      <input 
-                        type="text" 
-                        class="form-control" 
-                        formControlName="clienteNombreTexto" 
-                        placeholder="Nombre del cliente..."
-                        readonly>
-                      <button class="btn btn-outline-secondary" type="button" (click)="openClienteModal()" title="Editar datos">
-                        <i class="ti ti-edit fs-5"></i>
-                      </button>
-                    </div>
+                    <input 
+                      type="text" 
+                      class="form-control" 
+                      formControlName="clienteNombreTexto" 
+                      placeholder="Nombre del cliente..."
+                      readonly
+                      [class.is-invalid]="submitted && f['clienteNombreTexto'].errors">
                   }
                 </div>
-                <button 
-                  type="button" 
-                  class="btn btn-primary btn-square-icon"
-                  (click)="!isCreandoClienteNuevo ? openClienteModal() : clearClienteNuevo()" 
-                  [title]="isCreandoClienteNuevo ? 'Limpiar y seleccionar de la lista' : 'Agregar datos de cliente nuevo'">
-                  <i class="ti fs-4" [class.ti-plus]="!isCreandoClienteNuevo" [class.ti-list]="isCreandoClienteNuevo"></i>
-                </button>
+                @if (isCreandoClienteNuevo && id === 0) {
+                  <button 
+                    type="button" 
+                    class="btn btn-primary btn-square-icon" 
+                    (click)="openClienteModal()" 
+                    title="Editar datos del cliente">
+                    <i class="ti ti-edit fs-4"></i>
+                  </button>
+                }
+                @if (id === 0) {
+                  <button 
+                    type="button" 
+                    class="btn btn-primary btn-square-icon"
+                    (click)="!isCreandoClienteNuevo ? openClienteModal() : clearClienteNuevo()" 
+                    [title]="isCreandoClienteNuevo ? 'Limpiar y seleccionar de la lista' : 'Agregar datos de cliente nuevo'">
+                    <i class="ti fs-4" [class.ti-plus]="!isCreandoClienteNuevo" [class.ti-list]="isCreandoClienteNuevo"></i>
+                  </button>
+                }
               </div>
             </div>
 
@@ -106,7 +114,7 @@
 
             <div class="col-md-3">
               <label class="form-label">Cantidad Presupuestada</label>
-              <input type="number" min="1" class="form-control" formControlName="cantidadGlobal" placeholder="1">
+              <input type="number" min="1" class="form-control" formControlName="cantidadGlobal" placeholder="1" [class.is-invalid]="submitted && f['cantidadGlobal'].errors">
             </div>
 
             <div class="col-md-6">
@@ -128,7 +136,8 @@
                 [clearable]="true"
                 [searchable]="false"
                 appendTo="body"
-                class="ng-select-sm">
+                class="ng-select-sm"
+                [class.is-invalid]="submitted && f['tasaFalloGlobal'].errors">
                 <ng-option [value]="5">5%</ng-option>
                 <ng-option [value]="12">12%</ng-option>
                 <ng-option [value]="25">25%</ng-option>
@@ -136,11 +145,11 @@
             </div>
             <div class="col-md-3">
               <label class="form-label text-sm mb-1 fw-bold text-secondary">Prep/Slicing (min)</label>
-              <input type="number" class="form-control form-control-sm" formControlName="tiempoSetup" min="0">
+              <input type="number" class="form-control form-control-sm" formControlName="tiempoSetup" min="0" [class.is-invalid]="submitted && f['tiempoSetup'].errors">
             </div>
             <div class="col-md-3">
               <label class="form-label text-sm mb-1 fw-bold text-secondary">Post-procesado (min)</label>
-              <input type="number" class="form-control form-control-sm" formControlName="tiempoPostProcesado" min="0">
+              <input type="number" class="form-control form-control-sm" formControlName="tiempoPostProcesado" min="0" [class.is-invalid]="submitted && f['tiempoPostProcesado'].errors">
             </div>
             <div class="col-md-3">
               <label class="form-label text-sm mb-1 fw-bold text-secondary">Margen Ganancia (%)</label>
@@ -410,8 +419,27 @@
           }
 
           <!-- Botones de Acción -->
-          <div class="row mt-4 pt-3 border-top">
-            <div class="col-12 d-flex justify-content-end gap-2">
+          <div class="row mt-4 pt-3 border-top align-items-center">
+            <div class="col-md-6 mb-2 mb-md-0">
+              @if (isCreandoClienteNuevo) {
+                <div class="form-check form-switch d-flex align-items-center gap-2">
+                  <input 
+                    class="form-check-input" 
+                    type="checkbox" 
+                    role="switch" 
+                    id="switchGuardarCatalogoMain" 
+                    [(ngModel)]="guardarEnCatalogo"
+                    [ngModelOptions]="{standalone: true}">
+                  <label class="form-check-label fw-bold cursor-pointer mb-0" for="switchGuardarCatalogoMain">
+                    ¿Guardar cliente en el catálogo general?
+                  </label>
+                </div>
+                <small class="text-muted d-block ms-4 mt-1">
+                  {{ guardarEnCatalogo ? 'El cliente se registrará en el catálogo para futuros presupuestos.' : 'Los datos se asociarán únicamente a este presupuesto.' }}
+                </small>
+              }
+            </div>
+            <div class="col-md-6 d-flex justify-content-end gap-2">
               <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-1" type="button" (click)="back()">
                 <i class="ti ti-rotate-clockwise fs-5"></i> Regresar
               </button>
@@ -450,12 +478,12 @@
             </div>
 
             <div class="col-md-6">
-              <label class="form-label">Cédula / RIF</label>
+              <label class="form-label">Cédula</label>
               <input 
                 type="text" 
                 class="form-control" 
                 [(ngModel)]="tempClienteData.rifCedula" 
-                placeholder="Ej. V-12345678">
+                placeholder="Ej. 12345678">
             </div>
 
             <div class="col-md-6">

@@ -2,6 +2,7 @@ import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
+import { NgSelectModule } from '@ng-select/ng-select';
 import { ClientService } from '../../../../../core/services/cost/client.service';
 import { Client } from '../../../../../core/models/Cost/client';
 import Swal from 'sweetalert2';
@@ -9,7 +10,7 @@ import Swal from 'sweetalert2';
 @Component({
   selector: 'app-add-client',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, NgSelectModule],
   templateUrl: './add-client.component.html'
 })
 export class AddClientComponent implements OnInit {
@@ -22,9 +23,20 @@ export class AddClientComponent implements OnInit {
   loading = false;
   submitted = false;
   id = 0;
+  nacionalidadesList = ['V', 'E', 'J', 'G', 'P'];
 
   constructor() {
     this.initForm();
+  }
+
+  parseCedula(rawCedula: string): { nac: string; num: string } {
+    const clean = String(rawCedula || '').trim();
+    if (!clean) return { nac: 'V', num: '' };
+    const match = clean.match(/^([VEJGP])[-_ ]*(.*)$/i);
+    if (match) {
+      return { nac: match[1].toUpperCase(), num: match[2] };
+    }
+    return { nac: 'V', num: clean };
   }
 
   ngOnInit(): void {
@@ -33,10 +45,14 @@ export class AddClientComponent implements OnInit {
       this.id = editClient.id;
       const full = [editClient.nombre, editClient.apellido].filter(Boolean).join(' ');
       const raw = editClient as unknown as Record<string, unknown>;
+      const existingCedula = String(editClient.cedula || editClient.rifCedula || raw['cedula'] || raw['rif_cedula'] || raw['rif'] || '');
+      const parsed = this.parseCedula(existingCedula);
+
       this.form.patchValue({
         nombreRazonSocial: full,
-        rifCedula: editClient.rifCedula || raw['rif'] || raw['cedula'] || '',
-        categoria: editClient.categoria || raw['categoria'] || 'General',
+        nacionalidad: parsed.nac,
+        nroDocumento: parsed.num,
+        categoria: editClient.categoria || raw['categoria'] || '',
         email: editClient.email || '',
         telefono: editClient.telefono || '',
         direccion: editClient.direccion || ''
@@ -47,8 +63,9 @@ export class AddClientComponent implements OnInit {
   initForm() {
     this.form = this.fb.group({
       nombreRazonSocial: ['', Validators.required],
-      rifCedula: [''],
-      categoria: ['General'],
+      nacionalidad: ['V', Validators.required],
+      nroDocumento: [''],
+      categoria: [''],
       email: ['', [Validators.email]],
       telefono: [''],
       direccion: ['']
@@ -65,6 +82,7 @@ export class AddClientComponent implements OnInit {
 
   save() {
     this.submitted = true;
+    this.form.markAllAsTouched();
     if (this.form.invalid) {
       Swal.fire('Atención', 'Complete los campos obligatorios.', 'warning');
       return;
@@ -77,20 +95,25 @@ export class AddClientComponent implements OnInit {
     const firstWord = parts[0] || fullName;
     const remainingWords = parts.slice(1).join(' ');
 
-    const clientData: Client = {
+    const nac = this.form.get('nacionalidad')?.value || 'V';
+    const num = String(this.form.get('nroDocumento')?.value || '').trim();
+    const fullCedula = num ? `${nac}-${num}` : '';
+
+    const clientData: Record<string, unknown> = {
       id: this.id > 0 ? this.id : undefined,
       nombre: firstWord,
       apellido: remainingWords,
-      rifCedula: this.form.get('rifCedula')?.value || '',
-      categoria: this.form.get('categoria')?.value || 'General',
+      cedula: fullCedula,
+      rifCedula: fullCedula,
+      categoria: this.form.get('categoria')?.value || '',
       email: this.form.get('email')?.value || '',
       telefono: this.form.get('telefono')?.value || '',
       direccion: this.form.get('direccion')?.value || ''
     };
 
     const req$ = this.id > 0 
-      ? this.clientService.updateClient(this.id, clientData)
-      : this.clientService.createClient(clientData);
+      ? this.clientService.updateClient(this.id, clientData as unknown as Client)
+      : this.clientService.createClient(clientData as unknown as Client);
 
     req$.subscribe({
       next: () => {

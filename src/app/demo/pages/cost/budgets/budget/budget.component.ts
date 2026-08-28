@@ -13,10 +13,14 @@ import { forkJoin } from 'rxjs';
 import Swal from 'sweetalert2';
 import { calculateBudgetTotals, normalizeBudget } from '../../../../../core/utils/budget-calculator';
 
+import { AuthService } from '../../../../../core/services/auth.service';
+
+import { NgSelectModule } from '@ng-select/ng-select';
+
 @Component({
   selector: 'app-budget',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, NgSelectModule],
   templateUrl: './budget.component.html'
 })
 export class BudgetComponent implements OnInit {
@@ -27,6 +31,7 @@ export class BudgetComponent implements OnInit {
   private assetService = inject(AssetService);
   private clientService = inject(ClientService);
   private cdr = inject(ChangeDetectorRef);
+  public authService = inject(AuthService);
   loading = true;
   selectedRow: Budget | null = null;
 
@@ -38,6 +43,8 @@ export class BudgetComponent implements OnInit {
   selectedClientData = {
     nombre: '',
     rifCedula: '',
+    nacionalidad: 'V',
+    nroDocumento: '',
     categoria: '',
     telefono: '',
     email: '',
@@ -154,6 +161,11 @@ export class BudgetComponent implements OnInit {
   }
 
   calcularTotalPresupuesto(row: Budget): number {
+    const rowRec = row as unknown as Record<string, unknown>;
+    const storedTotal = Number(rowRec['total']);
+    if (storedTotal && storedTotal > 0) {
+      return storedTotal;
+    }
     const res = calculateBudgetTotals(
       row,
       this.allAssets,
@@ -488,6 +500,16 @@ export class BudgetComponent implements OnInit {
     });
   }
 
+  parseCedula(rawCedula: string): { nac: string; num: string } {
+    const clean = String(rawCedula || '').trim();
+    if (!clean) return { nac: 'V', num: '' };
+    const match = clean.match(/^([VEJGP])[-_ ]*(.*)$/i);
+    if (match) {
+      return { nac: match[1].toUpperCase(), num: match[2] };
+    }
+    return { nac: 'V', num: clean };
+  }
+
   onOpenClientModal(row: Budget) {
     this.currentBudgetForModal = row;
     const rRec = row as unknown as Record<string, unknown>;
@@ -496,9 +518,13 @@ export class BudgetComponent implements OnInit {
     if (cliObj && typeof cliObj === 'object') {
       const cRec = cliObj as Record<string, unknown>;
       this.isClientRegistered = true;
+      const rawCed = String(cRec['cedula'] || cRec['rifCedula'] || cRec['rif_cedula'] || cRec['rif'] || '');
+      const parsed = this.parseCedula(rawCed);
       this.selectedClientData = {
         nombre: `${cRec['nombre'] || ''} ${cRec['apellido'] || ''}`.trim() || String(cRec['nombre'] || ''),
-        rifCedula: String(cRec['rifCedula'] || cRec['rif_cedula'] || cRec['rif'] || cRec['cedula'] || ''),
+        rifCedula: rawCed,
+        nacionalidad: parsed.nac,
+        nroDocumento: parsed.num,
         categoria: String(cRec['categoria'] || ''),
         telefono: String(cRec['telefono'] || ''),
         email: String(cRec['email'] || ''),
@@ -510,9 +536,13 @@ export class BudgetComponent implements OnInit {
       this.clientService.getClients().subscribe(clients => {
         const found = clients.find(c => Number(c.id) === cId);
         if (found) {
+          const rawCed = String(found.cedula || found.rifCedula || '');
+          const parsed = this.parseCedula(rawCed);
           this.selectedClientData = {
             nombre: `${found.nombre} ${found.apellido || ''}`.trim(),
-            rifCedula: found.rifCedula || '',
+            rifCedula: rawCed,
+            nacionalidad: parsed.nac,
+            nroDocumento: parsed.num,
             categoria: found.categoria || '',
             telefono: found.telefono || '',
             email: found.email || '',
@@ -522,16 +552,20 @@ export class BudgetComponent implements OnInit {
       });
     } else {
       this.isClientRegistered = false;
-      const cliDetalle = (rRec['clienteDetalle'] ?? rRec['cliente_detalle']) as Record<string, unknown> | undefined;
-      const cliNombre = String(rRec['clienteNombre'] || rRec['nombreCliente'] || rRec['cliente_nombre'] || '').trim();
+      const cliDetalle = (rRec['clienteDetalle'] ?? rRec['cliente_detalle'] ?? rRec['clienteInfo'] ?? rRec['tempClienteData']) as Record<string, unknown> | undefined;
+      const cliNombre = String(rRec['clienteNombre'] || rRec['nombreCliente'] || rRec['cliente_nombre'] || cliDetalle?.['nombre'] || rRec['clienteNombreTexto'] || '').trim();
+      const rawCed = String(cliDetalle?.['cedula'] || cliDetalle?.['rifCedula'] || cliDetalle?.['rif_cedula'] || rRec['cedula'] || rRec['rifCedula'] || rRec['rif_cedula'] || rRec['rif'] || '');
+      const parsed = this.parseCedula(rawCed);
 
       this.selectedClientData = {
-        nombre: cliDetalle ? String(cliDetalle['nombre'] || cliNombre) : cliNombre,
-        rifCedula: cliDetalle ? String(cliDetalle['rifCedula'] || cliDetalle['rif_cedula'] || '') : '',
-        categoria: cliDetalle ? String(cliDetalle['categoria'] || '') : '',
-        telefono: cliDetalle ? String(cliDetalle['telefono'] || '') : '',
-        email: cliDetalle ? String(cliDetalle['email'] || '') : '',
-        direccion: cliDetalle ? String(cliDetalle['direccion'] || '') : ''
+        nombre: cliDetalle ? String(cliDetalle['nombre'] || cliDetalle['nombreRazonSocial'] || cliNombre) : cliNombre,
+        rifCedula: rawCed,
+        nacionalidad: parsed.nac,
+        nroDocumento: parsed.num,
+        categoria: String(cliDetalle?.['categoria'] || rRec['clienteCategoria'] || rRec['categoria'] || ''),
+        telefono: String(cliDetalle?.['telefono'] || rRec['telefono'] || ''),
+        email: String(cliDetalle?.['email'] || rRec['email'] || ''),
+        direccion: String(cliDetalle?.['direccion'] || rRec['direccion'] || '')
       };
     }
 
@@ -554,10 +588,15 @@ export class BudgetComponent implements OnInit {
     const firstWord = parts[0] || this.selectedClientData.nombre.trim();
     const remainingWords = parts.slice(1).join(' ');
 
+    const nac = this.selectedClientData.nacionalidad || 'V';
+    const num = (this.selectedClientData.nroDocumento || '').trim();
+    const fullCedula = num ? `${nac}-${num}` : (this.selectedClientData.rifCedula || '');
+
     const newClientPayload = {
       nombre: firstWord,
       apellido: remainingWords,
-      rifCedula: this.selectedClientData.rifCedula,
+      cedula: fullCedula,
+      rifCedula: fullCedula,
       categoria: this.selectedClientData.categoria,
       telefono: this.selectedClientData.telefono,
       email: this.selectedClientData.email,

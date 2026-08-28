@@ -26,10 +26,20 @@
           </div>
 
           <h4 class="mb-1 text-dark">{{ clientInfo.nombre }} {{ clientInfo.apellido }}</h4>
-          <span class="badge bg-light-success text-success mb-4">Cliente Activo</span>
+          <span class="badge bg-light-primary text-primary mb-4 px-3 py-1 fw-medium" style="font-size: 0.85rem;">{{ clientInfo.categoria || 'Sin categoría' }}</span>
 
           <div class="border-top pt-3 text-start">
             
+            <div class="d-flex align-items-center mb-3">
+              <div class="avtar avtar-s bg-light-secondary text-secondary me-3">
+                <i class="ti ti-id fs-5"></i>
+              </div>
+              <div>
+                <small class="text-muted d-block">Cédula</small>
+                <span class="fw-semibold text-dark">{{ clientInfo.cedula || clientInfo.rifCedula || 'No registrada' }}</span>
+              </div>
+            </div>
+
             <div class="d-flex align-items-center mb-3">
               <div class="avtar avtar-s bg-light-secondary text-secondary me-3">
                 <i class="ti ti-mail fs-5"></i>
@@ -108,7 +118,11 @@
               <tbody>
                 @for (item of history; track item.id) {
                   <tr>
-                    <td><span class="fw-bold text-primary">#{{ item.numero }}</span></td>
+                    <td>
+                      <span [class.fw-bold]="item.numero !== '-'" [class.text-primary]="item.numero !== '-'" [class.text-muted]="item.numero === '-'">
+                        {{ item.numero !== '-' ? '#' + item.numero : '-' }}
+                      </span>
+                    </td>
                     <td>{{ item.fecha | date: 'dd/MM/yyyy' }}</td>
                     <td><div class="cell-name-clamp" [attr.title]="item.descripcion">{{ item.descripcion }}</div></td>
                     <td>

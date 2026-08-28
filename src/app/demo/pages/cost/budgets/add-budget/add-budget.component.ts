@@ -61,6 +61,7 @@ export class AddBudgetComponent implements OnInit {
 
   isCreandoClienteNuevo = false;
   showClienteModal = false;
+  guardarEnCatalogo = false;
   tempClienteData = {
     nombre: '',
     rifCedula: '',
@@ -183,9 +184,9 @@ export class AddBudgetComponent implements OnInit {
         asset.categoria?.toLowerCase().trim() === 'mobiliario'
       );
       this.activosCirculantes = data.assets.filter(asset => 
-        asset.tipo?.toLowerCase().trim() === 'circulante' ||
         asset.tipo?.toLowerCase().trim() === 'material'
       );
+      this.materialesFiltrados = [...this.activosCirculantes];
       this.categoriasMaterial = [...new Set(
         this.activosCirculantes.map(a => a.categoria).filter((c): c is string => !!c)
       )];
@@ -497,6 +498,21 @@ export class AddBudgetComponent implements OnInit {
       }
 
       const dRec = data as Record<string, unknown>;
+      const cliDet = (dRec['clienteDetalle'] ?? dRec['cliente_detalle'] ?? dRec['clienteInfo'] ?? dRec['tempClienteData']) as Record<string, string> | undefined;
+      const cliNombreStr = String(dRec['clienteNombre'] || dRec['nombreCliente'] || dRec['cliente_nombre'] || cliDet?.['nombre'] || dRec['clienteNombreTexto'] || '').trim();
+
+      if (!parsedClienteId && (cliNombreStr || cliDet)) {
+        this.isCreandoClienteNuevo = true;
+        this.tempClienteData = {
+          nombre: String(cliDet?.['nombre'] || cliDet?.['nombreRazonSocial'] || cliNombreStr),
+          rifCedula: String(cliDet?.['cedula'] || cliDet?.['rifCedula'] || cliDet?.['rif_cedula'] || dRec['cedula'] || dRec['rifCedula'] || dRec['rif_cedula'] || dRec['rif'] || ''),
+          categoria: String(cliDet?.['categoria'] || dRec['clienteCategoria'] || dRec['categoria'] || ''),
+          telefono: String(cliDet?.['telefono'] || dRec['telefono'] || ''),
+          email: String(cliDet?.['email'] || dRec['email'] || ''),
+          direccion: String(cliDet?.['direccion'] || dRec['direccion'] || '')
+        };
+        this.form.get('clienteNombreTexto')?.setValue(this.tempClienteData.nombre);
+      }
       const getFirstNonZero = (obj: Record<string, unknown> | null | undefined, keys: string[]): number => {
         if (!obj) return 0;
         for (const k of keys) {
@@ -628,11 +644,9 @@ export class AddBudgetComponent implements OnInit {
 
     this.form.get('clasificacion')?.valueChanges.subscribe((clasif) => {
       const numeroControl = this.form.get('numero');
+      numeroControl?.clearValidators();
       if (clasif === 'Producto') {
-        numeroControl?.clearValidators();
         numeroControl?.setValue('');
-      } else {
-        numeroControl?.setValidators([Validators.required]);
       }
       numeroControl?.updateValueAndValidity();
       this.actualizarItemsFiltrados();
@@ -733,6 +747,7 @@ export class AddBudgetComponent implements OnInit {
 
   onSubmit() {
     this.submitted = true;
+    this.form.markAllAsTouched();
 
     if (this.form.invalid) {
       Swal.fire('Error', 'Complete los datos obligatorios del presupuesto.', 'error');
@@ -775,54 +790,101 @@ export class AddBudgetComponent implements OnInit {
       return pieceObj;
     });
 
-    const budgetPayload: Record<string, unknown> = {
-      id: this.id > 0 ? this.id : 0,
-      sku: this.id > 0 ? this.f['numero'].value : `B-${(this.f['clasificacion'].value || 'GEN').substring(0, 3).toUpperCase()}-${Math.floor(Math.random() * 900) + 100}`,
-      clasificacion: this.f['clasificacion'].value || 'General',
-      descripcion: this.f['descripcion'].value,
-      numero: this.f['numero'].value,
-      fecha: this.f['fecha'].value,
-      costoOperador: Number(this.f['costoOperador']?.value) || 0,
-      costoMaquina: Number(this.f['costoMaquina']?.value) || 0,
-      tasaFalloGlobal: Number(this.f['tasaFalloGlobal']?.value) || 0,
-      tiempoSetup: Number(this.f['tiempoSetup']?.value) || 0,
-      margenGanancia: Number(this.f['margenGanancia']?.value) || 0,
-      tiempoPostProcesado: Number(this.f['tiempoPostProcesado']?.value) || 0,
-      cantidadGlobal: Number(this.f['cantidadGlobal']?.value) || 1,
-      delivery: Number(this.f['delivery']?.value) || 0,
-      cliente: parsedCliId,
-      clienteNombre: clienteTexto || undefined,
-      nombreCliente: clienteTexto || undefined,
-      clienteDetalle: this.isCreandoClienteNuevo ? { ...this.tempClienteData } : undefined,
-      producto: parsedProdId,
-      piezas: mappedPiezas
+    const rawNum = String(this.f['numero']?.value || '').trim();
+    const clasifCode = String(this.f['clasificacion']?.value || 'GEN').substring(0, 3).toUpperCase();
+    const isProducto = this.f['clasificacion']?.value === 'Producto';
+    const finalNumero = (isProducto || !rawNum) ? 'x' : rawNum;
+
+    const executeSubmit = (effectiveCliId?: number) => {
+      const totales = this.getTotales();
+      const budgetPayload: Record<string, unknown> = {
+        id: this.id > 0 ? this.id : 0,
+        sku: this.id > 0 ? (finalNumero || `P-${this.id}`) : `B-${clasifCode}-${Math.floor(Math.random() * 900) + 100}`,
+        clasificacion: this.f['clasificacion'].value || 'General',
+        descripcion: this.f['descripcion'].value,
+        numero: finalNumero,
+        fecha: this.f['fecha'].value,
+        costoOperador: Number(this.f['costoOperador']?.value) || 0,
+        costoMaquina: Number(this.f['costoMaquina']?.value) || 0,
+        tasaFalloGlobal: Number(this.f['tasaFalloGlobal']?.value) || 0,
+        tiempoSetup: Number(this.f['tiempoSetup']?.value) || 0,
+        margenGanancia: Number(this.f['margenGanancia']?.value) || 0,
+        tiempoPostProcesado: Number(this.f['tiempoPostProcesado']?.value) || 0,
+        cantidadGlobal: Number(this.f['cantidadGlobal']?.value) || 1,
+        delivery: Number(this.f['delivery']?.value) || 0,
+        cliente: effectiveCliId ?? parsedCliId,
+        clienteNombre: clienteTexto || undefined,
+        nombreCliente: clienteTexto || undefined,
+        cliente_nombre: clienteTexto || undefined,
+        clienteDetalle: this.isCreandoClienteNuevo ? { ...this.tempClienteData } : undefined,
+        cliente_detalle: this.isCreandoClienteNuevo ? { ...this.tempClienteData } : undefined,
+        rifCedula: this.isCreandoClienteNuevo ? this.tempClienteData.rifCedula : undefined,
+        rif_cedula: this.isCreandoClienteNuevo ? this.tempClienteData.rifCedula : undefined,
+        telefono: this.isCreandoClienteNuevo ? this.tempClienteData.telefono : undefined,
+        email: this.isCreandoClienteNuevo ? this.tempClienteData.email : undefined,
+        direccion: this.isCreandoClienteNuevo ? this.tempClienteData.direccion : undefined,
+        clienteCategoria: this.isCreandoClienteNuevo ? this.tempClienteData.categoria : undefined,
+        producto: parsedProdId,
+        piezas: mappedPiezas,
+        total: totales.costoTotalFinal
+      };
+
+      console.log('>>> PAYLOAD DE PRESUPUESTO A ENVIAR AL SERVIDOR:', JSON.stringify(budgetPayload, null, 2));
+
+      const budget = budgetPayload as unknown as Budget;
+
+      const request = this.id === 0
+        ? this.budgetService.createBudget(budget)
+        : this.budgetService.updateBudget(this.id, budget);
+
+      request.subscribe({
+        next: () => {
+          this.loading = false;
+          Swal.fire({
+            title: '¡Guardado!',
+            text: 'Presupuesto guardado exitosamente.',
+            icon: 'success',
+            confirmButtonText: 'Aceptar',
+            confirmButtonColor: '#4680ff'
+          }).then(() => {
+            this.router.navigate(['/budgets']);
+          });
+        },
+        error: () => {
+          this.loading = false;
+          Swal.fire('Error', 'Ha ocurrido un error al guardar el presupuesto.', 'error');
+        }
+      });
     };
 
-    console.log('>>> PAYLOAD DE PRESUPUESTO A ENVIAR AL SERVIDOR:', JSON.stringify(budgetPayload, null, 2));
+    if (this.isCreandoClienteNuevo && this.guardarEnCatalogo && !parsedCliId && this.tempClienteData.nombre.trim()) {
+      const parts = this.tempClienteData.nombre.trim().split(' ');
+      const firstWord = parts[0] || this.tempClienteData.nombre.trim();
+      const remainingWords = parts.slice(1).join(' ');
 
-    const budget = budgetPayload as unknown as Budget;
+      const newClientPayload = {
+        nombre: firstWord,
+        apellido: remainingWords,
+        rifCedula: this.tempClienteData.rifCedula,
+        cedula: this.tempClienteData.rifCedula,
+        rif_cedula: this.tempClienteData.rifCedula,
+        categoria: this.tempClienteData.categoria,
+        telefono: this.tempClienteData.telefono,
+        email: this.tempClienteData.email,
+        direccion: this.tempClienteData.direccion
+      };
 
-    const request = this.id === 0
-      ? this.budgetService.createBudget(budget)
-      : this.budgetService.updateBudget(this.id, budget);
-
-    request.subscribe({
-      next: () => {
-        this.loading = false;
-        Swal.fire({
-          title: '¡Guardado!',
-          text: 'Presupuesto guardado exitosamente.',
-          icon: 'success',
-          confirmButtonText: 'Aceptar',
-          confirmButtonColor: '#4680ff'
-        }).then(() => {
-          this.router.navigate(['/budgets']);
-        });
-      },
-      error: () => {
-        this.loading = false;
-        Swal.fire('Error', 'Ha ocurrido un error al guardar el presupuesto.', 'error');
-      }
-    });
+      this.clientService.createClient(newClientPayload as unknown as import('../../../../../core/models/Cost/client').Client).subscribe({
+        next: (resp) => {
+          const newId = Number(resp?.id);
+          executeSubmit(newId > 0 ? newId : undefined);
+        },
+        error: () => {
+          executeSubmit(undefined);
+        }
+      });
+    } else {
+      executeSubmit(undefined);
+    }
   }
 }

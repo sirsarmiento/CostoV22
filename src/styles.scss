@@ -190,3 +190,28 @@ File: style.css
   background-color: #ffffff !important;
   color: #1e293b !important;
 }
+
+/* Estilos Globales de Validación de Formularios (Borde rojo limpio sin icono 'X') */
+.form-control.is-invalid,
+.form-select.is-invalid,
+.was-validated .form-control:invalid,
+.was-validated .form-select:invalid,
+input.is-invalid,
+select.is-invalid,
+textarea.is-invalid,
+ng-select.is-invalid .ng-select-container,
+ng-select.ng-invalid.ng-touched .ng-select-container {
+  background-image: none !important;
+  padding-right: 0.75rem !important;
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 0.2rem rgba(239, 68, 68, 0.15) !important;
+}
+
+.form-control.is-invalid:focus,
+.form-select.is-invalid:focus,
+input.is-invalid:focus,
+select.is-invalid:focus,
+textarea.is-invalid:focus {
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 0 0.25rem rgba(220, 38, 38, 0.2) !important;
+}

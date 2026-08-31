@@ -183,13 +183,14 @@ export class AddBudgetComponent implements OnInit {
       this.assetsMobiliario = data.assets.filter(asset => 
         asset.categoria?.toLowerCase().trim() === 'mobiliario'
       );
-      this.activosCirculantes = data.assets.filter(asset => 
-        asset.tipo?.toLowerCase().trim() === 'material'
-      );
+      this.activosCirculantes = data.assets.filter(asset => {
+        const t = asset.tipo?.toLowerCase().trim() || '';
+        return t === 'material' || t === 'circulante';
+      });
       this.materialesFiltrados = [...this.activosCirculantes];
       this.categoriasMaterial = [...new Set(
         this.activosCirculantes.map(a => a.categoria).filter((c): c is string => !!c)
-      )];
+      )].sort();
       
       this.actualizarCostoMaquina();
       this.actualizarMinMargenGanancia();
@@ -628,7 +629,7 @@ export class AddBudgetComponent implements OnInit {
       subcategoria: [''],
       piezaMaterialCategoria: [''],
       piezaMaterialSubcategoria: [''],
-      piezaMaterialId: [{ value: null, disabled: true }],
+      piezaMaterialId: [null],
       piezaPrecioMaterial: [''],
       piezaGramos: [''],
       piezaHoras: [''],
@@ -698,7 +699,7 @@ export class AddBudgetComponent implements OnInit {
       this.materialesFiltrados = [...this.materialesPorCategoria];
       
       this.subcategoriasMaterial = [...new Set(
-        this.materialesPorCategoria.map(a => a.subcategoria || ((a as unknown as Record<string, unknown>)['subCategoria'] as string) || ((a as unknown as Record<string, unknown>)['Subcategoria'] as string) || ((a as unknown as Record<string, unknown>)['SUBCATEGORIA'] as string)).filter(Boolean)
+        this.materialesPorCategoria.map(a => a.subCategoria || ((a as unknown as Record<string, unknown>)['subcategoria'] as string) || ((a as unknown as Record<string, unknown>)['Subcategoria'] as string) || ((a as unknown as Record<string, unknown>)['SUBCATEGORIA'] as string)).filter(Boolean)
       )] as string[];
 
       this.form.get('piezaMaterialId')?.enable();
@@ -715,9 +716,11 @@ export class AddBudgetComponent implements OnInit {
 
   onSubcategoriaChange(subcategoria: string) {
     if (subcategoria) {
-      this.materialesFiltrados = this.materialesPorCategoria.filter(
-        a => (a.subcategoria || ((a as unknown as Record<string, unknown>)['subCategoria'] as string) || ((a as unknown as Record<string, unknown>)['Subcategoria'] as string) || ((a as unknown as Record<string, unknown>)['SUBCATEGORIA'] as string)) === subcategoria
-      );
+      const subLower = subcategoria.toLowerCase().trim();
+      this.materialesFiltrados = this.materialesPorCategoria.filter(a => {
+        const itemSub = (a.subCategoria || (a as unknown as Record<string, string>)['subcategoria'] || (a as unknown as Record<string, string>)['Subcategoria'] || '').toLowerCase().trim();
+        return itemSub === subLower;
+      });
     } else {
       this.materialesFiltrados = [...this.materialesPorCategoria];
     }

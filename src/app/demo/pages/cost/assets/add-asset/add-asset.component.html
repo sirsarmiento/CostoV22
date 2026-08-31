@@ -58,7 +58,18 @@
                       type="text" 
                       class="form-control" 
                       formControlName="categoria" 
-                      placeholder="Ej. Mobiliario, Equipo, Impresora 3D, CNC...">
+                      list="categoriasExistentesList"
+                      placeholder="Ej. Mobiliario, Equipo...">
+                  </div>
+
+                  <div class="col-md-4">
+                    <label class="form-label">Subcategoría</label>
+                    <input 
+                      type="text" 
+                      class="form-control" 
+                      formControlName="subcategoria" 
+                      list="subcategoriasExistentesList"
+                      placeholder="Ej. Impresora 3D FDM, Sillas...">
                   </div>
 
                   @if (isEquipoCategory || f['categoria'].value === 'Equipo') {
@@ -112,15 +123,62 @@
               <div class="col-12 mt-4 pt-3 border-top">
                 <h6 class="mb-3 text-muted">Detalles del {{ f['tipo'].value === 'Material' ? 'Material (Circulante)' : 'Activo Circulante' }}</h6>
                 <div class="row g-3">
-                  <div class="col-md-6">
-                    <label class="form-label">Categoría</label>
-                    <input type="text" class="form-control" formControlName="categoria" placeholder="Ej: Consumibles, Repuestos...">
-                  </div>
+                  @if (f['tipo'].value === 'Material') {
+                    <div class="col-md-6">
+                      <label class="form-label">Categoría Material</label>
+                      <ng-select 
+                        formControlName="categoria" 
+                        placeholder="Seleccione categoría..."
+                        [clearable]="false"
+                        [searchable]="true"
+                        [items]="categoriasMaterialList">
+                      </ng-select>
+                    </div>
 
-                  <div class="col-md-6">
-                    <label class="form-label">Subcategoría</label>
-                    <input type="text" class="form-control" formControlName="subcategoria" placeholder="Ej: Tornillos, Tintas...">
-                  </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Subcategoría Material</label>
+                      <ng-select 
+                        formControlName="subcategoria" 
+                        placeholder="Seleccione subcategoría..."
+                        [clearable]="true"
+                        [searchable]="true"
+                        [items]="subcategoriasMaterialList">
+                      </ng-select>
+                    </div>
+                  } @else {
+                    <div class="col-md-6">
+                      <label class="form-label">Categoría</label>
+                      <input 
+                        type="text" 
+                        class="form-control" 
+                        formControlName="categoria" 
+                        list="categoriasExistentesList"
+                        placeholder="Ej: Insumos, Repuestos...">
+                    </div>
+
+                    <div class="col-md-6">
+                      <label class="form-label">Subcategoría</label>
+                      <input 
+                        type="text" 
+                        class="form-control" 
+                        formControlName="subcategoria" 
+                        list="subcategoriasExistentesList"
+                        placeholder="Ej: Tornillos, Tintas...">
+                    </div>
+                  }
+
+                  <!-- Datalists para autocompletar categorías y subcategorías existentes -->
+                  <datalist id="categoriasExistentesList">
+                    @for (cat of categoriasExistentes; track cat) {
+                      <option [value]="cat"></option>
+                    }
+                  </datalist>
+
+                  <datalist id="subcategoriasExistentesList">
+                    @for (sub of subcategoriasExistentes; track sub) {
+                      <option [value]="sub"></option>
+                    }
+                  </datalist>
 
                   <div class="col-md-6">
                     <label class="form-label">Cantidad</label>

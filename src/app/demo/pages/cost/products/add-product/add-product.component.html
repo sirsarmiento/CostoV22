@@ -318,8 +318,8 @@
                   <div class="col-md-4">
                     <label class="form-label">Material Insumo</label>
                     <ng-select formControlName="piezaMaterialId" placeholder="Seleccione material..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom">
-                      @for (mat of materialesFiltradosCirculantes; track mat.id) {
-                        <ng-option [value]="mat.id">{{ mat.nombre }}</ng-option>
+                      @for (m of materialesFiltradosCirculantes; track m.id) {
+                        <ng-option [value]="m.id">{{ m.nombre }}</ng-option>
                       }
                     </ng-select>
                   </div>

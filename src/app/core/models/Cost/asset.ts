@@ -18,7 +18,6 @@ export class Asset {
     valorUnitario!: number;
     
     categoria?: string;
-    subcategoria?: string;
     subCategoria?: string;
     consumoMaquina?: number;
     tarifa?: number;

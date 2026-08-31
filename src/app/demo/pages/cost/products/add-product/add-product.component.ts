@@ -161,9 +161,10 @@ export class AddProductComponent implements OnInit {
           this.assetsMobiliario = assets.filter((a: Asset) => 
             a.categoria?.toLowerCase().trim() === 'mobiliario'
           );
-          this.activosCirculantes = assets.filter((a: Asset) => 
-            a.tipo?.toLowerCase().trim() === 'material'
-          );
+          this.activosCirculantes = assets.filter((a: Asset) => {
+            const t = a.tipo?.toLowerCase().trim() || '';
+            return t === 'material' || t === 'circulante';
+          });
           this.categoriasMaterial = [...new Set(
             this.activosCirculantes.map(a => a.categoria).filter((c): c is string => !!c)
           )];
@@ -179,7 +180,7 @@ export class AddProductComponent implements OnInit {
     if (categoria) {
       this.materialesPorCategoria = this.activosCirculantes.filter(a => a.categoria === categoria);
       this.subcategoriasMaterial = [...new Set(
-        this.materialesPorCategoria.map(a => a.subcategoria || ((a as unknown as Record<string, string>)['subCategoria'])).filter((s): s is string => !!s)
+        this.materialesPorCategoria.map(a => a.subCategoria || ((a as unknown as Record<string, string>)['subcategoria'])).filter((s): s is string => !!s)
       )];
       this.materialesFiltradosCirculantes = [...this.materialesPorCategoria];
     } else {
@@ -195,7 +196,7 @@ export class AddProductComponent implements OnInit {
   onPiezaSubcategoriaChange(subcategoria: string) {
     if (subcategoria) {
       this.materialesFiltradosCirculantes = this.materialesPorCategoria.filter(a => 
-        (a.subcategoria || ((a as unknown as Record<string, string>)['subCategoria'])) === subcategoria
+        (a.subCategoria || ((a as unknown as Record<string, string>)['subcategoria'])) === subcategoria
       );
     } else {
       this.materialesFiltradosCirculantes = this.materialesPorCategoria.length > 0 ? [...this.materialesPorCategoria] : [...this.activosCirculantes];

@@ -126,6 +126,30 @@ const routes: Routes = [
         loadComponent: () => import('./demo/pages/cost/clients/client-profile/client-profile.component').then((c) => c.ClientProfileComponent)
       },
       {
+        path: 'suppliers',
+        loadComponent: () => import('./demo/pages/cost/suppliers/supplier-list/supplier-list.component').then((c) => c.SupplierListComponent)
+      },
+      {
+        path: 'suppliers/add',
+        loadComponent: () => import('./demo/pages/cost/suppliers/add-supplier/add-supplier.component').then((c) => c.AddSupplierComponent)
+      },
+      {
+        path: 'purchases',
+        loadComponent: () => import('./demo/pages/cost/purchases/purchase-list/purchase-list.component').then((c) => c.PurchaseListComponent)
+      },
+      {
+        path: 'purchases/add',
+        loadComponent: () => import('./demo/pages/cost/purchases/add-purchase/add-purchase.component').then((c) => c.AddPurchaseComponent)
+      },
+      {
+        path: 'sales',
+        loadComponent: () => import('./demo/pages/cost/sales/sale-list/sale-list.component').then((c) => c.SaleListComponent)
+      },
+      {
+        path: 'stock',
+        loadComponent: () => import('./demo/pages/cost/stock/stock-list/stock-list.component').then((c) => c.StockListComponent)
+      },
+      {
         path: 'password/change-pass',
         loadComponent: () => import('./demo/pages/password/change-pass/change-pass.component').then((c) => c.ChangePassComponent)
       }

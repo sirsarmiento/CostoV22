@@ -24,6 +24,7 @@ import { AssetService } from 'src/app/core/services/cost/asset.service';
 import { Asset } from 'src/app/core/models/Cost/asset';
 import { Product } from 'src/app/core/models/Cost/product';
 import { Fixe } from 'src/app/core/models/Cost/fixe';
+import { calculateBudgetTotals, depreciacionMensualMaquinas } from 'src/app/core/utils/budget-calculator';
 
 @Component({
   selector: 'app-default',
@@ -55,6 +56,7 @@ export class DefaultComponent implements OnInit {
   
   totalDepreciacionMensual: number = 0;
   totalFijoIndirecto: number = 0;
+  allAssets: Asset[] = [];
 
   private configService = inject(ConfigService);
   private productService = inject(ProductService);
@@ -90,6 +92,7 @@ export class DefaultComponent implements OnInit {
         valorResidual: this.normalizarNumero(item.valorResidual),
         vidaUtil: this.normalizarNumero(item.vidaUtil)
       }));
+      this.allAssets = datosNormalizados;
       this.calcularTotales(datosNormalizados);
 
       // Mapear perfilName a cada producto
@@ -131,10 +134,7 @@ export class DefaultComponent implements OnInit {
   }
 
   calcularTotales(assets: Asset[]): void {
-    this.totalDepreciacionMensual = 0;
-    assets.forEach(asset => {
-      this.totalDepreciacionMensual += this.calcularDepreciacionMensual(asset);
-    });
+    this.totalDepreciacionMensual = depreciacionMensualMaquinas(assets);
   }
 
   calcularDepreciacionMensual(row: Asset): number {
@@ -198,39 +198,39 @@ export class DefaultComponent implements OnInit {
   costoCifProducto = 0;
 
   calcularTotal(): void {
-    // 1. Sumar los costos directos de la tabla
     const costoDirecto = this.filteredCostItems.reduce((sum, item) => {
       const precioNum = Number(item.precio);
       return sum + (isNaN(precioNum) ? 0 : precioNum);
     }, 0);
 
-    // 2. Calcular Tasa CIF por hora (Indirectos + Depreciación Mensual) / Capacidad Horas Máquina
-    const totalIndirectosMensuales = this.totalFijoIndirecto + this.totalDepreciacionMensual;
-    this.tasaCifPorHora = this.capacidadHoras > 0 ? totalIndirectosMensuales / this.capacidadHoras : 0;
-
-    // 3. Obtener el tiempo de máquina del producto seleccionado
     const selectedProd = this.products.find(p => Number(p.id) === Number(this.selectedProductId));
-    let horasMaquinaProducto = 0;
-
-    if (selectedProd && selectedProd.piezasBase && Array.isArray(selectedProd.piezasBase)) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      selectedProd.piezasBase.forEach((pieza: any) => {
-        const h = Number(pieza.horas) || 0;
-        const m = Number(pieza.minutos) || 0;
-        horasMaquinaProducto += h + (m / 60);
-      });
+    if (!selectedProd) {
+      this.tasaCifPorHora = 0;
+      this.costoCifProducto = 0;
+      this.totalPrecio = costoDirecto;
+      return;
     }
 
-    // Si no tiene piezas detalladas, asumimos 1 hora estimada
-    if (horasMaquinaProducto <= 0) {
-      horasMaquinaProducto = 1;
-    }
+    const prodRec = selectedProd as unknown as Record<string, unknown>;
+    const piezas = (selectedProd.piezasBase || prodRec['piezas'] || prodRec['piezasProducto'] || []) as Record<string, unknown>[];
 
-    // 4. Aplicar la absorción CIF por tiempo de máquina
-    this.costoCifProducto = this.tasaCifPorHora * horasMaquinaProducto;
+    const res = calculateBudgetTotals({
+      piezas,
+      tiempoSetup: Number(selectedProd.prepSlicing ?? prodRec['tiempoSetup']) || 0,
+      tiempoPostProcesado: Number(selectedProd.postProcesado) || 0,
+      tasaFalloGlobal: Number(selectedProd.tasaFallo) || 0,
+      margenGanancia: Number(selectedProd.margenGanancia) || 0,
+      cantidadGlobal: 1,
+      delivery: 0,
+      clasificacion: selectedProd.clasificacion || '',
+      descripcion: selectedProd.descripcion || '',
+      numero: String(selectedProd.sku || selectedProd.id || ''),
+      fecha: new Date()
+    }, this.allAssets, this.totalFijoIndirecto, this.capacidadHoras);
 
-    // 5. Costo Unitario Real
-    this.totalPrecio = costoDirecto + this.costoCifProducto;
+    this.tasaCifPorHora = res.tasaCIF;
+    this.costoCifProducto = res.costoIndirectoAsignado + res.depreciacionAsignada + res.totalCostoMaquina;
+    this.totalPrecio = costoDirecto + res.costoTotalUnitarioBase;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

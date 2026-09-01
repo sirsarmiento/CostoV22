@@ -10,7 +10,8 @@ export class Asset {
     depMensual?: number;        
     depAnual?: number;
     
-    cantidad!: number;      
+    cantidad!: number;
+    cantidadReservada?: number;
     unidadMedida!: string;    
     presentacion!: string;    
     descripcion!: string;     

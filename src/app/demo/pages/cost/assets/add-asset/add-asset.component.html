@@ -148,22 +148,30 @@
                   } @else {
                     <div class="col-md-6">
                       <label class="form-label">Categoría</label>
-                      <input 
-                        type="text" 
-                        class="form-control" 
-                        formControlName="categoria" 
-                        list="categoriasExistentesList"
-                        placeholder="Ej: Insumos, Repuestos...">
+                      <ng-select
+                        formControlName="categoria"
+                        [items]="categoriasExistentes"
+                        [addTag]="agregarCategoria"
+                        addTagText="Agregar categoría"
+                        [searchable]="true"
+                        [clearable]="true"
+                        placeholder="Seleccione o cree una categoría"
+                        appendTo="body">
+                      </ng-select>
                     </div>
 
                     <div class="col-md-6">
                       <label class="form-label">Subcategoría</label>
-                      <input 
-                        type="text" 
-                        class="form-control" 
-                        formControlName="subcategoria" 
-                        list="subcategoriasExistentesList"
-                        placeholder="Ej: Tornillos, Tintas...">
+                      <ng-select
+                        formControlName="subcategoria"
+                        [items]="subcategoriasExistentes"
+                        [addTag]="agregarSubcategoria"
+                        addTagText="Agregar subcategoría"
+                        [searchable]="true"
+                        [clearable]="true"
+                        placeholder="Seleccione o cree una subcategoría"
+                        appendTo="body">
+                      </ng-select>
                     </div>
                   }
 

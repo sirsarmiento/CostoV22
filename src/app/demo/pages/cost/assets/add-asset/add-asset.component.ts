@@ -67,6 +67,22 @@ export class AddAssetComponent implements OnInit {
     });
   }
 
+  agregarCategoria = (term: string): string => {
+    const formatted = this.formatTitleCase(term);
+    if (formatted && !this.categoriasExistentes.some(c => c.toLowerCase() === formatted.toLowerCase())) {
+      this.categoriasExistentes = [...this.categoriasExistentes, formatted].sort();
+    }
+    return formatted;
+  };
+
+  agregarSubcategoria = (term: string): string => {
+    const formatted = this.formatTitleCase(term);
+    if (formatted && !this.subcategoriasExistentes.some(c => c.toLowerCase() === formatted.toLowerCase())) {
+      this.subcategoriasExistentes = [...this.subcategoriasExistentes, formatted].sort();
+    }
+    return formatted;
+  };
+
   formatTitleCase(text: string): string {
     if (!text) return '';
     const clean = text.trim().replace(/\s+/g, ' ');

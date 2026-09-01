@@ -12,6 +12,7 @@ import { ProductService } from '../../../../../core/services/cost/product.servic
 import { AssetService } from '../../../../../core/services/cost/asset.service';
 import { FixeService } from '../../../../../core/services/cost/fixe.service';
 import Swal from 'sweetalert2';
+import { calculateBudgetTotals, depreciacionMensualMaquinas } from '../../../../../core/utils/budget-calculator';
 
 
 @Component({
@@ -24,6 +25,7 @@ export class PricingComponent implements OnInit {
   // MOCK - LOCAL STORAGE: Eliminar y reemplazar con servicio real
   productos: Product[] = [];
   allFixes: Fixe[] = [];
+  allAssets: Asset[] = [];
   costosFijosTotales = 0;
 
   // Calculadora de Precio (Izquierda)
@@ -94,16 +96,10 @@ export class PricingComponent implements OnInit {
         this.capacidadHorasMaquina = capacidadTotal > 0 ? capacidadTotal : 160;
 
         this.productos = data.products;
-        const activos = data.assets;
+        this.allAssets = data.assets;
         this.allFixes = data.fixes;
 
-        // Calcular Depreciación Mensual de Activos
-        this.totalDepreciacionMensual = activos.reduce((sum: number, asset: Asset) => {
-          const costo = parseFloat(String(asset.costoInicial)) || 0;
-          const residual = parseFloat(String(asset.valorResidual)) || 0;
-          const vida = parseInt(String(asset.vidaUtil)) || 0;
-          return vida > 0 ? sum + ((costo - residual) / vida / 12) : sum;
-        }, 0);
+        this.totalDepreciacionMensual = depreciacionMensualMaquinas(this.allAssets);
 
         // Calcular Costos Fijos Indirectos
         const indirectos = this.allFixes.filter(item => item.clasificacion === 'Indirecto');
@@ -137,43 +133,38 @@ export class PricingComponent implements OnInit {
     const prod = this.productos.find(p => p.id == this.idProdPrecio);
     
     if (prod) {
-      let costoPiezas = 0;
-      let totalHorasImpresion = 0;
-
-      if (prod.piezasBase && Array.isArray(prod.piezasBase)) {
-        prod.piezasBase.forEach((p: Record<string, unknown>) => {
-          const g = Number(p['gramos']) || 0;
-          const precioMat = Number(p['precioMaterial']) || 0;
-          costoPiezas += g * precioMat;
-
-          const h = Number(p['horas']) || 0;
-          const min = Number(p['minutos']) || 0;
-          totalHorasImpresion += h + (min / 60);
-        });
-      }
-
-      const prepMin = Number(prod.prepSlicing) || 0;
-      const postMin = Number(prod.postProcesado) || 0;
-      const totalHorasSetup = (prepMin + postMin) / 60;
-      this.horasTotalesProducto = totalHorasImpresion + totalHorasSetup;
-
-      if (this.horasTotalesProducto <= 0) {
-        this.horasTotalesProducto = 1;
-      }
-
-      const costosDirectos = this.allFixes.filter(f => 
-        f.producto == prod.id && (f.tipo === 'Variable' || f.tipo === 'Fijo')
-      );
-      const totalFixesDirectos = costosDirectos.reduce((sum, f) => sum + (Number(f.precio) || 0), 0);
-      this.totalDirectoPrecio = totalFixesDirectos + costoPiezas;
-
-      this.tasaHorariaMaquina = (this.totalFijoIndirecto + this.totalDepreciacionMensual) / (this.capacidadHorasMaquina || 160);
-      this.indirectoProrrateadoPrecio = this.tasaHorariaMaquina * this.horasTotalesProducto;
-      this.costoUnitarioPrecio = this.totalDirectoPrecio + this.indirectoProrrateadoPrecio;
-
+      const prodRec = prod as unknown as Record<string, unknown>;
+      const piezas = (prod.piezasBase || prodRec['piezas'] || prodRec['piezasProducto'] || []) as Record<string, unknown>[];
       const prodMargin = Number(prod.margenGanancia);
       const defaultMargin = (!isNaN(prodMargin) && prodMargin > 0) ? prodMargin : this.minMargenGanancia;
       this.margenDeseado = defaultMargin < this.minMargenGanancia ? this.minMargenGanancia : defaultMargin;
+
+      const costosDirectos = this.allFixes.filter(f =>
+        f.producto == prod.id && (f.tipo === 'Variable' || f.tipo === 'Fijo')
+      );
+      const totalFixesDirectos = costosDirectos.reduce((sum, f) => sum + (Number(f.precio) || 0), 0);
+
+      const res = calculateBudgetTotals({
+        piezas,
+        tiempoSetup: Number(prod.prepSlicing ?? prodRec['tiempoSetup']) || 0,
+        tiempoPostProcesado: Number(prod.postProcesado) || 0,
+        tasaFalloGlobal: Number(prod.tasaFallo) || 0,
+        margenGanancia: this.margenDeseado,
+        cantidadGlobal: 1,
+        delivery: 0,
+        clasificacion: prod.clasificacion,
+        descripcion: prod.descripcion,
+        numero: String(prod.sku || prod.id || ''),
+        fecha: new Date()
+      }, this.allAssets, this.totalFijoIndirecto, this.capacidadHorasMaquina);
+
+      this.horasTotalesProducto = res.totalTiempoHoras > 0 ? res.totalTiempoHoras : 1;
+      this.totalDirectoPrecio = res.totalCostoMaterial + res.totalCostoInventario + totalFixesDirectos;
+      this.indirectoProrrateadoPrecio = res.costoIndirectoAsignado + res.depreciacionAsignada + res.totalCostoMaquina;
+      this.costoUnitarioPrecio = this.totalDirectoPrecio + this.indirectoProrrateadoPrecio;
+      this.tasaHorariaMaquina = this.horasTotalesProducto > 0
+        ? this.indirectoProrrateadoPrecio / this.horasTotalesProducto
+        : 0;
 
       this.calcularPrecioSugerido();
       if (!this.idProdEquilibrio) {

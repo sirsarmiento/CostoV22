@@ -1,0 +1,46 @@
+<div class="row mb-4">
+  <div class="col-12">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a routerLink="/suppliers">Proveedores</a></li>
+        <li class="breadcrumb-item active">{{ id > 0 ? 'Editar' : 'Crear' }}</li>
+      </ol>
+    </nav>
+  </div>
+</div>
+<div class="card">
+  <div class="card-body">
+    <form [formGroup]="form" (ngSubmit)="save()">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Nombre *</label>
+          <input class="form-control" formControlName="nombre" [class.is-invalid]="submitted && f['nombre'].errors">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">RIF</label>
+          <input class="form-control" formControlName="rif">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Contacto</label>
+          <input class="form-control" formControlName="contacto">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Teléfono</label>
+          <input class="form-control" formControlName="telefono">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Email</label>
+          <input class="form-control" formControlName="email">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Dirección</label>
+          <input class="form-control" formControlName="direccion">
+        </div>
+      </div>
+      <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+        <button class="btn btn-outline-secondary" type="button" (click)="back()">Regresar</button>
+        <button class="btn btn-primary" type="submit" [disabled]="loading">Guardar Proveedor</button>
+      </div>
+    </form>
+  </div>
+</div>

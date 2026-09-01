@@ -1,0 +1,110 @@
+<div class="mb-4">
+  <ol class="breadcrumb mb-0"><li class="breadcrumb-item active">Stock y desacople</li></ol>
+</div>
+
+<ul class="nav nav-tabs mb-4">
+  <li class="nav-item"><button class="nav-link" [class.active]="activeTab === 'stock'" (click)="activeTab = 'stock'" type="button">Producto terminado</button></li>
+  <li class="nav-item"><button class="nav-link" [class.active]="activeTab === 'movimientos'" (click)="activeTab = 'movimientos'" type="button">Kardex</button></li>
+  <li class="nav-item"><button class="nav-link" [class.active]="activeTab === 'desacople'" (click)="activeTab = 'desacople'" type="button">Desacople</button></li>
+</ul>
+
+@if (activeTab === 'stock') {
+  <div class="card">
+    <div class="card-body table-responsive">
+      <table class="table table-hover table-sm align-middle mb-0">
+        <thead class="table-light">
+          <tr><th>Producto</th><th>SKU</th><th>Stock</th><th>Ingresar (consume BOM)</th></tr>
+        </thead>
+        <tbody>
+          @for (row of stock; track row.id) {
+            <tr>
+              <td class="fw-bold">{{ row.nombre }}</td>
+              <td>{{ row.sku || '-' }}</td>
+              <td>{{ row.cantidadStock | number:'1.0-2' }}</td>
+              <td>
+                <div class="d-flex gap-2" style="max-width: 280px;">
+                  <input type="number" class="form-control form-control-sm" [(ngModel)]="ingresoQty[row.id]" min="0.01" placeholder="Cant.">
+                  <button class="btn btn-sm btn-primary" (click)="ingresar(row)">Ingresar</button>
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="4" class="text-center py-4 text-muted">No hay productos de catálogo.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}
+
+@if (activeTab === 'movimientos') {
+  <div class="card">
+    <div class="card-body table-responsive">
+      <table class="table table-hover table-sm align-middle mb-0">
+        <thead class="table-light">
+          <tr><th>Fecha</th><th>Tipo</th><th>Activo / Producto</th><th>Cantidad</th><th>Detalle</th></tr>
+        </thead>
+        <tbody>
+          @for (row of movements; track row.id) {
+            <tr>
+              <td>{{ row.createAt }}</td>
+              <td><span class="badge bg-light-info">{{ row.tipo }}</span></td>
+              <td>{{ row.activo?.nombre || row.producto?.nombre || '-' }}</td>
+              <td>{{ row.cantidad }}</td>
+              <td>{{ row.observacion }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="5" class="text-center py-4 text-muted">Sin movimientos.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}
+
+@if (activeTab === 'desacople') {
+  <div class="card">
+    <div class="card-body">
+      <p class="text-muted">Baja producto terminado no vendido o fallido, reintegra materiales reutilizables y registra merma.</p>
+      <form [formGroup]="decoupleForm">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Producto terminado</label>
+            <ng-select formControlName="producto" [items]="stock" bindValue="id" bindLabel="nombre" appendTo="body"></ng-select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Unidades a desacoplar</label>
+            <input type="number" class="form-control" formControlName="cantidadProducto">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Observación</label>
+            <input class="form-control" formControlName="observacion">
+          </div>
+        </div>
+        <h6 class="mt-4">Materiales</h6>
+        <div formArrayName="lineas">
+          @for (linea of decoupleLines.controls; track $index; let i = $index) {
+            <div class="row g-2 mb-2" [formGroupName]="i">
+              <div class="col-md-6">
+                <ng-select formControlName="activo" [items]="circulantes" bindValue="id" bindLabel="nombre" placeholder="Circulante" appendTo="body"></ng-select>
+              </div>
+              <div class="col-md-2">
+                <input type="number" class="form-control" formControlName="recuperado" placeholder="Recuperado">
+              </div>
+              <div class="col-md-2">
+                <input type="number" class="form-control" formControlName="merma" placeholder="Merma">
+              </div>
+              <div class="col-md-2">
+                <button type="button" class="btn btn-light-danger btn-sm" (click)="removeDecoupleLine(i)">Quitar</button>
+              </div>
+            </div>
+          }
+        </div>
+        <button type="button" class="btn btn-outline-primary btn-sm" (click)="addDecoupleLine()">Agregar material</button>
+        <div class="text-end mt-4">
+          <button type="button" class="btn btn-primary" (click)="saveDecouple()">Registrar desacople</button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

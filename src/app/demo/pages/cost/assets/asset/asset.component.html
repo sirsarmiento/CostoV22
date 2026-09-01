@@ -144,7 +144,7 @@
                       <div class="cell-name-clamp" style="max-width: 250px;" [attr.title]="row.descripcion">{{ row.descripcion }}</div>
                     </td>
                     <td>{{ row.ubicacion }}</td>
-                    <td>{{ row.cantidad }} {{ row.unidadMedida }}</td>
+                    <td>{{ (row.cantidad || 0) - (row.cantidadReservada || 0) | number:'1.0-2' }} disp. / {{ row.cantidad }} {{ row.unidadMedida }}</td>
                     <td>{{ row.valorUnitario | number: '1.2-2' }}</td>
                     <td class="text-primary fw-bold">{{ row.costoInicial | number: '1.2-2' }}</td>
                     <td class="text-center pe-3">

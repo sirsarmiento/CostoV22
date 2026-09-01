@@ -26,6 +26,39 @@ export interface BudgetCalculationResult {
   costoTotalFinal: number;
 }
 
+/** Activo fijo de producción (máquina). No incluye circulante, material ni mobiliario. */
+export function isMachineAsset(asset: Asset | null | undefined): boolean {
+  if (!asset) return false;
+  const rec = asset as unknown as Record<string, unknown>;
+  const tipo = String(asset.tipo || rec['clasificacion'] || '').toLowerCase().trim();
+  const cat = String(asset.categoria || '').toLowerCase().trim();
+  if (tipo === 'circulante' || tipo === 'material') return false;
+  const esFijo = tipo === 'fijo' || tipo === 'maquinaria' || tipo === '';
+  if (!esFijo) return false;
+  const consumo = Number(asset.consumoMaquina) || 0;
+  return cat === 'equipo'
+    || cat.includes('máquina')
+    || cat.includes('maquina')
+    || cat.includes('impresora')
+    || cat.includes('cnc')
+    || cat.includes('herramienta')
+    || tipo === 'maquinaria'
+    || consumo > 0;
+}
+
+export function depreciacionAnualMaquina(asset: Asset): number {
+  const costo = Number(asset.costoInicial) || 0;
+  const residual = Number(asset.valorResidual) || 0;
+  const vida = Number(asset.vidaUtil) || 0;
+  if (costo <= 0 || vida <= 0 || residual < 0 || residual > costo) return 0;
+  return (costo - residual) / vida;
+}
+
+/** Suma depreciación mensual solo de máquinas, no de todo el inventario. */
+export function depreciacionMensualMaquinas(assets: Asset[] = []): number {
+  return assets.filter(isMachineAsset).reduce((sum, asset) => sum + depreciacionAnualMaquina(asset) / 12, 0);
+}
+
 /**
  * Extrae un número buscando múltiples posibles nombres de propiedad en un objeto.
  */
@@ -181,12 +214,7 @@ export function calculateBudgetTotals(
         }
       }
       if (!machineAsset && allAssets && allAssets.length > 0) {
-        machineAsset = allAssets.find(a => 
-          (a as unknown as Record<string, unknown>)['clasificacion'] === 'Maquinaria' || 
-          (a as unknown as Record<string, unknown>)['tipo'] === 'Maquinaria' ||
-          a.categoria?.toLowerCase() === 'maquinaria' ||
-          (a.tipo?.toLowerCase() === 'fijo' && a.categoria?.toLowerCase() === 'equipo')
-        );
+        machineAsset = allAssets.find(a => isMachineAsset(a));
       }
 
       if (machineAsset) {

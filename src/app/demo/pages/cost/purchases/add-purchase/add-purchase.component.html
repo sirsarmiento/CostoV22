@@ -1,0 +1,50 @@
+<div class="mb-4">
+  <ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item"><a routerLink="/purchases">Compras</a></li>
+    <li class="breadcrumb-item active">Nueva</li>
+  </ol>
+</div>
+<div class="card">
+  <div class="card-body">
+    <form [formGroup]="form">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Proveedor *</label>
+          <ng-select formControlName="proveedor" [items]="suppliers" bindValue="id" bindLabel="nombre" appendTo="body"></ng-select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Fecha</label>
+          <input type="date" class="form-control" formControlName="fecha">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Observación</label>
+          <input class="form-control" formControlName="observacion">
+        </div>
+      </div>
+      <h6 class="mt-4">Líneas (activos circulantes)</h6>
+      <div formArrayName="lineas">
+        @for (linea of lineas.controls; track $index; let i = $index) {
+          <div class="row g-2 mb-2" [formGroupName]="i">
+            <div class="col-md-5">
+              <ng-select formControlName="activo" [items]="circulantes" bindValue="id" bindLabel="nombre" placeholder="Material" appendTo="body" (change)="onAssetChange(i)"></ng-select>
+            </div>
+            <div class="col-md-3">
+              <input type="number" step="0.01" class="form-control" formControlName="cantidad" placeholder="Cantidad">
+            </div>
+            <div class="col-md-3">
+              <input type="number" step="0.01" class="form-control" formControlName="valorUnitario" placeholder="Valor unitario">
+            </div>
+            <div class="col-md-1">
+              <button type="button" class="btn btn-light-danger" (click)="removeLine(i)" [disabled]="lineas.length === 1">x</button>
+            </div>
+          </div>
+        }
+      </div>
+      <button type="button" class="btn btn-outline-primary btn-sm mt-2" (click)="addLine()">Agregar línea</button>
+      <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+        <button class="btn btn-outline-secondary" type="button" (click)="back()">Regresar</button>
+        <button class="btn btn-primary" type="button" [disabled]="loading" (click)="save()">Registrar compra</button>
+      </div>
+    </form>
+  </div>
+</div>

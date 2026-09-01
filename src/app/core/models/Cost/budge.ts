@@ -23,6 +23,7 @@ export class Budget { //Presupuesto
     activo?: number;
     costoTotalFinal?: number;
     total?: number;
+    estado?: string;
 }
 
 export class Parts{ //Piezas

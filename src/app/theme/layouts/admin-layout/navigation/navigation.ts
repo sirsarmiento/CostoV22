@@ -139,12 +139,48 @@ export const NavigationItems: NavigationItem[] = [
         breadcrumbs: false
       },
       {
+        id: 'suppliers',
+        title: 'Proveedores',
+        type: 'item',
+        classes: 'nav-item',
+        url: '/suppliers',
+        icon: 'shop',
+        breadcrumbs: false
+      },
+      {
+        id: 'purchases',
+        title: 'Compras',
+        type: 'item',
+        classes: 'nav-item',
+        url: '/purchases',
+        icon: 'inbox',
+        breadcrumbs: false
+      },
+      {
         id: 'budgets',
         title: 'Presupuestos',
         type: 'item',
         classes: 'nav-item',
         url: '/budgets',
         icon: 'audit',
+        breadcrumbs: false
+      },
+      {
+        id: 'sales',
+        title: 'Ventas',
+        type: 'item',
+        classes: 'nav-item',
+        url: '/sales',
+        icon: 'dollar-circle',
+        breadcrumbs: false
+      },
+      {
+        id: 'stock',
+        title: 'Stock',
+        type: 'item',
+        classes: 'nav-item',
+        url: '/stock',
+        icon: 'container',
         breadcrumbs: false
       }
     ]

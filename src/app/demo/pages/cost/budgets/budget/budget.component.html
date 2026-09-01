@@ -48,6 +48,7 @@
                 <th style="cursor: pointer;" (click)="sortData('costoTotalFinal')">
                   Total Presupuesto <i class="ti fs-6" [class]="getSortClass('costoTotalFinal')"></i>
                 </th>
+                <th>Estado</th>
                 <th class="text-center">Acciones</th>
               </tr>
             </thead>
@@ -71,6 +72,14 @@
                   </td>
                   <td>{{ row.fecha | date: 'dd/MM/yyyy' }}</td>
                   <td class="fw-bold text-success">${{ (row.costoTotalFinal || 0) | number: '1.2-2' }}</td>
+                  <td>
+                    <span class="badge"
+                      [class.bg-light-primary]="estadoDe(row) === 'borrador'"
+                      [class.bg-light-success]="estadoDe(row) === 'vendido'"
+                      [class.bg-light-danger]="estadoDe(row) === 'anulado'">
+                      {{ estadoDe(row) }}
+                    </span>
+                  </td>
                   <td class="text-center" (click)="$event.stopPropagation()">
                     <div class="btn-group btn-group-sm">
                       <button 
@@ -88,6 +97,14 @@
                         <i class="ti ti-eye fs-5"></i>
                       </button>
                       @if (authService.isAdmin) {
+                        @if (estadoDe(row) === 'borrador') {
+                          <button class="btn btn-icon btn-light-success" (click)="onSell(row)" title="Convertir a venta">
+                            <i class="ti ti-shopping-cart fs-5"></i>
+                          </button>
+                          <button class="btn btn-icon btn-light-warning" (click)="onAnular(row)" title="Anular">
+                            <i class="ti ti-ban fs-5"></i>
+                          </button>
+                        }
                         <button 
                           class="btn btn-icon btn-light-primary" 
                           (click)="onEdit(row)" 

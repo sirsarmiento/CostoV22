@@ -13,4 +13,5 @@ export class Product {
     postProcesado?: number;
     margenGanancia?: number;
     piezasBase?: any[];
+    cantidadStock?: number;
 }

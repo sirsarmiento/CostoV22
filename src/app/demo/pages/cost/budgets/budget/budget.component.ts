@@ -14,6 +14,7 @@ import Swal from 'sweetalert2';
 import { calculateBudgetTotals, normalizeBudget } from '../../../../../core/utils/budget-calculator';
 
 import { AuthService } from '../../../../../core/services/auth.service';
+import { InventoryService } from '../../../../../core/services/cost/inventory.service';
 
 import { NgSelectModule } from '@ng-select/ng-select';
 
@@ -32,6 +33,7 @@ export class BudgetComponent implements OnInit {
   private clientService = inject(ClientService);
   private cdr = inject(ChangeDetectorRef);
   public authService = inject(AuthService);
+  private inventoryService = inject(InventoryService);
   loading = true;
   selectedRow: Budget | null = null;
 
@@ -256,6 +258,51 @@ export class BudgetComponent implements OnInit {
 
   openAdd() {
     this.router.navigate(['/budgets/add-budget']);
+  }
+
+  estadoDe(row: Budget): string {
+    return (row.estado || 'borrador').toLowerCase();
+  }
+
+  onSell(row: Budget) {
+    if (!row.id) return;
+    if (this.estadoDe(row) === 'vendido') {
+      Swal.fire('Atención', 'Este presupuesto ya fue vendido.', 'info');
+      return;
+    }
+    Swal.fire({
+      title: 'Convertir a venta',
+      text: 'Se descontarán los activos circulantes del BOM y el presupuesto quedará como vendido.',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Vender'
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+      this.inventoryService.createSale(row.id as number, row.cantidadGlobal).subscribe({
+        next: () => {
+          row.estado = 'vendido';
+          this.cdr.detectChanges();
+          Swal.fire('Venta registrada', 'El inventario de circulantes se actualizó.', 'success');
+        },
+        error: (err) => Swal.fire('Error', err?.error?.msg || 'No se pudo concretar la venta.', 'error')
+      });
+    });
+  }
+
+  onAnular(row: Budget) {
+    if (!row.id) return;
+    if (this.estadoDe(row) === 'vendido') {
+      Swal.fire('Atención', 'Una venta concretada no se anula desde aquí.', 'info');
+      return;
+    }
+    this.budgetService.updateBudget(row.id, { ...row, estado: 'anulado' }).subscribe({
+      next: () => {
+        row.estado = 'anulado';
+        this.cdr.detectChanges();
+        Swal.fire('Anulado', 'El presupuesto se anuló y se liberó la reserva.', 'success');
+      },
+      error: () => Swal.fire('Error', 'No se pudo anular.', 'error')
+    });
   }
 
   onDelete(id: number | undefined, descripcion: string) {

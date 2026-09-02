@@ -1,29 +1,112 @@
 <div class="row mb-4">
   <div class="col-sm-6">
-    <ol class="breadcrumb mb-0"><li class="breadcrumb-item active">Compras / Reposición</li></ol>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a routerLink="/purchases">Compras</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Historial de Reposición</li>
+      </ol>
+    </nav>
   </div>
-  <div class="col-sm-6 text-sm-end">
-    <button class="btn btn-primary" (click)="openAdd()"><i class="ti ti-plus"></i> Nueva Compra</button>
+  <div class="col-sm-6 text-sm-end mt-2 mt-sm-0">
+    <button class="btn btn-primary d-inline-flex align-items-center gap-2" (click)="openAdd()">
+      <i class="ti ti-plus fs-5"></i> Nueva Compra
+    </button>
   </div>
 </div>
-<div class="card">
-  <div class="card-body table-responsive">
-    <table class="table table-hover table-sm align-middle mb-0">
-      <thead class="table-light">
-        <tr><th>Número</th><th>Fecha</th><th>Proveedor</th><th>Total</th></tr>
-      </thead>
-      <tbody>
-        @for (row of purchases; track row.id) {
-          <tr>
-            <td>{{ row.numero }}</td>
-            <td>{{ row.fecha | date:'dd/MM/yyyy' }}</td>
-            <td>{{ row.proveedorNombre || '-' }}</td>
-            <td class="fw-bold text-success">${{ (row.total || 0) | number:'1.2-2' }}</td>
-          </tr>
-        } @empty {
-          <tr><td colspan="4" class="text-center py-4 text-muted">No hay compras. La compra incrementa activos circulantes.</td></tr>
+
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        
+        <!-- Search Bar -->
+        <div class="row mb-3 g-2">
+          <div class="col-md-4">
+            <input 
+              type="text" 
+              class="form-control" 
+              placeholder="Buscar por número, proveedor u observación..." 
+              [(ngModel)]="searchTerm"
+              (input)="onSearchChange()">
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="table-responsive mb-3">
+          <table class="table table-hover align-middle mb-0 table-sm">
+            <thead class="table-light">
+              <tr>
+                <th style="cursor: pointer;" (click)="sortData('numero')">
+                  Nro. Orden <i class="ti fs-6" [class]="getSortClass('numero')"></i>
+                </th>
+                <th style="cursor: pointer;" (click)="sortData('fecha')">
+                  Fecha <i class="ti fs-6" [class]="getSortClass('fecha')"></i>
+                </th>
+                <th style="cursor: pointer;" (click)="sortData('proveedorNombre')">
+                  Proveedor <i class="ti fs-6" [class]="getSortClass('proveedorNombre')"></i>
+                </th>
+                <th>Materiales / Insumos</th>
+                <th style="cursor: pointer;" (click)="sortData('observacion')">
+                  Observación <i class="ti fs-6" [class]="getSortClass('observacion')"></i>
+                </th>
+                <th style="cursor: pointer;" class="text-end" (click)="sortData('total')">
+                  Total Factura <i class="ti fs-6" [class]="getSortClass('total')"></i>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of paginatedPurchases; track row.id) {
+                <tr 
+                  (click)="selectedRow = selectedRow === row ? null : row"
+                  [class.table-primary]="selectedRow && selectedRow.id === row.id"
+                  style="cursor: pointer;">
+                  <td class="fw-bold text-primary">{{ row.numero || ('#COMP-' + row.id) }}</td>
+                  <td>{{ row.fecha | date:'dd/MM/yyyy' }}</td>
+                  <td class="fw-bold">{{ row.proveedorNombre || '-' }}</td>
+                  <td>
+                    <span class="text-truncate d-inline-block text-dark fw-medium" style="max-width: 300px;" [attr.title]="row.itemsResumen">
+                      {{ row.itemsResumen || '-' }}
+                    </span>
+                  </td>
+                  <td>{{ row.observacion || '-' }}</td>
+                  <td class="text-end fw-bold text-success fs-6">${{ (row.total || 0) | number:'1.2-2' }}</td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="6" class="text-center py-4 text-muted">No se encontraron compras registradas.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Paginación Estándar -->
+        @if (filtered.length > 0) {
+          <div class="d-flex flex-column flex-md-row justify-content-end align-items-center mt-3 gap-4 text-muted" style="font-size: 0.875rem;">
+            <div class="d-flex align-items-center gap-2">
+              <span>Filas por página:</span>
+              <select class="form-select form-select-sm border-0 shadow-none bg-light fw-medium" style="width: 70px; cursor: pointer;" [(ngModel)]="pageSize" (change)="onPageSizeChange()">
+                <option [ngValue]="5">5</option>
+                <option [ngValue]="10">10</option>
+                <option [ngValue]="20">20</option>
+                <option [ngValue]="50">50</option>
+              </select>
+            </div>
+            <span>
+              {{ (currentPage - 1) * pageSize + 1 }}-{{ Math.min(currentPage * pageSize, filtered ? filtered.length : 0) }} de {{ filtered ? filtered.length : 0 }}
+            </span>
+            <div class="d-flex align-items-center gap-2">
+              <button class="btn btn-sm btn-icon rounded-pill btn-light shadow-sm" [disabled]="currentPage === 1" (click)="setPage(currentPage - 1)" title="Anterior">
+                <i class="ti ti-chevron-left fs-5"></i>
+              </button>
+              <button class="btn btn-sm btn-icon rounded-pill btn-light shadow-sm" [disabled]="currentPage === totalPages" (click)="setPage(currentPage + 1)" title="Siguiente">
+                <i class="ti ti-chevron-right fs-5"></i>
+              </button>
+            </div>
+          </div>
         }
-      </tbody>
-    </table>
+
+      </div>
+    </div>
   </div>
 </div>

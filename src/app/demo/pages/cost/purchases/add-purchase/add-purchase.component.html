@@ -1,50 +1,159 @@
-<div class="mb-4">
-  <ol class="breadcrumb mb-0">
-    <li class="breadcrumb-item"><a routerLink="/purchases">Compras</a></li>
-    <li class="breadcrumb-item active">Nueva</li>
-  </ol>
+<div class="row mb-4">
+  <div class="col-12">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a routerLink="/purchases">Compras</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Nueva Compra / Reposición</li>
+      </ol>
+    </nav>
+  </div>
 </div>
-<div class="card">
-  <div class="card-body">
-    <form [formGroup]="form">
-      <div class="row g-3">
-        <div class="col-md-6">
-          <label class="form-label">Proveedor *</label>
-          <ng-select formControlName="proveedor" [items]="suppliers" bindValue="id" bindLabel="nombre" appendTo="body"></ng-select>
-        </div>
-        <div class="col-md-3">
-          <label class="form-label">Fecha</label>
-          <input type="date" class="form-control" formControlName="fecha">
-        </div>
-        <div class="col-md-3">
-          <label class="form-label">Observación</label>
-          <input class="form-control" formControlName="observacion">
-        </div>
-      </div>
-      <h6 class="mt-4">Líneas (activos circulantes)</h6>
-      <div formArrayName="lineas">
-        @for (linea of lineas.controls; track $index; let i = $index) {
-          <div class="row g-2 mb-2" [formGroupName]="i">
+
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <form [formGroup]="form">
+          <!-- Cabecera de la Compra -->
+          <div class="row g-3 mb-4">
             <div class="col-md-5">
-              <ng-select formControlName="activo" [items]="circulantes" bindValue="id" bindLabel="nombre" placeholder="Material" appendTo="body" (change)="onAssetChange(i)"></ng-select>
+              <label class="form-label">Proveedor</label>
+              <ng-select 
+                formControlName="proveedor" 
+                [items]="suppliers" 
+                bindValue="id" 
+                bindLabel="nombre" 
+                placeholder="Seleccione..."
+                appendTo="body"
+                [searchable]="true"
+                [clearable]="false"
+                [class.is-invalid]="submitted && f['proveedor'].errors">
+              </ng-select>
+              @if (submitted && f['proveedor'].errors) {
+                <div class="invalid-feedback d-block">Seleccione el proveedor</div>
+              }
             </div>
             <div class="col-md-3">
-              <input type="number" step="0.01" class="form-control" formControlName="cantidad" placeholder="Cantidad">
+              <label class="form-label">Fecha</label>
+              <input type="date" class="form-control" formControlName="fecha">
             </div>
-            <div class="col-md-3">
-              <input type="number" step="0.01" class="form-control" formControlName="valorUnitario" placeholder="Valor unitario">
-            </div>
-            <div class="col-md-1">
-              <button type="button" class="btn btn-light-danger" (click)="removeLine(i)" [disabled]="lineas.length === 1">x</button>
+            <div class="col-md-4">
+              <label class="form-label">Observación</label>
+              <input class="form-control" formControlName="observacion" placeholder="Ej. Factura #00452 / Guía">
             </div>
           </div>
-        }
+
+          <!-- Fila de Inputs para Agregar Insumo (Estilo Catálogo) -->
+          <div class="row g-3 align-items-end mt-2">
+            <div class="col-md-5">
+              <label class="form-label">Material / Insumo</label>
+              <ng-select 
+                [(ngModel)]="tempActivoId"
+                [ngModelOptions]="{standalone: true}"
+                [items]="circulantes" 
+                bindValue="id" 
+                bindLabel="nombre" 
+                placeholder="Seleccione..." 
+                appendTo="body" 
+                (change)="onTempAssetChange()"
+                [searchable]="true"
+                [clearable]="false">
+              </ng-select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Cantidad</label>
+              <input 
+                type="number" 
+                step="0.01" 
+                min="0.01" 
+                class="form-control" 
+                [(ngModel)]="tempCantidad" 
+                [ngModelOptions]="{standalone: true}" 
+                placeholder="Cant.">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Costo Unitario ($)</label>
+              <input 
+                type="number" 
+                step="0.01" 
+                min="0" 
+                class="form-control" 
+                [(ngModel)]="tempValorUnitario" 
+                [ngModelOptions]="{standalone: true}" 
+                placeholder="0.00">
+            </div>
+            <div class="col-auto d-flex align-items-end">
+              <button 
+                type="button" 
+                class="btn btn-primary btn-square-icon" 
+                (click)="agregarMaterialCompra()" 
+                title="Agregar Material">
+                <i class="ti ti-plus fs-4"></i>
+              </button>
+            </div>
+
+            <!-- Tabla de Insumos y Materiales Comprados (Estilo Catálogo) -->
+            <div class="col-12 mt-4">
+              <div class="table-responsive border rounded-3">
+                <table class="table table-hover align-middle mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Material / Insumo</th>
+                      <th style="width: 150px;">Cantidad</th>
+                      <th style="width: 180px;">Costo Unitario ($)</th>
+                      <th style="width: 180px;" class="text-end">Subtotal ($)</th>
+                      <th class="text-center" style="width: 100px;">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (item of materialesCompra; track $index; let i = $index) {
+                      <tr>
+                        <td class="fw-medium">{{ item.nombre }}</td>
+                        <td class="fw-bold">{{ item.cantidad | number:'1.0-2' }}</td>
+                        <td>${{ item.valorUnitario | number:'1.2-2' }}</td>
+                        <td class="text-end fw-bold text-success">${{ item.subtotal | number:'1.2-2' }}</td>
+                        <td class="text-center">
+                          <button 
+                            type="button" 
+                            class="btn btn-sm btn-icon btn-light-danger" 
+                            (click)="removerMaterialCompra(i)" 
+                            title="Eliminar">
+                            <i class="ti ti-trash fs-5"></i>
+                          </button>
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="5" class="text-center py-4 text-muted">
+                          No hay materiales o insumos agregados a esta orden de compra.
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Total Compra -->
+              <div class="d-flex justify-content-end align-items-center gap-3 mt-3 pt-2">
+                <span class="fs-6 fw-bold text-muted">Total Compra:</span>
+                <span class="fs-5 fw-bold text-success">${{ totalCompra | number:'1.2-2' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Botones de Acción -->
+          <div class="row mt-4 pt-3 border-top">
+            <div class="col-12 d-flex justify-content-end gap-2">
+              <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-1" type="button" (click)="back()">
+                <i class="ti ti-rotate-clockwise fs-5"></i> Regresar
+              </button>
+              <button class="btn btn-primary d-inline-flex align-items-center gap-1" type="button" [disabled]="loading" (click)="save()">
+                <i class="ti ti-device-floppy fs-5"></i> Registrar Compra
+              </button>
+            </div>
+          </div>
+        </form>
       </div>
-      <button type="button" class="btn btn-outline-primary btn-sm mt-2" (click)="addLine()">Agregar línea</button>
-      <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
-        <button class="btn btn-outline-secondary" type="button" (click)="back()">Regresar</button>
-        <button class="btn btn-primary" type="button" [disabled]="loading" (click)="save()">Registrar compra</button>
-      </div>
-    </form>
+    </div>
   </div>
 </div>

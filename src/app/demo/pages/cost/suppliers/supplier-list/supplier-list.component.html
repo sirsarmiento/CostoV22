@@ -2,7 +2,8 @@
   <div class="col-sm-6">
     <nav aria-label="breadcrumb">
       <ol class="breadcrumb mb-0">
-        <li class="breadcrumb-item active">Proveedores</li>
+        <li class="breadcrumb-item"><a routerLink="/suppliers">Proveedores</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Listado de Proveedores</li>
       </ol>
     </nav>
   </div>
@@ -13,44 +14,135 @@
   </div>
 </div>
 
-<div class="card">
-  <div class="card-body">
-    <div class="row mb-3">
-      <div class="col-md-4">
-        <input class="form-control" placeholder="Buscar..." [(ngModel)]="searchTerm" (input)="onSearch()">
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        
+        <!-- Search Bar -->
+        <div class="row mb-3 g-2">
+          <div class="col-md-4">
+            <input 
+              type="text" 
+              class="form-control" 
+              placeholder="Buscar por nombre, RIF, contacto o email..." 
+              [(ngModel)]="searchTerm"
+              (input)="onSearchChange()">
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="table-responsive mb-3">
+          <table class="table table-hover align-middle mb-0 table-sm">
+            <thead class="table-light">
+              <tr>
+                <th class="ps-3" style="cursor: pointer;" (click)="sortData('nombre')">
+                  Proveedor / RIF <i class="ti fs-6" [class]="getSortClass('nombre')"></i>
+                </th>
+                <th style="cursor: pointer;" (click)="sortData('contacto')">
+                  Contacto <i class="ti fs-6" [class]="getSortClass('contacto')"></i>
+                </th>
+                <th style="cursor: pointer;" (click)="sortData('email')">
+                  Email <i class="ti fs-6" [class]="getSortClass('email')"></i>
+                </th>
+                <th style="cursor: pointer;" (click)="sortData('telefono')">
+                  Teléfono <i class="ti fs-6" [class]="getSortClass('telefono')"></i>
+                </th>
+                <th style="cursor: pointer;" (click)="sortData('direccion')">
+                  Dirección <i class="ti fs-6" [class]="getSortClass('direccion')"></i>
+                </th>
+                <th class="text-center pe-3" style="width: 100px;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of paginatedSuppliers; track row.id) {
+                <tr 
+                  (click)="selectedRow = selectedRow === row ? null : row"
+                  [class.table-primary]="selectedRow && selectedRow.id === row.id"
+                  style="cursor: pointer;">
+                  <td class="ps-3">
+                    <div>
+                      <div class="fw-bold text-dark">{{ row.nombre }}</div>
+                      @if (row.rif) {
+                        <small class="text-muted fw-medium d-block">{{ row.rif }}</small>
+                      }
+                    </div>
+                  </td>
+                  <td>
+                    @if (row.contacto) {
+                      <span class="fw-medium text-dark">{{ row.contacto }}</span>
+                    } @else {
+                      <span class="text-muted">-</span>
+                    }
+                  </td>
+                  <td>
+                    @if (row.email) {
+                      <span class="text-muted"><i class="ti ti-mail me-1"></i>{{ row.email }}</span>
+                    } @else {
+                      <span class="text-muted">-</span>
+                    }
+                  </td>
+                  <td>
+                    @if (row.telefono) {
+                      <span class="text-muted"><i class="ti ti-phone me-1"></i>{{ row.telefono }}</span>
+                    } @else {
+                      <span class="text-muted">-</span>
+                    }
+                  </td>
+                  <td>
+                    @if (row.direccion) {
+                      <span class="text-muted">{{ row.direccion }}</span>
+                    } @else {
+                      <span class="text-muted">-</span>
+                    }
+                  </td>
+                  <td class="text-center pe-3" (click)="$event.stopPropagation()">
+                    <div class="d-inline-flex gap-1">
+                      <button class="btn btn-sm btn-icon btn-light-primary" (click)="edit(row)" title="Editar">
+                        <i class="ti ti-edit fs-5"></i>
+                      </button>
+                      <button class="btn btn-sm btn-icon btn-light-danger" (click)="delete(row)" title="Eliminar">
+                        <i class="ti ti-trash fs-5"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="6" class="text-center py-4 text-muted">No se encontraron Proveedores registrados.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Paginación Estándar -->
+        @if (filtered.length > 0) {
+          <div class="d-flex flex-column flex-md-row justify-content-end align-items-center mt-3 gap-4 text-muted" style="font-size: 0.875rem;">
+            <div class="d-flex align-items-center gap-2">
+              <span>Filas por página:</span>
+              <select class="form-select form-select-sm border-0 shadow-none bg-light fw-medium" style="width: 70px; cursor: pointer;" [(ngModel)]="pageSize" (change)="onPageSizeChange()">
+                <option [ngValue]="5">5</option>
+                <option [ngValue]="10">10</option>
+                <option [ngValue]="20">20</option>
+                <option [ngValue]="50">50</option>
+              </select>
+            </div>
+            <span>
+              {{ (currentPage - 1) * pageSize + 1 }}-{{ Math.min(currentPage * pageSize, filtered ? filtered.length : 0) }} de {{ filtered ? filtered.length : 0 }}
+            </span>
+            <div class="d-flex align-items-center gap-2">
+              <button class="btn btn-sm btn-icon rounded-pill btn-light shadow-sm" [disabled]="currentPage === 1" (click)="setPage(currentPage - 1)" title="Anterior">
+                <i class="ti ti-chevron-left fs-5"></i>
+              </button>
+              <button class="btn btn-sm btn-icon rounded-pill btn-light shadow-sm" [disabled]="currentPage === totalPages" (click)="setPage(currentPage + 1)" title="Siguiente">
+                <i class="ti ti-chevron-right fs-5"></i>
+              </button>
+            </div>
+          </div>
+        }
+
       </div>
-    </div>
-    <div class="table-responsive">
-      <table class="table table-hover align-middle mb-0 table-sm">
-        <thead class="table-light">
-          <tr>
-            <th>Proveedor</th>
-            <th>RIF</th>
-            <th>Contacto</th>
-            <th>Teléfono</th>
-            <th>Email</th>
-            <th class="text-center">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (row of filtered; track row.id) {
-            <tr>
-              <td class="fw-bold">{{ row.nombre }}</td>
-              <td>{{ row.rif || '-' }}</td>
-              <td>{{ row.contacto || '-' }}</td>
-              <td>{{ row.telefono || '-' }}</td>
-              <td>{{ row.email || '-' }}</td>
-              <td class="text-center">
-                <button class="btn btn-icon btn-light-primary" (click)="onEdit(row)" title="Editar">
-                  <i class="ti ti-edit fs-5"></i>
-                </button>
-              </td>
-            </tr>
-          } @empty {
-            <tr><td colspan="6" class="text-center py-4 text-muted">No hay proveedores registrados.</td></tr>
-          }
-        </tbody>
-      </table>
     </div>
   </div>
 </div>

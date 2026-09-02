@@ -19,18 +19,22 @@
             <div class="col-lg-8">
               <div class="row g-3">
                 <div class="col-12">
-                  <label class="form-label">Categoría (CAT)</label>
+                  <label class="form-label">Categoría (CAT) <span class="text-danger">*</span></label>
                   <ng-select 
                     formControlName="categoria"
                     placeholder="Seleccione..."
                     [clearable]="false"
                     [searchable]="false"
                     appendTo="body"
+                    [class.is-invalid]="submitted && f['categoria'].errors"
                     (change)="onCategoryChange()">
                     @for (cat of opcionesCategorias; track cat.value) {
                       <ng-option [value]="cat.value">{{ cat.label }}</ng-option>
                     }
                   </ng-select>
+                  @if (submitted && f['categoria'].errors) {
+                    <div class="invalid-feedback d-block">Seleccione una categoría.</div>
+                  }
                 </div>
 
                 @if (form.get('categoria')?.value === 'PF') {

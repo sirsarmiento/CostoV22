@@ -44,7 +44,11 @@ export class AddSupplierComponent implements OnInit {
 
   save() {
     this.submitted = true;
-    if (this.form.invalid) return;
+    this.form.markAllAsTouched();
+    if (this.form.invalid) {
+      Swal.fire('Formulario Incompleto', 'Por favor ingrese el nombre del proveedor.', 'warning');
+      return;
+    }
     this.loading = true;
     const payload: Supplier = this.form.value;
     const req = this.id ? this.service.updateSupplier(this.id, payload) : this.service.createSupplier(payload);

@@ -3,44 +3,80 @@
     <nav aria-label="breadcrumb">
       <ol class="breadcrumb mb-0">
         <li class="breadcrumb-item"><a routerLink="/suppliers">Proveedores</a></li>
-        <li class="breadcrumb-item active">{{ id > 0 ? 'Editar' : 'Crear' }}</li>
+        <li class="breadcrumb-item active" aria-current="page">{{ id > 0 ? 'Editar' : 'Crear' }}</li>
       </ol>
     </nav>
   </div>
 </div>
-<div class="card">
-  <div class="card-body">
-    <form [formGroup]="form" (ngSubmit)="save()">
-      <div class="row g-3">
-        <div class="col-md-6">
-          <label class="form-label">Nombre *</label>
-          <input class="form-control" formControlName="nombre" [class.is-invalid]="submitted && f['nombre'].errors">
-        </div>
-        <div class="col-md-6">
-          <label class="form-label">RIF</label>
-          <input class="form-control" formControlName="rif">
-        </div>
-        <div class="col-md-6">
-          <label class="form-label">Contacto</label>
-          <input class="form-control" formControlName="contacto">
-        </div>
-        <div class="col-md-6">
-          <label class="form-label">Teléfono</label>
-          <input class="form-control" formControlName="telefono">
-        </div>
-        <div class="col-md-6">
-          <label class="form-label">Email</label>
-          <input class="form-control" formControlName="email">
-        </div>
-        <div class="col-md-6">
-          <label class="form-label">Dirección</label>
-          <input class="form-control" formControlName="direccion">
-        </div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <form [formGroup]="form" (ngSubmit)="save()">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Nombre o Razón Social</label>
+              <input 
+                class="form-control" 
+                formControlName="nombre" 
+                placeholder="Ej. Filamentos Venezuela C.A."
+                [class.is-invalid]="submitted && f['nombre'].errors">
+              @if (submitted && f['nombre'].errors) {
+                <div class="invalid-feedback">El nombre del proveedor es obligatorio</div>
+              }
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">RIF / Cédula</label>
+              <input 
+                class="form-control" 
+                formControlName="rif" 
+                placeholder="Ej. J-12345678-9">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Persona de Contacto</label>
+              <input 
+                class="form-control" 
+                formControlName="contacto" 
+                placeholder="Ej. Juan Pérez">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Teléfono</label>
+              <input 
+                class="form-control" 
+                formControlName="telefono" 
+                placeholder="Ej. +58 412 1234567">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Correo Electrónico</label>
+              <input 
+                type="email"
+                class="form-control" 
+                formControlName="email" 
+                placeholder="proveedor@empresa.com">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Dirección</label>
+              <input 
+                class="form-control" 
+                formControlName="direccion" 
+                placeholder="Ciudad, Estado, Ubicación...">
+            </div>
+          </div>
+
+          <!-- Botones de Acción -->
+          <div class="row mt-4 pt-3 border-top">
+            <div class="col-12 d-flex justify-content-end gap-2">
+              <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-1" type="button" (click)="back()">
+                <i class="ti ti-rotate-clockwise fs-5"></i> Regresar
+              </button>
+              <button class="btn btn-primary d-inline-flex align-items-center gap-1" type="submit" [disabled]="loading">
+                <i class="ti ti-device-floppy fs-5"></i> Guardar Proveedor
+              </button>
+            </div>
+          </div>
+        </form>
       </div>
-      <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
-        <button class="btn btn-outline-secondary" type="button" (click)="back()">Regresar</button>
-        <button class="btn btn-primary" type="submit" [disabled]="loading">Guardar Proveedor</button>
-      </div>
-    </form>
+    </div>
   </div>
 </div>

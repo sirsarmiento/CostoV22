@@ -150,25 +150,55 @@ export class AddProductComponent implements OnInit {
     }
   }
 
+  activosMateriales: Asset[] = [];
+
   loadAssets() {
     this.assetService.getAssets().subscribe({
       next: (assets) => {
         if (assets) {
-          this.maquinasList = assets.filter((a: Asset) => 
-            a.tipo?.toLowerCase().trim() === 'fijo' && 
-            a.categoria?.toLowerCase().trim() === 'equipo'
-          );
-          this.assetsMobiliario = assets.filter((a: Asset) => 
-            a.categoria?.toLowerCase().trim() === 'mobiliario'
-          );
-          this.activosCirculantes = assets.filter((a: Asset) => {
-            const t = a.tipo?.toLowerCase().trim() || '';
-            return t === 'material' || t === 'circulante';
+          // 1. Máquinas: Activos Fijos de Categoría Equipo y Subcategoría Fabricación
+          this.maquinasList = assets.filter((a: Asset) => {
+            const t = (a.tipo || '').toLowerCase().trim();
+            const c = (a.categoria || '').toLowerCase().trim();
+            const s = (a.subCategoria || (a as unknown as Record<string, unknown>)['sub_categoria'] || '').toString().toLowerCase().trim();
+            return t === 'fijo' && c === 'equipo' && (s === 'fabricación' || s === 'fabricacion');
           });
+
+          if (this.maquinasList.length === 0) {
+            this.maquinasList = assets.filter((a: Asset) => 
+              (a.tipo || '').toLowerCase().trim() === 'fijo' && 
+              (a.categoria || '').toLowerCase().trim() === 'equipo'
+            );
+          }
+
+          this.assetsMobiliario = assets.filter((a: Asset) => 
+            (a.categoria || '').toLowerCase().trim() === 'mobiliario'
+          );
+
+          // 2. Activos de Inventario: Activos Circulantes de Categoría Producción
+          this.activosCirculantes = assets.filter((a: Asset) => {
+            const t = (a.tipo || '').toLowerCase().trim();
+            const c = (a.categoria || '').toLowerCase().trim();
+            return t === 'circulante' && (c === 'producción' || c === 'produccion');
+          });
+
+          if (this.activosCirculantes.length === 0) {
+            this.activosCirculantes = assets.filter((a: Asset) => 
+              (a.tipo || '').toLowerCase().trim() === 'circulante'
+            );
+          }
+
+          // 3. Activos Tipo Material: Materiales para impresión/fabricación
+          this.activosMateriales = assets.filter((a: Asset) => {
+            const t = (a.tipo || '').toLowerCase().trim();
+            const c = (a.categoria || '').toLowerCase().trim();
+            return t === 'material' || c === 'filamento' || c === 'resina' || c === 'filamentos' || c === 'resinas';
+          });
+
           this.categoriasMaterial = [...new Set(
-            this.activosCirculantes.map(a => a.categoria).filter((c): c is string => !!c)
+            this.activosMateriales.map(a => a.categoria).filter((c): c is string => !!c)
           )];
-          this.materialesFiltradosCirculantes = [...this.activosCirculantes];
+          this.materialesFiltradosCirculantes = [...this.activosMateriales];
           this.form.get('piezaMaterialId')?.enable();
           this.cdr.detectChanges();
         }
@@ -178,7 +208,7 @@ export class AddProductComponent implements OnInit {
 
   onPiezaCategoriaChange(categoria: string) {
     if (categoria) {
-      this.materialesPorCategoria = this.activosCirculantes.filter(a => a.categoria === categoria);
+      this.materialesPorCategoria = this.activosMateriales.filter(a => a.categoria === categoria);
       this.subcategoriasMaterial = [...new Set(
         this.materialesPorCategoria.map(a => a.subCategoria || ((a as unknown as Record<string, string>)['subcategoria'])).filter((s): s is string => !!s)
       )];
@@ -186,7 +216,7 @@ export class AddProductComponent implements OnInit {
     } else {
       this.materialesPorCategoria = [];
       this.subcategoriasMaterial = [];
-      this.materialesFiltradosCirculantes = [...this.activosCirculantes];
+      this.materialesFiltradosCirculantes = [...this.activosMateriales];
     }
     this.form.get('piezaMaterialSubcategoria')?.setValue('');
     this.form.get('piezaMaterialId')?.setValue(null);
@@ -199,24 +229,25 @@ export class AddProductComponent implements OnInit {
         (a.subCategoria || ((a as unknown as Record<string, string>)['subcategoria'])) === subcategoria
       );
     } else {
-      this.materialesFiltradosCirculantes = this.materialesPorCategoria.length > 0 ? [...this.materialesPorCategoria] : [...this.activosCirculantes];
+      this.materialesFiltradosCirculantes = this.materialesPorCategoria.length > 0 ? [...this.materialesPorCategoria] : [...this.activosMateriales];
     }
     this.form.get('piezaMaterialId')?.setValue(null);
   }
 
   onPiezaMaterialChange(materialId: number) {
     if (materialId) {
-      const asset = this.activosCirculantes.find(a => a.id == materialId);
+      const asset = this.activosMateriales.find(a => a.id == materialId) || this.activosCirculantes.find(a => a.id == materialId);
       if (asset) {
-        const uMedida = asset.unidadMedida?.toLowerCase().trim();
-        const valUnit = Number(asset.valorUnitario) || 0;
+        const uMedida = (asset.unidadMedida || '').toLowerCase().trim();
+        const valUnit = Number(asset.valorUnitario) || Number(asset.costoInicial) || 0;
         let precioPorGramo: number;
-        if (uMedida === 'kg' || uMedida === 'kilo' || uMedida === 'kilogramo') {
-          precioPorGramo = valUnit / 1000;
-        } else {
+        if (uMedida === 'gramos' || uMedida === 'gramo') {
           precioPorGramo = valUnit;
+        } else {
+          precioPorGramo = valUnit > 0 ? (valUnit / 1000) : 0;
         }
-        this.form.get('piezaPrecioMaterial')?.setValue(precioPorGramo);
+        const rounded = Math.round(precioPorGramo * 10000) / 10000;
+        this.form.get('piezaPrecioMaterial')?.setValue(rounded);
       }
     } else {
       this.form.get('piezaPrecioMaterial')?.setValue('');
@@ -477,8 +508,19 @@ export class AddProductComponent implements OnInit {
     this.submitted = true;
     this.form.markAllAsTouched();
 
+    // Auto-agregar pieza si el usuario llenó los campos superiores pero olvidó hacer clic en [+]
+    const tipoPieza = this.form.get('piezaTipo')?.value;
+    if (tipoPieza === 'Del Inventario' && this.form.get('piezaInventario')?.value) {
+      this.agregarPieza();
+    } else if (tipoPieza === 'Fabricada' && (this.form.get('piezaFabricada')?.value || this.form.get('piezaGramos')?.value)) {
+      this.agregarPieza();
+    }
+
     if (this.form.invalid) {
-      Swal.fire('Error', 'Complete los datos obligatorios del producto.', 'error');
+      if (this.form.get('nombre')?.invalid || this.form.get('clasificacion')?.invalid || this.form.get('descripcion')?.invalid) {
+        this.activeTab = 'def';
+      }
+      Swal.fire('Formulario Incompleto', 'Por favor complete todos los datos obligatorios del producto.', 'warning');
       return;
     }
 
@@ -521,10 +563,13 @@ export class AddProductComponent implements OnInit {
         horas: hVal,
         minutos: minVal,
         precioMaterial: matPrice,
+        precio_material: matPrice,
         tipo: tip,
         cantidad: cant,
         activo: numAct,
-        maquina: numMaq
+        activo_id: numAct,
+        maquina: numMaq,
+        maquina_id: numMaq
       };
 
       if (pObj['fromDb'] && pObj['id'] && Number(pObj['id']) > 0) {
@@ -540,20 +585,25 @@ export class AddProductComponent implements OnInit {
     const margenNum = Number(this.form.get('margenGanancia')?.value) || 0;
 
     const productPayload: Record<string, unknown> = {
-      id: this.id > 0 ? this.id : 0,
       nombre: this.form.get('nombre')?.value,
       sku: this.form.get('sku')?.value,
       descripcion: this.form.get('descripcion')?.value,
       clasificacion: this.form.get('clasificacion')?.value,
       medida: this.form.get('medida')?.value,
       perfil: Number(this.form.get('perfil')?.value) || 0,
-      periodo: this.form.get('periodo')?.value,
       tasaFallo: tasaNum,
       tiempoSetup: prepNum,
       postProcesado: postNum,
       margenGanancia: margenNum,
       piezasProducto: mappedPiezas
     };
+
+    if (this.id > 0) {
+      productPayload['id'] = this.id;
+    }
+    if (this.form.get('periodo')?.value) {
+      productPayload['periodo'] = this.form.get('periodo')?.value;
+    }
 
     console.log('>>> PAYLOAD DE PRODUCTO A ENVIAR AL SERVIDOR:', JSON.stringify(productPayload, null, 2));
 

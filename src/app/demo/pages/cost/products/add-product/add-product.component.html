@@ -254,10 +254,10 @@
 
               @if (f['piezaTipo'].value === 'Del Inventario') {
                 <div class="col-md-6">
-                  <label class="form-label">Activo del Inventario</label>
-                  <ng-select formControlName="piezaInventario" placeholder="Seleccione activo mobiliario..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom">
-                    @for (asset of assetsMobiliario; track asset.id) {
-                      <ng-option [value]="asset.id">{{ asset.nombre }} (${{ asset.valorUnitario | number:'1.2-2' }})</ng-option>
+                  <label class="form-label">Activo Circulante (Producción / Insumo)</label>
+                  <ng-select formControlName="piezaInventario" placeholder="Seleccione insumo o material de producción..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom">
+                    @for (asset of activosCirculantes; track asset.id) {
+                      <ng-option [value]="asset.id">{{ asset.nombre }}</ng-option>
                     }
                   </ng-select>
                 </div>

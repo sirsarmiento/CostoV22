@@ -33,13 +33,13 @@ export class AddFixeComponent implements OnInit {
     'Fijo': [
       'Alquiler', 'Salarios base', 'Seguros', 
       'Suscripciones y licencias', 'Impuestos', 
-      'Servicios básicos (parte fija)',
+      'Servicios básicos (parte fija)', 'Mantenimiento preventivo',
       'Otro'
     ],
     'Variable': [
       'Materia prima e insumos', 'Costos de envío y distribución', 
       'Comisiones de ventas', 'Empaquetado y embalaje', 
-      'Servicios básicos (por uso)',
+      'Servicios básicos (por uso)', 'Mantenimiento correctivo',
       'Otro'
     ]
   };
@@ -53,10 +53,16 @@ export class AddFixeComponent implements OnInit {
   get f() { return this.form.controls; }
 
   ngOnInit(): void {
+    // Inicializar con todos los conceptos combinados por defecto
+    this.actualizarConceptosMostrados(this.form.get('tipo')?.value);
+
     // Conceptos dinámicos según el tipo de costo
     this.form.get('tipo')?.valueChanges.subscribe(valor => {
-      this.conceptosMostrados = this.opcionesConceptos[valor] || [];
-      this.form.get('concepto')?.setValue(''); 
+      this.actualizarConceptosMostrados(valor);
+      const currentConcepto = this.form.get('concepto')?.value;
+      if (currentConcepto && !this.conceptosMostrados.includes(currentConcepto)) {
+        this.form.get('concepto')?.setValue(''); 
+      }
     });
 
     // Escuchamos el cambio de 'clasificacion'
@@ -64,13 +70,52 @@ export class AddFixeComponent implements OnInit {
       this.onClasificacionChange(value);
     });
 
-    const tipoInicial = this.form.get('tipo')?.value;
-    if (tipoInicial) {
-      this.conceptosMostrados = this.opcionesConceptos[tipoInicial] || [];
-    }
-
     this.loadProducts();
+    this.loadConceptosExistentes();
   }
+
+  actualizarConceptosMostrados(tipo?: string) {
+    if (tipo && this.opcionesConceptos[tipo]) {
+      this.conceptosMostrados = [...this.opcionesConceptos[tipo]];
+    } else {
+      const todos = new Set<string>([
+        ...this.opcionesConceptos['Fijo'],
+        ...this.opcionesConceptos['Variable']
+      ]);
+      this.conceptosMostrados = Array.from(todos);
+    }
+  }
+
+  loadConceptosExistentes() {
+    this.fixeService.getFixes().subscribe({
+      next: (fixes) => {
+        fixes.forEach(f => {
+          const c = String(f.concepto || '').trim();
+          if (c && c !== 'Otro') {
+            const tipo = f.tipo === 'Fijo' || f.tipo === 'Variable' ? f.tipo : 'Fijo';
+            if (this.opcionesConceptos[tipo] && !this.opcionesConceptos[tipo].includes(c)) {
+              this.opcionesConceptos[tipo].unshift(c);
+            }
+          }
+        });
+        this.actualizarConceptosMostrados(this.form.get('tipo')?.value);
+        this.cdr.detectChanges();
+      },
+      error: () => {}
+    });
+  }
+
+  agregarConcepto = (term: string): string => {
+    const formatted = term.trim();
+    if (formatted && !this.conceptosMostrados.includes(formatted)) {
+      this.conceptosMostrados = [formatted, ...this.conceptosMostrados];
+      const tipo = this.form.get('tipo')?.value || 'Fijo';
+      if (this.opcionesConceptos[tipo] && !this.opcionesConceptos[tipo].includes(formatted)) {
+        this.opcionesConceptos[tipo].unshift(formatted);
+      }
+    }
+    return formatted;
+  };
 
   shouldShowTipoDirectoField(): boolean {
     return this.form.get('clasificacion')?.value === 'Directo';

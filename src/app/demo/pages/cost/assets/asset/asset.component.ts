@@ -100,11 +100,11 @@ export class AssetComponent implements OnInit {
         this.allAssets = assetsList.map((item: Asset) => {
           const asset = {
             ...item,
-            costoInicial: this.normalizarNumero(item.costoInicial),
+            costoInicial: this.normalizarNumero(item.costoInicial || item.valorUnitario),
             valorResidual: this.normalizarNumero(item.valorResidual),
             vidaUtil: this.normalizarNumero(item.vidaUtil),
             cantidad: this.normalizarNumero(item.cantidad),
-            valorUnitario: this.normalizarNumero(item.valorUnitario),
+            valorUnitario: this.normalizarNumero(item.valorUnitario || item.costoInicial),
             nombre: item.nombre || '',
             descripcion: item.descripcion || '',
             ubicacion: item.ubicacion || '',

@@ -31,6 +31,16 @@ export class ProductService {
     );
   }
 
+  getProduct(id: number): Observable<Product> {
+    if (environment.useMocks) {
+      const p = this.getMockProducts().find(x => x.id === id);
+      return of(p || ({} as Product));
+    }
+    return this.http.get<{ data?: Product } | Product>(`${environment.apiUrl}/producto/${id}`).pipe(
+      map(res => ((res as { data?: Product }).data ?? res) as Product)
+    );
+  }
+
   createProduct(product: Product): Observable<Product> {
     if (environment.useMocks) {
       const products = this.getMockProducts();

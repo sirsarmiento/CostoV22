@@ -180,9 +180,9 @@
                 @if (f['piezaTipo'].value === 'Del Inventario') {
                   <div class="col-md-6">
                     <label class="form-label text-xs mb-1">Activo del Inventario</label>
-                    <ng-select formControlName="piezaInventario" placeholder="Seleccione activo mobiliario..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
-                      @for (asset of assetsMobiliario; track asset.id) {
-                        <ng-option [value]="asset.id">{{ asset.nombre }} (${{ asset.valorUnitario | number:'1.2-2' }})</ng-option>
+                    <ng-select formControlName="piezaInventario" placeholder="Seleccione activo del inventario..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
+                      @for (asset of activosCirculantes; track asset.id) {
+                        <ng-option [value]="asset.id">{{ asset.nombre }}</ng-option>
                       }
                     </ng-select>
                   </div>
@@ -286,7 +286,7 @@
                     <th>Nombre</th>
                     <th>Máquina</th>
                     <th>Material / Detalle</th>
-                    <th>Costo Mat./g</th>
+                    <th>Costo Mat. / Insumo</th>
                     <th>Gramos</th>
                     <th>Tiempo</th>
                     <th class="text-end">Acción</th>

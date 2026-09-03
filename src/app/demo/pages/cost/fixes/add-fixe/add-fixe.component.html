@@ -38,17 +38,17 @@
               <label class="form-label">Concepto</label>
               <ng-select 
                 formControlName="concepto"
-                placeholder="Seleccione..."
-                [clearable]="false"
+                placeholder="Seleccione o escriba un concepto..."
+                [clearable]="true"
                 [searchable]="true"
+                [items]="conceptosMostrados"
+                [addTag]="agregarConcepto"
+                addTagText="Agregar concepto"
                 appendTo="body"
                 [class.is-invalid]="submitted && f['concepto'].errors">
-                @for (opcion of conceptosMostrados; track opcion) {
-                  <ng-option [value]="opcion">{{ opcion }}</ng-option>
-                }
               </ng-select>
               @if (submitted && f['concepto'].errors?.['required']) {
-                <div class="invalid-feedback d-block">Seleccione el Concepto</div>
+                <div class="invalid-feedback d-block">Seleccione o ingrese el Concepto</div>
               }
             </div>
 

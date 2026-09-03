@@ -24,6 +24,7 @@ export interface Purchase {
   total?: number;
   lineas: PurchaseLine[];
   proveedorNombre?: string;
+  itemsResumen?: string;
 }
 
 export interface Sale {

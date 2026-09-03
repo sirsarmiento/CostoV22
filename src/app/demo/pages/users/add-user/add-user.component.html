@@ -47,7 +47,7 @@
             </div>
 
             <div class="col-md-6">
-              <label class="form-label">Nacionalidad *</label>
+              <label class="form-label">Nacionalidad <span class="text-danger">*</span></label>
               <ng-select 
                 formControlName="documentType" 
                 placeholder="Seleccione"
@@ -60,20 +60,26 @@
                 <ng-option value="P">Pasaporte</ng-option>
                 <ng-option value="G">Gubernamental</ng-option>
               </ng-select>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Nro. Documento *</label>
-              <input type="text" class="form-control" formControlName="documentNumber" [class.is-invalid]="submitted && f['documentNumber'].errors">
-              @if (submitted && f['documentNumber'].errors) {
-                <div class="invalid-feedback">Requerido.</div>
+              @if (submitted && f['documentType'].errors) {
+                <div class="invalid-feedback d-block">Seleccione la nacionalidad.</div>
               }
             </div>
             <div class="col-md-6">
-              <label class="form-label">Fecha de Nacimiento *</label>
-              <input type="date" class="form-control" formControlName="birthDate" [class.is-invalid]="submitted && f['birthDate'].errors">
+              <label class="form-label">Nro. Documento <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" formControlName="documentNumber" [class.is-invalid]="submitted && f['documentNumber'].errors">
+              @if (submitted && f['documentNumber'].errors) {
+                <div class="invalid-feedback">Nro. de documento requerido.</div>
+              }
             </div>
             <div class="col-md-6">
-              <label class="form-label">Sexo *</label>
+              <label class="form-label">Fecha de Nacimiento <span class="text-danger">*</span></label>
+              <input type="date" class="form-control" formControlName="birthDate" [class.is-invalid]="submitted && f['birthDate'].errors">
+              @if (submitted && f['birthDate'].errors) {
+                <div class="invalid-feedback d-block">Fecha de nacimiento requerida.</div>
+              }
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Sexo <span class="text-danger">*</span></label>
               <ng-select 
                 formControlName="sex" 
                 placeholder="Seleccione"
@@ -83,19 +89,21 @@
                 <ng-option value="M">Masculino</ng-option>
                 <ng-option value="F">Femenino</ng-option>
               </ng-select>
+              @if (submitted && f['sex'].errors) {
+                <div class="invalid-feedback d-block">Seleccione el sexo.</div>
+              }
             </div>
 
-
             <div class="col-md-6">
-              <label class="form-label">Correo Electrónico *</label>
+              <label class="form-label">Correo Electrónico <span class="text-danger">*</span></label>
               <input type="email" class="form-control" formControlName="email" [class.is-invalid]="submitted && f['email'].errors">
               @if (submitted && f['email'].errors) {
-                <div class="invalid-feedback">Correo inválido.</div>
+                <div class="invalid-feedback">Correo electrónico inválido o requerido.</div>
               }
             </div>
             
             <div class="col-md-6">
-              <label class="form-label">País *</label>
+              <label class="form-label">País <span class="text-danger">*</span></label>
               <ng-select 
                 formControlName="country" 
                 placeholder="Seleccione"
@@ -107,9 +115,12 @@
                   <ng-option [value]="item.value">{{ item.label }}</ng-option>
                 }
               </ng-select>
+              @if (submitted && f['country'].errors) {
+                <div class="invalid-feedback d-block">Seleccione el país.</div>
+              }
             </div>
             <div class="col-md-6">
-              <label class="form-label">Estado *</label>
+              <label class="form-label">Estado <span class="text-danger">*</span></label>
               <ng-select 
                 formControlName="state" 
                 placeholder="Seleccione"
@@ -122,9 +133,12 @@
                   <ng-option [value]="item.value">{{ item.label }}</ng-option>
                 }
               </ng-select>
+              @if (submitted && f['state'].errors) {
+                <div class="invalid-feedback d-block">Seleccione el estado.</div>
+              }
             </div>
             <div class="col-md-6">
-              <label class="form-label">Ciudad *</label>
+              <label class="form-label">Ciudad <span class="text-danger">*</span></label>
               <ng-select 
                 formControlName="city" 
                 placeholder="Seleccione"
@@ -136,16 +150,21 @@
                   <ng-option [value]="item.value">{{ item.label }}</ng-option>
                 }
               </ng-select>
+              @if (submitted && f['city'].errors) {
+                <div class="invalid-feedback d-block">Seleccione la ciudad.</div>
+              }
             </div>
             
             <div class="col-md-12">
-              <label class="form-label">Dirección *</label>
+              <label class="form-label">Dirección <span class="text-danger">*</span></label>
               <textarea class="form-control" rows="2" formControlName="address" [class.is-invalid]="submitted && f['address'].errors"></textarea>
+              @if (submitted && f['address'].errors) {
+                <div class="invalid-feedback">Dirección requerida.</div>
+              }
             </div>
 
-
             <div class="col-md-6">
-              <label class="form-label">Cargo *</label>
+              <label class="form-label">Cargo <span class="text-danger">*</span></label>
               <ng-select 
                 formControlName="position" 
                 placeholder="Seleccione un Cargo"
@@ -156,6 +175,9 @@
                   <ng-option [value]="item.value">{{ item.label }}</ng-option>
                 }
               </ng-select>
+              @if (submitted && f['position'].errors) {
+                <div class="invalid-feedback d-block">Seleccione el cargo.</div>
+              }
             </div>
 
             <div class="col-md-12 mb-3">
@@ -181,7 +203,7 @@
             </div>
 
             <div class="col-md-12">
-              <label class="form-label">Roles Asignados *</label>
+              <label class="form-label">Roles Asignados <span class="text-danger">*</span></label>
               <div class="row px-2">
                 @for (role of roles; track role.value; let i = $index) {
                   <div class="col-md-3 col-sm-6 mb-2">
@@ -195,6 +217,9 @@
                   </div>
                 }
               </div>
+              @if (submitted && (!form.get('roles')?.value || form.get('roles')?.value.length === 0)) {
+                <div class="invalid-feedback d-block">Debe asignar al menos un rol.</div>
+              }
             </div>
 
           </div>

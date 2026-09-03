@@ -17,8 +17,13 @@ export class InventoryService {
   private http = inject(HttpClient);
   private api = environment.apiUrl;
 
+  // ==========================================
+  // PROVEEDORES
+  // ==========================================
   getSuppliers(): Observable<Supplier[]> {
-    return this.http.get<{ data?: Supplier[] }>(`${this.api}/proveedores`).pipe(map(r => r.data || []));
+    return this.http.get<{ data?: Supplier[] } | Supplier[]>(`${this.api}/proveedores`).pipe(
+      map(res => (Array.isArray(res) ? res : res.data) || [])
+    );
   }
 
   createSupplier(supplier: Supplier): Observable<Supplier> {
@@ -33,35 +38,59 @@ export class InventoryService {
     return this.http.put<Supplier>(`${this.api}/proveedor/${id}`, payload);
   }
 
+  deleteSupplier(id: number): Observable<unknown> {
+    return this.http.delete(`${this.api}/proveedor/${id}`);
+  }
+
+  // ==========================================
+  // COMPRAS / REPOSICION
+  // ==========================================
   getPurchases(): Observable<Purchase[]> {
-    return this.http.get<{ data?: Purchase[] }>(`${this.api}/compras`).pipe(map(r => r.data || []));
+    return this.http.get<{ data?: Purchase[] } | Purchase[]>(`${this.api}/compras`).pipe(
+      map(res => (Array.isArray(res) ? res : res.data) || [])
+    );
   }
 
   createPurchase(purchase: Purchase): Observable<Purchase> {
     return this.http.post<Purchase>(`${this.api}/compra`, purchase);
   }
 
+  // ==========================================
+  // VENTAS CONCRETADAS
+  // ==========================================
   getSales(): Observable<Sale[]> {
-    return this.http.get<{ data?: Sale[] }>(`${this.api}/ventas`).pipe(map(r => r.data || []));
+    return this.http.get<{ data?: Sale[] } | Sale[]>(`${this.api}/ventas`).pipe(
+      map(res => (Array.isArray(res) ? res : res.data) || [])
+    );
   }
 
   createSale(presupuestoId: number, cantidad?: number): Observable<Sale> {
     return this.http.post<Sale>(`${this.api}/venta`, { presupuesto: presupuestoId, cantidad });
   }
 
+  // ==========================================
+  // STOCK DE PRODUCTO TERMINADO Y DESACOLPE
+  // ==========================================
   getStock(): Observable<StockItem[]> {
-    return this.http.get<{ data?: StockItem[] }>(`${this.api}/stock`).pipe(map(r => r.data || []));
+    return this.http.get<{ data?: StockItem[] } | StockItem[]>(`${this.api}/stock`).pipe(
+      map(res => (Array.isArray(res) ? res : res.data) || [])
+    );
   }
 
-  ingresarStock(productoId: number, cantidad: number) {
+  ingresarStock(productoId: number, cantidad: number): Observable<unknown> {
     return this.http.post(`${this.api}/stock/ingreso`, { producto: productoId, cantidad });
   }
 
-  getMovements(): Observable<InventoryMovement[]> {
-    return this.http.get<{ data?: InventoryMovement[] }>(`${this.api}/movimientos`).pipe(map(r => r.data || []));
+  createDecouple(payload: Decouple): Observable<unknown> {
+    return this.http.post(`${this.api}/desacople`, payload);
   }
 
-  createDecouple(payload: Decouple) {
-    return this.http.post(`${this.api}/desacople`, payload);
+  // ==========================================
+  // MOVIMIENTOS KARDEX
+  // ==========================================
+  getMovements(): Observable<InventoryMovement[]> {
+    return this.http.get<{ data?: InventoryMovement[] } | InventoryMovement[]>(`${this.api}/movimientos`).pipe(
+      map(res => (Array.isArray(res) ? res : res.data) || [])
+    );
   }
 }

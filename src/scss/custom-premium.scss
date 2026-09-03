@@ -427,3 +427,171 @@
     }
   }
 }
+
+/* ==========================================================================
+   Date Range Picker & NgbDatepicker Componentes Minimalistas
+   ========================================================================== */
+.no-caret::after {
+  display: none !important;
+}
+
+.date-range-box {
+  border: 1px solid #dfe5ef;
+  border-radius: 8px;
+  padding: 0.38rem 0.75rem;
+  background-color: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  height: 38px;
+
+  &:hover {
+    border-color: #4680ff;
+  }
+}
+
+.date-dropdown-card {
+  min-width: 270px;
+  max-width: 280px;
+  border-radius: 10px;
+  border: 1px solid #eef2f6;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  background: #ffffff;
+  z-index: 1060 !important;
+  padding: 0.65rem 0.75rem !important;
+}
+
+.preset-pill {
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 0.15rem 0.45rem;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background-color: #f4f6fa;
+  color: #4b5563;
+  transition: all 0.15s ease;
+  cursor: pointer;
+
+  &:hover {
+    background-color: #e6f0ff;
+    color: #2563eb;
+  }
+}
+
+ngb-datepicker {
+  border: none !important;
+  background: transparent !important;
+  width: 100% !important;
+
+  .ngb-dp-header {
+    background: transparent !important;
+    padding: 0 0 0.3rem 0 !important;
+  }
+
+  ngb-datepicker-navigation {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    padding: 0 0 0.4rem 0 !important;
+
+    button {
+      padding: 0.1rem 0.3rem !important;
+      border-radius: 4px !important;
+      border: none !important;
+      background: transparent !important;
+      cursor: pointer !important;
+
+      &:hover {
+        background-color: #f1f5f9 !important;
+      }
+    }
+  }
+
+  ngb-datepicker-navigation-select,
+  .ngb-dp-navigation-select {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    flex-grow: 1 !important;
+
+    select {
+      display: inline-block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      border-radius: 6px !important;
+      border: 1px solid #dfe5ef !important;
+      font-size: 0.76rem !important;
+      padding: 0.15rem 0.35rem !important;
+      color: #1e293b !important;
+      background-color: #f8fafc !important;
+      cursor: pointer !important;
+      outline: none !important;
+      height: 28px !important;
+      margin: 0 2px !important;
+
+      &:hover {
+        border-color: #4680ff !important;
+      }
+    }
+  }
+
+  .ngb-dp-navigation-chevron {
+    width: 0.45rem !important;
+    height: 0.45rem !important;
+  }
+
+  .ngb-dp-arrow button {
+    padding: 0.1rem 0.3rem !important;
+    border-radius: 4px !important;
+
+    &:hover {
+      background-color: #f1f5f9 !important;
+    }
+  }
+
+  .ngb-dp-weekdays {
+    background: transparent !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    padding-bottom: 2px !important;
+  }
+
+  .ngb-dp-weekday {
+    font-size: 0.68rem !important;
+    font-weight: 600 !important;
+    color: #94a3b8 !important;
+    font-style: normal !important;
+    width: 1.65rem !important;
+  }
+}
+
+.custom-day {
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 1.65rem;
+  width: 1.65rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #334155;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+
+  &.range {
+    background-color: #4680ff !important;
+    color: #ffffff !important;
+    border-radius: 4px !important;
+  }
+
+  &.faded {
+    background-color: #edf4ff !important;
+    color: #2563eb !important;
+    border-radius: 0 !important;
+  }
+
+  &:hover:not(.range) {
+    background-color: #f1f5f9;
+  }
+}

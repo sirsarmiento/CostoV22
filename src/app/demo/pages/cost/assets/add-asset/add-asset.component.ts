@@ -23,8 +23,14 @@ export class AddAssetComponent implements OnInit {
   loading = false;
   submitted = false;
 
-  categoriasExistentes: string[] = [];
-  subcategoriasExistentes: string[] = [];
+  allFijoSubcategoriasMap = new Map<string, Set<string>>();
+  allCirculanteSubcategoriasMap = new Map<string, Set<string>>();
+
+  categoriasFijoList: string[] = [];
+  subcategoriasFijoList: string[] = [];
+
+  categoriasCirculanteList: string[] = [];
+  subcategoriasCirculanteList: string[] = [];
 
   categoriasMaterialList: string[] = Object.keys(CATALOGO_MATERIALES);
   subcategoriasMaterialList: string[] = [];
@@ -43,42 +49,134 @@ export class AddAssetComponent implements OnInit {
   cargarListasSugerencias() {
     this.assetService.getAssets().subscribe({
       next: (assets) => {
-        const catMap = new Map<string, string>();
-        const subMap = new Map<string, string>();
+        const catFijoMap = new Map<string, string>();
+        const subFijoMap = new Map<string, string>();
+        const catCircMap = new Map<string, string>();
+        const subCircMap = new Map<string, string>();
+
+        this.allFijoSubcategoriasMap.clear();
+        this.allCirculanteSubcategoriasMap.clear();
 
         assets.forEach(a => {
           const rawRec = a as unknown as Record<string, unknown>;
-          const cat = String(a.categoria || rawRec['Categoria'] || '').trim();
-          const sub = String(a.subCategoria || rawRec['subcategoria'] || rawRec['Subcategoria'] || '').trim();
+          const tipo = String(a.tipo || rawRec['tipo'] || '').toLowerCase().trim();
+          const cat = this.formatTitleCase(String(a.categoria || rawRec['Categoria'] || '').trim());
+          const sub = this.formatTitleCase(String(a.subCategoria || rawRec['subcategoria'] || rawRec['Subcategoria'] || rawRec['sub_categoria'] || '').trim());
 
-          if (cat) {
-            const key = cat.toLowerCase();
-            if (!catMap.has(key)) catMap.set(key, this.formatTitleCase(cat));
-          }
-          if (sub) {
-            const key = sub.toLowerCase();
-            if (!subMap.has(key)) subMap.set(key, this.formatTitleCase(sub));
+          if (tipo === 'fijo' || (!tipo && a.vidaUtil && a.vidaUtil > 0)) {
+            if (cat) {
+              catFijoMap.set(cat.toLowerCase(), cat);
+              if (!this.allFijoSubcategoriasMap.has(cat.toLowerCase())) {
+                this.allFijoSubcategoriasMap.set(cat.toLowerCase(), new Set<string>());
+              }
+              if (sub) {
+                this.allFijoSubcategoriasMap.get(cat.toLowerCase())!.add(sub);
+              }
+            }
+            if (sub) subFijoMap.set(sub.toLowerCase(), sub);
+          } else if (tipo === 'circulante' || (!tipo && (!a.vidaUtil || a.vidaUtil === 0))) {
+            if (cat) {
+              catCircMap.set(cat.toLowerCase(), cat);
+              if (!this.allCirculanteSubcategoriasMap.has(cat.toLowerCase())) {
+                this.allCirculanteSubcategoriasMap.set(cat.toLowerCase(), new Set<string>());
+              }
+              if (sub) {
+                this.allCirculanteSubcategoriasMap.get(cat.toLowerCase())!.add(sub);
+              }
+            }
+            if (sub) subCircMap.set(sub.toLowerCase(), sub);
           }
         });
 
-        this.categoriasExistentes = Array.from(catMap.values()).sort();
-        this.subcategoriasExistentes = Array.from(subMap.values()).sort();
+        this.categoriasFijoList = Array.from(catFijoMap.values()).sort();
+        this.categoriasCirculanteList = Array.from(catCircMap.values()).sort();
+
+        // Filtrar subcategorías según la categoría seleccionada actualmente
+        const catActual = this.form.get('categoria')?.value;
+        const tipoActual = this.form.get('tipo')?.value;
+        if (tipoActual === 'Fijo') {
+          this.filtrarSubcategoriasFijo(catActual);
+        } else if (tipoActual === 'Circulante') {
+          this.filtrarSubcategoriasCirculante(catActual);
+        }
       }
     });
   }
 
-  agregarCategoria = (term: string): string => {
+  filtrarSubcategoriasFijo(categoria?: string) {
+    if (!categoria) {
+      this.subcategoriasFijoList = [];
+      return;
+    }
+    const catClean = categoria.toLowerCase().trim();
+    const setSub = this.allFijoSubcategoriasMap.get(catClean);
+    if (setSub && setSub.size > 0) {
+      this.subcategoriasFijoList = Array.from(setSub)
+        .filter(s => s.toLowerCase().trim() !== catClean && s.toLowerCase().trim() !== catClean + 's')
+        .sort();
+      return;
+    }
+    this.subcategoriasFijoList = [];
+  }
+
+  filtrarSubcategoriasCirculante(categoria?: string) {
+    if (!categoria) {
+      this.subcategoriasCirculanteList = [];
+      return;
+    }
+    const catClean = categoria.toLowerCase().trim();
+    const setSub = this.allCirculanteSubcategoriasMap.get(catClean);
+    if (setSub && setSub.size > 0) {
+      this.subcategoriasCirculanteList = Array.from(setSub)
+        .filter(s => s.toLowerCase().trim() !== catClean && s.toLowerCase().trim() !== catClean + 's')
+        .sort();
+      return;
+    }
+    this.subcategoriasCirculanteList = [];
+  }
+
+  agregarCategoriaFijo = (term: string): string => {
     const formatted = this.formatTitleCase(term);
-    if (formatted && !this.categoriasExistentes.some(c => c.toLowerCase() === formatted.toLowerCase())) {
-      this.categoriasExistentes = [...this.categoriasExistentes, formatted].sort();
+    if (formatted && !this.categoriasFijoList.some(c => c.toLowerCase() === formatted.toLowerCase())) {
+      this.categoriasFijoList = [...this.categoriasFijoList, formatted].sort();
     }
     return formatted;
   };
 
-  agregarSubcategoria = (term: string): string => {
+  agregarSubcategoriaFijo = (term: string): string => {
     const formatted = this.formatTitleCase(term);
-    if (formatted && !this.subcategoriasExistentes.some(c => c.toLowerCase() === formatted.toLowerCase())) {
-      this.subcategoriasExistentes = [...this.subcategoriasExistentes, formatted].sort();
+    if (formatted && !this.subcategoriasFijoList.some(c => c.toLowerCase() === formatted.toLowerCase())) {
+      this.subcategoriasFijoList = [...this.subcategoriasFijoList, formatted].sort();
+      const catActual = this.form.get('categoria')?.value;
+      if (catActual) {
+        if (!this.allFijoSubcategoriasMap.has(catActual.toLowerCase())) {
+          this.allFijoSubcategoriasMap.set(catActual.toLowerCase(), new Set<string>());
+        }
+        this.allFijoSubcategoriasMap.get(catActual.toLowerCase())!.add(formatted);
+      }
+    }
+    return formatted;
+  };
+
+  agregarCategoriaCirculante = (term: string): string => {
+    const formatted = this.formatTitleCase(term);
+    if (formatted && !this.categoriasCirculanteList.some(c => c.toLowerCase() === formatted.toLowerCase())) {
+      this.categoriasCirculanteList = [...this.categoriasCirculanteList, formatted].sort();
+    }
+    return formatted;
+  };
+
+  agregarSubcategoriaCirculante = (term: string): string => {
+    const formatted = this.formatTitleCase(term);
+    if (formatted && !this.subcategoriasCirculanteList.some(c => c.toLowerCase() === formatted.toLowerCase())) {
+      this.subcategoriasCirculanteList = [...this.subcategoriasCirculanteList, formatted].sort();
+      const catActual = this.form.get('categoria')?.value;
+      if (catActual) {
+        if (!this.allCirculanteSubcategoriasMap.has(catActual.toLowerCase())) {
+          this.allCirculanteSubcategoriasMap.set(catActual.toLowerCase(), new Set<string>());
+        }
+        this.allCirculanteSubcategoriasMap.get(catActual.toLowerCase())!.add(formatted);
+      }
     }
     return formatted;
   };
@@ -115,7 +213,7 @@ export class AddAssetComponent implements OnInit {
 
         this.form.patchValue({
           nombre: data.nombre,
-          costoInicial: data.costoInicial,
+          costoInicial: data.costoInicial || data.valorUnitario || 0,
           valorResidual: data.valorResidual,
           vidaUtil: data.vidaUtil,
           fechaCompra: dateVal,
@@ -125,7 +223,7 @@ export class AddAssetComponent implements OnInit {
           presentacion: data.presentacion,
           descripcion: data.descripcion,
           ubicacion: data.ubicacion,
-          valorUnitario: data.valorUnitario,
+          valorUnitario: data.valorUnitario || data.costoInicial || 0,
           categoria: catLimpia,
           subcategoria: data.subCategoria || ((data as unknown as Record<string, unknown>)['subcategoria'] as string) || ((data as unknown as Record<string, unknown>)['Subcategoria'] as string) || '',
           consumoMaquina: data.consumoMaquina,
@@ -182,15 +280,26 @@ export class AddAssetComponent implements OnInit {
       if (tipo === 'Material' && !this.form.get('categoria')?.value) {
         this.form.get('categoria')?.setValue('Filamento');
       }
+      const cat = this.form.get('categoria')?.value;
+      if (tipo === 'Fijo') {
+        this.filtrarSubcategoriasFijo(cat);
+      } else if (tipo === 'Circulante') {
+        this.filtrarSubcategoriasCirculante(cat);
+      }
       this.actualizarValidaciones(tipo);
       this.isSwitchingType = false;
     });
 
     this.form.get('categoria')?.valueChanges.subscribe((cat) => {
-      if (this.form.get('tipo')?.value === 'Material') {
+      const tipo = this.form.get('tipo')?.value;
+      if (tipo === 'Material') {
         this.actualizarSubcategoriasMaterial(cat);
+      } else if (tipo === 'Fijo') {
+        this.filtrarSubcategoriasFijo(cat);
+      } else if (tipo === 'Circulante') {
+        this.filtrarSubcategoriasCirculante(cat);
       }
-      this.actualizarValidaciones(this.form.get('tipo')?.value);
+      this.actualizarValidaciones(tipo);
     });
   }
 
@@ -201,13 +310,14 @@ export class AddAssetComponent implements OnInit {
 
   private actualizarValidaciones(tipo: string) {
     const camposFijos = ['valorResidual', 'vidaUtil', 'fechaCompra', 'cantidad'];
-    const camposCirculantes = ['cantidad', 'valorUnitario', 'ubicacion'];
+    const camposCirculantes = ['cantidad', 'costoInicial'];
     const camposEquipo = ['consumoMaquina', 'tarifa', 'costoMantenimiento'];
+
+    // Asegurarnos de que ubicación nunca sea requerida
+    this.setValidators(['ubicacion'], []);
 
     if (tipo === 'Fijo') {
       this.setValidators(camposFijos, [Validators.required]);
-      this.setValidators(['valorUnitario', 'ubicacion'], []);
-      this.form.get('costoInicial')?.enable();
 
       if (this.isEquipoCategory) {
         this.setValidators(camposEquipo, []);
@@ -218,7 +328,6 @@ export class AddAssetComponent implements OnInit {
       this.setValidators(camposFijos, []);
       this.setValidators(camposCirculantes, [Validators.required]);
       this.setValidators(camposEquipo, []);
-      this.form.get('costoInicial')?.disable(); 
     }
   }
 
@@ -241,10 +350,6 @@ export class AddAssetComponent implements OnInit {
     }
 
     const calcular = () => {
-      if (this.f['tipo'].value === 'Circulante') {
-        const total = (this.f['cantidad'].value || 0) * (this.f['valorUnitario'].value || 0);
-        this.form.get('costoInicial')?.setValue(total, { emitEvent: false });
-      }
     };
 
     this.form.get('cantidad')?.valueChanges.subscribe(calcular);
@@ -301,7 +406,7 @@ export class AddAssetComponent implements OnInit {
       costoMantenimiento: (formValues.tipo === 'Fijo' && formValues.categoria === 'Equipo') ? (Number(formValues.costoMantenimiento) || 0) : 0,
 
       cantidad: Number(formValues.cantidad) || 1,
-      valorUnitario: formValues.tipo === 'Circulante' ? (Number(formValues.valorUnitario) || 0) : 0,
+      valorUnitario: formValues.tipo === 'Circulante' ? (Number(formValues.costoInicial) || Number(formValues.valorUnitario) || 0) : 0,
       unidadMedida: formValues.tipo === 'Circulante' ? formValues.unidadMedida : '',
       presentacion: formValues.tipo === 'Circulante' ? formValues.presentacion : '',
       descripcion: formValues.tipo === 'Circulante' ? formValues.descripcion : '',

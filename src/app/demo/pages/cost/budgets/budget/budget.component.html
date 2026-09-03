@@ -68,7 +68,7 @@
                     </span>
                   </td>
                   <td>
-                    <div class="cell-name-clamp" [attr.title]="row.descripcion">{{ row.descripcion }}</div>
+                    <div class="cell-name-clamp" [attr.title]="getDescripcionOProducto(row)">{{ getDescripcionOProducto(row) }}</div>
                   </td>
                   <td>{{ row.fecha | date: 'dd/MM/yyyy' }}</td>
                   <td class="fw-bold text-success">${{ (row.costoTotalFinal || 0) | number: '1.2-2' }}</td>

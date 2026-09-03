@@ -18,6 +18,9 @@ import { InventoryService } from '../../../../../core/services/cost/inventory.se
 
 import { NgSelectModule } from '@ng-select/ng-select';
 
+import { Product } from '../../../../../core/models/Cost/product';
+import { ProductService } from '../../../../../core/services/cost/product.service';
+
 @Component({
   selector: 'app-budget',
   standalone: true,
@@ -31,6 +34,7 @@ export class BudgetComponent implements OnInit {
   private fixeService = inject(FixeService);
   private assetService = inject(AssetService);
   private clientService = inject(ClientService);
+  private productService = inject(ProductService);
   private cdr = inject(ChangeDetectorRef);
   public authService = inject(AuthService);
   private inventoryService = inject(InventoryService);
@@ -57,6 +61,7 @@ export class BudgetComponent implements OnInit {
   filteredBudgets: Budget[] = [];
   paginatedBudgets: Budget[] = [];
   allAssets: Asset[] = [];
+  allProducts: Product[] = [];
   capacidadHorasMaquina = 160;
   totalFijoIndirecto = 0;
 
@@ -74,8 +79,12 @@ export class BudgetComponent implements OnInit {
     forkJoin({
       configs: this.configService.getConfigs(),
       fixes: this.fixeService.getFixes(),
-      assets: this.assetService.getAssets()
+      assets: this.assetService.getAssets(),
+      products: this.productService.getProducts()
     }).subscribe(data => {
+      if (data.products) {
+        this.allProducts = data.products;
+      }
       if (data.configs && data.configs.length > 0) {
         const configObj = data.configs[0];
         let capacidad = 0;
@@ -102,6 +111,22 @@ export class BudgetComponent implements OnInit {
     }, () => {
       this.getBudgets();
     });
+  }
+
+  getDescripcionOProducto(row: Budget): string {
+    const rawR = row as unknown as Record<string, unknown>;
+    const prodId = Number(row.producto ?? rawR['producto_id'] ?? rawR['productoId']);
+    if (prodId && this.allProducts.length > 0) {
+      const found = this.allProducts.find(p => p.id == prodId);
+      if (found && found.nombre) {
+        return found.nombre;
+      }
+    }
+    const prodObj = rawR['producto'] as Record<string, unknown> | undefined;
+    if (prodObj && typeof prodObj === 'object' && prodObj['nombre']) {
+      return String(prodObj['nombre']);
+    }
+    return row.descripcion || 'Sin descripción';
   }
 
   getBudgets() {
@@ -189,6 +214,7 @@ export class BudgetComponent implements OnInit {
       temp = temp.filter(b => 
         (b.sku || '').toLowerCase().includes(query) ||
         (b.descripcion || '').toLowerCase().includes(query) ||
+        this.getDescripcionOProducto(b).toLowerCase().includes(query) ||
         (b.numero || '').toLowerCase().includes(query)
       );
     }
@@ -357,13 +383,36 @@ export class BudgetComponent implements OnInit {
       const g = (Number(pRec['gramos'] ?? p.gramos) || 0) * cant;
       const h = Number(pRec['horas'] ?? p.horas) || 0;
       const min = Number(pRec['minutos'] ?? p.minutos) || 0;
-      const matCost = p.tipo === 'Del Inventario' ? 0 : g * (Number(pRec['precioMaterial'] ?? p.precioMaterial) || 0);
+      
+      let matCost: number;
+      const tipo = String(pRec['tipo'] ?? p.tipo ?? '');
+      if (tipo === 'Del Inventario') {
+        const actId = pRec['activo'] ?? pRec['activo_id'] ?? pRec['assetId'] ?? p.activo;
+        let unitVal = 0;
+        if (actId && this.allAssets && this.allAssets.length > 0) {
+          const found = this.allAssets.find(a => a.id == actId);
+          if (found) {
+            unitVal = Number(found.costoInicial || found.valorUnitario) || Number((found as unknown as Record<string, unknown>)['precio']) || 0;
+          }
+        }
+        if (unitVal <= 0) {
+          unitVal = Number(pRec['costoInicial'] ?? pRec['valorUnitario'] ?? pRec['precio'] ?? pRec['precioMaterial'] ?? p.precioMaterial) || 0;
+        }
+        matCost = unitVal * cant;
+      } else {
+        let precioMat = Number(pRec['precioMaterial'] ?? pRec['precio_material'] ?? p.precioMaterial) || 0;
+        if (precioMat >= 1.0) {
+          precioMat = precioMat / 1000;
+        }
+        matCost = g * precioMat;
+      }
+
       const maqCost = res.costoMaquinaRate * ((h + (min / 60)) * cant);
 
       return `
         <tr>
           <td class="text-start fw-medium">${p.nombre || 'Pieza'} ${cant > 1 ? `(x${cant})` : ''}</td>
-          <td>${g.toFixed(2)}</td>
+          <td>${g > 0 ? g.toFixed(2) : '-'}</td>
           <td>${h * cant}</td>
           <td>${min * cant}</td>
           <td>$${matCost.toFixed(2)}</td>
@@ -525,7 +574,7 @@ export class BudgetComponent implements OnInit {
                     <th class="fw-semibold border-0 text-white py-2">Gramos</th>
                     <th class="fw-semibold border-0 text-white py-2">Horas</th>
                     <th class="fw-semibold border-0 text-white py-2">Minutos</th>
-                    <th class="fw-semibold border-0 text-white py-2">Costo Material</th>
+                    <th class="fw-semibold border-0 text-white py-2">Costo Insumo / Mat.</th>
                     <th class="fw-semibold border-0 text-white py-2 pe-2">Costo Máquina</th>
                   </tr>
                 </thead>

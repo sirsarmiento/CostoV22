@@ -212,7 +212,7 @@ export class DefaultComponent implements OnInit {
     }
 
     const prodRec = selectedProd as unknown as Record<string, unknown>;
-    const piezas = (selectedProd.piezasBase || prodRec['piezas'] || prodRec['piezasProducto'] || []) as Record<string, unknown>[];
+    const piezas = (selectedProd.piezasProducto || prodRec['piezas_producto'] || prodRec['piezas'] || []) as Record<string, unknown>[];
 
     const res = calculateBudgetTotals({
       piezas,

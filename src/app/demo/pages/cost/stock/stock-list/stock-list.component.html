@@ -1,110 +1,443 @@
-<div class="mb-4">
-  <ol class="breadcrumb mb-0"><li class="breadcrumb-item active">Stock y desacople</li></ol>
+<div class="row mb-4">
+  <div class="col-12">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a routerLink="/stock">Inventario</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Control de Stock y Movimientos</li>
+      </ol>
+    </nav>
+  </div>
 </div>
 
-<ul class="nav nav-tabs mb-4">
-  <li class="nav-item"><button class="nav-link" [class.active]="activeTab === 'stock'" (click)="activeTab = 'stock'" type="button">Producto terminado</button></li>
-  <li class="nav-item"><button class="nav-link" [class.active]="activeTab === 'movimientos'" (click)="activeTab = 'movimientos'" type="button">Kardex</button></li>
-  <li class="nav-item"><button class="nav-link" [class.active]="activeTab === 'desacople'" (click)="activeTab = 'desacople'" type="button">Desacople</button></li>
-</ul>
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
 
-@if (activeTab === 'stock') {
-  <div class="card">
-    <div class="card-body table-responsive">
-      <table class="table table-hover table-sm align-middle mb-0">
-        <thead class="table-light">
-          <tr><th>Producto</th><th>SKU</th><th>Stock</th><th>Ingresar (consume BOM)</th></tr>
-        </thead>
-        <tbody>
-          @for (row of stock; track row.id) {
-            <tr>
-              <td class="fw-bold">{{ row.nombre }}</td>
-              <td>{{ row.sku || '-' }}</td>
-              <td>{{ row.cantidadStock | number:'1.0-2' }}</td>
-              <td>
-                <div class="d-flex gap-2" style="max-width: 280px;">
-                  <input type="number" class="form-control form-control-sm" [(ngModel)]="ingresoQty[row.id]" min="0.01" placeholder="Cant.">
-                  <button class="btn btn-sm btn-primary" (click)="ingresar(row)">Ingresar</button>
-                </div>
-              </td>
-            </tr>
-          } @empty {
-            <tr><td colspan="4" class="text-center py-4 text-muted">No hay productos de catálogo.</td></tr>
-          }
-        </tbody>
-      </table>
-    </div>
-  </div>
-}
+        <!-- Tabs idénticas a Activos -->
+        <ul class="nav nav-tabs mb-4" id="stockTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" [class.active]="activeTab === 'stock'" (click)="activeTab = 'stock'" type="button">Producto Terminado</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" [class.active]="activeTab === 'movimientos'" (click)="activeTab = 'movimientos'" type="button">Movimientos (Kardex)</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" [class.active]="activeTab === 'desacople'" (click)="activeTab = 'desacople'" type="button">Desacople / Recuperación</button>
+          </li>
+        </ul>
 
-@if (activeTab === 'movimientos') {
-  <div class="card">
-    <div class="card-body table-responsive">
-      <table class="table table-hover table-sm align-middle mb-0">
-        <thead class="table-light">
-          <tr><th>Fecha</th><th>Tipo</th><th>Activo / Producto</th><th>Cantidad</th><th>Detalle</th></tr>
-        </thead>
-        <tbody>
-          @for (row of movements; track row.id) {
-            <tr>
-              <td>{{ row.createAt }}</td>
-              <td><span class="badge bg-light-info">{{ row.tipo }}</span></td>
-              <td>{{ row.activo?.nombre || row.producto?.nombre || '-' }}</td>
-              <td>{{ row.cantidad }}</td>
-              <td>{{ row.observacion }}</td>
-            </tr>
-          } @empty {
-            <tr><td colspan="5" class="text-center py-4 text-muted">Sin movimientos.</td></tr>
-          }
-        </tbody>
-      </table>
-    </div>
-  </div>
-}
+        <!-- TAB 1: PRODUCTO TERMINADO -->
+        @if (activeTab === 'stock') {
+          <div class="row mb-3 g-2">
+            <div class="col-md-4">
+              <input 
+                type="text" 
+                class="form-control" 
+                placeholder="Buscar por nombre o SKU..." 
+                [(ngModel)]="searchTerm" 
+                (input)="onSearch()">
+            </div>
+          </div>
 
-@if (activeTab === 'desacople') {
-  <div class="card">
-    <div class="card-body">
-      <p class="text-muted">Baja producto terminado no vendido o fallido, reintegra materiales reutilizables y registra merma.</p>
-      <form [formGroup]="decoupleForm">
-        <div class="row g-3">
-          <div class="col-md-6">
-            <label class="form-label">Producto terminado</label>
-            <ng-select formControlName="producto" [items]="stock" bindValue="id" bindLabel="nombre" appendTo="body"></ng-select>
+          <div class="table-responsive mb-3">
+            <table class="table table-hover align-middle mb-0 table-sm">
+              <thead class="table-light">
+                <tr>
+                  <th style="cursor: pointer;" (click)="sortData('nombre')">
+                    Producto <i class="ti fs-6" [class]="getSortClass('nombre')"></i>
+                  </th>
+                  <th style="cursor: pointer;" (click)="sortData('sku')">
+                    SKU <i class="ti fs-6" [class]="getSortClass('sku')"></i>
+                  </th>
+                  <th style="cursor: pointer;" (click)="sortData('cantidadStock')">
+                    Stock Disponible <i class="ti fs-6" [class]="getSortClass('cantidadStock')"></i>
+                  </th>
+                  <th style="width: 180px;">Ingreso a Stock</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of paginatedStock; track row.id) {
+                  <tr>
+                    <td class="fw-bold">{{ row.nombre }}</td>
+                    <td><span class="badge bg-light-secondary text-secondary">{{ row.sku || '-' }}</span></td>
+                    <td class="fw-bold">{{ row.cantidadStock | number:'1.0-2' }}</td>
+                    <td>
+                      <div class="d-flex align-items-center gap-2">
+                        <input 
+                          type="number" 
+                          class="form-control form-control-sm" 
+                          style="max-width: 90px;"
+                          [(ngModel)]="ingresoQty[row.id]" 
+                          min="1" 
+                          placeholder="Cant.">
+                        <button 
+                          class="btn btn-sm btn-primary d-inline-flex align-items-center justify-content-center" 
+                          style="width: 36px; height: 36px; padding: 0;"
+                          (click)="ingresar(row)" 
+                          title="Ingresar unidades a stock descontando materiales (BOM)">
+                          <i class="ti ti-plus fs-5"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="4" class="text-center py-4 text-muted">No se encontraron productos de catálogo.</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
           </div>
-          <div class="col-md-3">
-            <label class="form-label">Unidades a desacoplar</label>
-            <input type="number" class="form-control" formControlName="cantidadProducto">
-          </div>
-          <div class="col-md-3">
-            <label class="form-label">Observación</label>
-            <input class="form-control" formControlName="observacion">
-          </div>
-        </div>
-        <h6 class="mt-4">Materiales</h6>
-        <div formArrayName="lineas">
-          @for (linea of decoupleLines.controls; track $index; let i = $index) {
-            <div class="row g-2 mb-2" [formGroupName]="i">
-              <div class="col-md-6">
-                <ng-select formControlName="activo" [items]="circulantes" bindValue="id" bindLabel="nombre" placeholder="Circulante" appendTo="body"></ng-select>
+
+          <!-- Paginación Estándar -->
+          @if (filteredStock.length > 0) {
+            <div class="d-flex flex-column flex-md-row justify-content-end align-items-center mt-3 gap-4 text-muted" style="font-size: 0.875rem;">
+              <div class="d-flex align-items-center gap-2">
+                <span>Filas por página:</span>
+                <select class="form-select form-select-sm border-0 shadow-none bg-light fw-medium" style="width: 70px; cursor: pointer;" [(ngModel)]="pageSize" (change)="onPageSizeChange()">
+                  <option [ngValue]="5">5</option>
+                  <option [ngValue]="10">10</option>
+                  <option [ngValue]="20">20</option>
+                  <option [ngValue]="50">50</option>
+                </select>
               </div>
-              <div class="col-md-2">
-                <input type="number" class="form-control" formControlName="recuperado" placeholder="Recuperado">
-              </div>
-              <div class="col-md-2">
-                <input type="number" class="form-control" formControlName="merma" placeholder="Merma">
-              </div>
-              <div class="col-md-2">
-                <button type="button" class="btn btn-light-danger btn-sm" (click)="removeDecoupleLine(i)">Quitar</button>
+              <span>
+                {{ (currentPage - 1) * pageSize + 1 }}-{{ Math.min(currentPage * pageSize, filteredStock ? filteredStock.length : 0) }} de {{ filteredStock ? filteredStock.length : 0 }}
+              </span>
+              <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-sm btn-icon rounded-pill btn-light shadow-sm" [disabled]="currentPage === 1" (click)="setPage(currentPage - 1)" title="Anterior">
+                  <i class="ti ti-chevron-left fs-5"></i>
+                </button>
+                <button class="btn btn-sm btn-icon rounded-pill btn-light shadow-sm" [disabled]="currentPage === totalPages" (click)="setPage(currentPage + 1)" title="Siguiente">
+                  <i class="ti ti-chevron-right fs-5"></i>
+                </button>
               </div>
             </div>
           }
-        </div>
-        <button type="button" class="btn btn-outline-primary btn-sm" (click)="addDecoupleLine()">Agregar material</button>
-        <div class="text-end mt-4">
-          <button type="button" class="btn btn-primary" (click)="saveDecouple()">Registrar desacople</button>
-        </div>
-      </form>
+        }
+
+        <!-- TAB 2: MOVIMIENTOS KARDEX -->
+        @if (activeTab === 'movimientos') {
+          <div class="row mb-3 g-2 align-items-end">
+            <div class="col-md-3">
+              <label class="form-label small text-muted mb-1">Buscar</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                placeholder="Activo, producto o detalle..." 
+                [(ngModel)]="searchTerm" 
+                (input)="onSearch()">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small text-muted mb-1">Tipo de Movimiento</label>
+              <ng-select 
+                [(ngModel)]="movTipoFiltro" 
+                [items]="tiposMovimientoList" 
+                bindValue="value" 
+                bindLabel="label" 
+                [clearable]="false"
+                [searchable]="false"
+                (change)="onMovFilterChange()">
+              </ng-select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small text-muted mb-1">Rango de Fechas</label>
+              <div ngbDropdown #dateDrop="ngbDropdown" class="d-inline-block w-100" [autoClose]="'outside'" container="body">
+                <div 
+                  class="date-range-box d-flex align-items-center justify-content-between no-caret" 
+                  ngbDropdownToggle>
+                  <div class="d-flex align-items-center gap-2 text-truncate">
+                    <i class="ti ti-calendar fs-5 text-primary"></i>
+                    <span [class.text-muted]="!rangoFechasTexto" class="text-truncate" style="font-size: 0.85rem;">
+                      {{ rangoFechasTexto || 'Filtrar por rango de fechas...' }}
+                    </span>
+                  </div>
+                  <div class="d-flex align-items-center">
+                    @if (fromDate || toDate) {
+                      <i 
+                        class="ti ti-x text-muted fs-5 cursor-pointer p-1" 
+                        (click)="limpiarRangoFechas($event)" 
+                        title="Limpiar fecha">
+                      </i>
+                    } @else {
+                      <i class="ti ti-chevron-down text-muted fs-6"></i>
+                    }
+                  </div>
+                </div>
+                
+                <div ngbDropdownMenu class="p-3 date-dropdown-card mt-1">
+                  <!-- Presets rápidos estilo chips minimalistas -->
+                  <div class="d-flex align-items-center justify-content-center gap-1 mb-2 pb-2 border-bottom">
+                    <span class="preset-pill" (click)="seleccionarPreset('hoy', dateDrop)">Hoy</span>
+                    <span class="preset-pill" (click)="seleccionarPreset('7dias', dateDrop)">7 días</span>
+                    <span class="preset-pill" (click)="seleccionarPreset('esteMes', dateDrop)">Este mes</span>
+                    <span class="preset-pill" (click)="seleccionarPreset('todo', dateDrop)">Todo</span>
+                  </div>
+
+                  <!-- Calendario interactivo NgbDatepicker -->
+                  <div class="d-flex justify-content-center">
+                    <ngb-datepicker 
+                      #dp 
+                      (dateSelect)="onDateSelection($event, dateDrop)" 
+                      [displayMonths]="1" 
+                      navigation="select"
+                      [minDate]="minDate"
+                      [maxDate]="maxDate"
+                      [dayTemplate]="t" 
+                      outsideDays="hidden">
+                    </ngb-datepicker>
+                  </div>
+
+                  <ng-template #t let-date let-focused="focused">
+                    <span 
+                      class="custom-day" 
+                      [class.focused]="focused" 
+                      [class.range]="isRange(date)" 
+                      [class.faded]="isHovered(date) || isInside(date)" 
+                      (mouseenter)="hoveredDate = date" 
+                      (mouseleave)="hoveredDate = null">
+                      {{ date.day }}
+                    </span>
+                  </ng-template>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-2">
+              <button 
+                type="button" 
+                class="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center gap-1"
+                style="height: 38px;"
+                (click)="limpiarFiltrosMovimientos()"
+                title="Limpiar Todos los Filtros">
+                <i class="ti ti-filter-off fs-5"></i>
+                <span>Limpiar</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="table-responsive mb-3">
+            <table class="table table-hover align-middle mb-0 table-sm">
+              <thead class="table-light">
+                <tr>
+                  <th>Fecha y Hora</th>
+                  <th>Tipo</th>
+                  <th>Activo / Producto</th>
+                  <th>Cantidad</th>
+                  <th>Detalle</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of paginatedMovements; track row.id) {
+                  <tr>
+                    <td class="text-nowrap">{{ formatFechaLocal(row.createAt) }}</td>
+                    <td>
+                      <span class="badge" [ngClass]="getTipoBadgeClass(row.tipo)">
+                        {{ getTipoMovimiento(row) }}
+                      </span>
+                    </td>
+                    <td class="fw-bold">{{ row.activo?.nombre || row.producto?.nombre || '-' }}</td>
+                    <td class="fw-bold">{{ row.cantidad }}</td>
+                    <td>{{ row.observacion || '-' }}</td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="5" class="text-center py-4 text-muted">Sin movimientos registrados con los filtros aplicados.</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Paginación Estándar Movimientos -->
+          @if (filteredMovements.length > 0) {
+            <div class="d-flex flex-column flex-md-row justify-content-end align-items-center mt-3 gap-4 text-muted" style="font-size: 0.875rem;">
+              <div class="d-flex align-items-center gap-2">
+                <span>Filas por página:</span>
+                <select class="form-select form-select-sm border-0 shadow-none bg-light fw-medium" style="width: 70px; cursor: pointer;" [(ngModel)]="movPageSize" (change)="onMovPageSizeChange()">
+                  <option [ngValue]="5">5</option>
+                  <option [ngValue]="10">10</option>
+                  <option [ngValue]="20">20</option>
+                  <option [ngValue]="50">50</option>
+                </select>
+              </div>
+              <span>
+                {{ (movCurrentPage - 1) * movPageSize + 1 }}-{{ Math.min(movCurrentPage * movPageSize, filteredMovements ? filteredMovements.length : 0) }} de {{ filteredMovements ? filteredMovements.length : 0 }}
+              </span>
+              <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-sm btn-icon rounded-pill btn-light shadow-sm" [disabled]="movCurrentPage === 1" (click)="setMovPage(movCurrentPage - 1)" title="Anterior">
+                  <i class="ti ti-chevron-left fs-5"></i>
+                </button>
+                <button class="btn btn-sm btn-icon rounded-pill btn-light shadow-sm" [disabled]="movCurrentPage === movTotalPages" (click)="setMovPage(movCurrentPage + 1)" title="Siguiente">
+                  <i class="ti ti-chevron-right fs-5"></i>
+                </button>
+              </div>
+            </div>
+          }
+        }
+
+        <!-- TAB 3: DESACOPLE -->
+        @if (activeTab === 'desacople') {
+          <p class="text-muted mb-4">Baja producto terminado no vendido o fallido, reintegra materiales reutilizables y registra merma.</p>
+          <form [formGroup]="decoupleForm">
+            <!-- Datos del Producto -->
+            <div class="row g-3 mb-4">
+              <div class="col-md-6">
+                <label class="form-label">Producto Terminado</label>
+                <ng-select 
+                  formControlName="producto" 
+                  [items]="stock" 
+                  bindValue="id" 
+                  bindLabel="nombre" 
+                  placeholder="Seleccione..."
+                  appendTo="body"
+                  [searchable]="true"
+                  [clearable]="false"
+                  [class.is-invalid]="decoupleSubmitted && decoupleForm.get('producto')?.errors">
+                </ng-select>
+                @if (decoupleSubmitted && decoupleForm.get('producto')?.errors) {
+                  <div class="invalid-feedback d-block">Seleccione el producto a desacoplar</div>
+                }
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">Unidades a Desacoplar</label>
+                <input 
+                  type="number" 
+                  min="1" 
+                  class="form-control" 
+                  formControlName="cantidadProducto"
+                  [class.is-invalid]="decoupleSubmitted && decoupleForm.get('cantidadProducto')?.errors">
+                @if (decoupleSubmitted && decoupleForm.get('cantidadProducto')?.errors) {
+                  <div class="invalid-feedback">Ingrese una cantidad válida</div>
+                }
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">Observación</label>
+                <input class="form-control" formControlName="observacion" placeholder="Motivo del desacople">
+              </div>
+            </div>
+
+            <!-- Fila de Inputs para Agregar Material (Estilo Catálogo) -->
+            <div class="row g-3 align-items-end mt-2">
+              <div class="col-md-3">
+                <label class="form-label">Tipo de Insumo</label>
+                <ng-select 
+                  [(ngModel)]="tempTipoInsumo" 
+                  [ngModelOptions]="{standalone: true}" 
+                  [clearable]="false"
+                  (change)="onTipoInsumoChange()">
+                  <ng-option value="Circulante">Del Inventario (Producción)</ng-option>
+                  <ng-option value="Material">Material / Filamento</ng-option>
+                </ng-select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">
+                  @if (tempTipoInsumo === 'Circulante') {
+                    Activo Circulante (Producción)
+                  } @else {
+                    Material / Filamento
+                  }
+                </label>
+                <ng-select 
+                  [(ngModel)]="tempMaterialId"
+                  [ngModelOptions]="{standalone: true}"
+                  [items]="insumosFiltrados" 
+                  bindValue="id" 
+                  bindLabel="nombre" 
+                  [placeholder]="!decoupleForm.get('producto')?.value ? 'Seleccione primero un producto...' : (productoSinPiezas || insumosFiltrados.length === 0 ? 'Sin piezas registradas' : 'Seleccione insumo o material...')" 
+                  appendTo="body"
+                  [searchable]="true"
+                  [clearable]="false">
+                </ng-select>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">Recuperado</label>
+                <input 
+                  type="number" 
+                  min="0" 
+                  step="0.01" 
+                  class="form-control" 
+                  [(ngModel)]="tempRecuperado"
+                  [ngModelOptions]="{standalone: true}"
+                  placeholder="0.00">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">Merma</label>
+                <input 
+                  type="number" 
+                  min="0" 
+                  step="0.01" 
+                  class="form-control" 
+                  [(ngModel)]="tempMerma"
+                  [ngModelOptions]="{standalone: true}"
+                  placeholder="0.00">
+              </div>
+              <div class="col-auto d-flex align-items-end">
+                <button 
+                  type="button" 
+                  class="btn btn-primary btn-square-icon" 
+                  (click)="agregarMaterialDesacople()" 
+                  title="Agregar Material">
+                  <i class="ti ti-plus fs-4"></i>
+                </button>
+              </div>
+
+              <!-- Tabla de Materiales a Recuperar y Merma (Estilo Catálogo) -->
+              <div class="col-12 mt-4">
+                <div class="table-responsive border rounded-3">
+                  <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Material / Insumo Circulante</th>
+                        <th style="width: 200px;">Recuperado</th>
+                        <th style="width: 200px;">Merma</th>
+                        <th class="text-center" style="width: 100px;">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (item of materialesDesacople; track $index; let i = $index) {
+                        <tr>
+                          <td class="fw-medium">{{ item.nombre }}</td>
+                          <td class="fw-bold text-success">{{ item.recuperado | number:'1.0-2' }}</td>
+                          <td class="fw-bold text-danger">{{ item.merma | number:'1.0-2' }}</td>
+                          <td class="text-center">
+                            <button 
+                              type="button" 
+                              class="btn btn-sm btn-icon btn-light-danger" 
+                              (click)="removerMaterialDesacople(i)" 
+                              title="Eliminar">
+                              <i class="ti ti-trash fs-5"></i>
+                            </button>
+                          </td>
+                        </tr>
+                      } @empty {
+                        <tr>
+                          <td colspan="4" class="text-center py-4 text-muted">
+                            No hay materiales agregados para recuperar o merma.
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Botones de Acción -->
+            <div class="row mt-4 pt-3 border-top">
+              <div class="col-12 d-flex justify-content-end gap-2">
+                <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-1" type="button" (click)="activeTab = 'stock'">
+                  <i class="ti ti-rotate-clockwise fs-5"></i> Cancelar / Regresar
+                </button>
+                <button class="btn btn-primary d-inline-flex align-items-center gap-1" type="button" [disabled]="decoupleSubmitting" (click)="saveDecouple()">
+                  <i class="ti ti-device-floppy fs-5"></i> Registrar Desacople
+                </button>
+              </div>
+            </div>
+          </form>
+        }
+
+      </div>
     </div>
   </div>
-}
+</div>

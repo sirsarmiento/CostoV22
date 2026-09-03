@@ -10,6 +10,15 @@ import { provideToastr } from 'ngx-toastr';
 import { authInterceptor } from './app/core/interceptors/auth.interceptor';
 import { errorInterceptor } from './app/core/interceptors/error.interceptor';
 
+if (typeof (globalThis as unknown as { $localize: unknown }).$localize === 'undefined') {
+  (globalThis as unknown as { $localize: (parts: TemplateStringsArray, ...exprs: unknown[]) => string }).$localize = (
+    messageParts: TemplateStringsArray,
+    ...expressions: unknown[]
+  ) => {
+    return messageParts.reduce((acc, part, i) => acc + (expressions[i - 1] ?? '') + part, '');
+  };
+}
+
 if (environment.production) {
   enableProdMode();
 }

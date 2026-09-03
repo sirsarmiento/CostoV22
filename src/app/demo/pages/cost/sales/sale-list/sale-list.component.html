@@ -1,32 +1,110 @@
 <div class="row mb-4">
   <div class="col-sm-8">
-    <ol class="breadcrumb mb-0"><li class="breadcrumb-item active">Historial de ventas</li></ol>
-    <p class="text-muted mb-0 mt-1">Las ventas se originan desde un presupuesto. El stock de circulantes se descuenta al concretar.</p>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a routerLink="/sales">Ventas</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Historial de Ventas Concretadas</li>
+      </ol>
+    </nav>
   </div>
-  <div class="col-sm-4 text-sm-end">
-    <a class="btn btn-outline-primary" routerLink="/budgets">Ir a presupuestos</a>
+  <div class="col-sm-4 text-sm-end mt-2 mt-sm-0">
+    <a class="btn btn-primary d-inline-flex align-items-center gap-2" routerLink="/budgets">
+      <i class="ti ti-calculator fs-5"></i> Ir a Presupuestos
+    </a>
   </div>
 </div>
-<div class="card">
-  <div class="card-body table-responsive">
-    <table class="table table-hover table-sm align-middle mb-0">
-      <thead class="table-light">
-        <tr><th>Número</th><th>Fecha</th><th>Descripción</th><th>Cliente</th><th>Cantidad</th><th>Total</th></tr>
-      </thead>
-      <tbody>
-        @for (row of sales; track row.id) {
-          <tr>
-            <td>{{ row.numero }}</td>
-            <td>{{ row.fecha | date:'dd/MM/yyyy' }}</td>
-            <td>{{ row.descripcion }}</td>
-            <td>{{ row.cliente?.nombre || '-' }}</td>
-            <td>{{ row.cantidad }}</td>
-            <td class="fw-bold text-success">${{ (row.total || 0) | number:'1.2-2' }}</td>
-          </tr>
-        } @empty {
-          <tr><td colspan="6" class="text-center py-4 text-muted">Aún no hay ventas. Convierta un presupuesto desde el listado.</td></tr>
+
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        
+        <!-- Search Bar -->
+        <div class="row mb-3 g-2">
+          <div class="col-md-4">
+            <input 
+              type="text" 
+              class="form-control" 
+              placeholder="Buscar por número, cliente o descripción..." 
+              [(ngModel)]="searchTerm"
+              (input)="onSearchChange()">
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="table-responsive mb-3">
+          <table class="table table-hover align-middle mb-0 table-sm">
+            <thead class="table-light">
+              <tr>
+                <th style="cursor: pointer;" (click)="sortData('numero')">
+                  Nro. Venta <i class="ti fs-6" [class]="getSortClass('numero')"></i>
+                </th>
+                <th style="cursor: pointer;" (click)="sortData('fecha')">
+                  Fecha <i class="ti fs-6" [class]="getSortClass('fecha')"></i>
+                </th>
+                <th style="cursor: pointer;" (click)="sortData('descripcion')">
+                  Descripción <i class="ti fs-6" [class]="getSortClass('descripcion')"></i>
+                </th>
+                <th>Cliente</th>
+                <th style="cursor: pointer;" class="text-center" (click)="sortData('cantidad')">
+                  Cantidad <i class="ti fs-6" [class]="getSortClass('cantidad')"></i>
+                </th>
+                <th style="cursor: pointer;" class="text-end" (click)="sortData('total')">
+                  Total <i class="ti fs-6" [class]="getSortClass('total')"></i>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of paginatedSales; track row.id) {
+                <tr 
+                  (click)="selectedRow = selectedRow === row ? null : row"
+                  [class.table-primary]="selectedRow && selectedRow.id === row.id"
+                  style="cursor: pointer;">
+                  <td class="fw-bold text-primary">{{ row.numero || ('#VTA-' + row.id) }}</td>
+                  <td>{{ row.fecha | date:'dd/MM/yyyy' }}</td>
+                  <td class="fw-bold">{{ getDescripcionOProducto(row) }}</td>
+                  <td class="fw-bold">{{ getClienteNombre(row) }}</td>
+                  <td class="text-center">
+                    <span class="badge bg-light-primary text-primary px-2 py-1">{{ row.cantidad || 1 }} unid.</span>
+                  </td>
+                  <td class="text-end fw-bold text-success fs-6">${{ (row.total || 0) | number:'1.2-2' }}</td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="6" class="text-center py-4 text-muted">No se encontraron ventas registradas.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Paginación Estándar -->
+        @if (filtered.length > 0) {
+          <div class="d-flex flex-column flex-md-row justify-content-end align-items-center mt-3 gap-4 text-muted" style="font-size: 0.875rem;">
+            <div class="d-flex align-items-center gap-2">
+              <span>Filas por página:</span>
+              <select class="form-select form-select-sm border-0 shadow-none bg-light fw-medium" style="width: 70px; cursor: pointer;" [(ngModel)]="pageSize" (change)="onPageSizeChange()">
+                <option [ngValue]="5">5</option>
+                <option [ngValue]="10">10</option>
+                <option [ngValue]="20">20</option>
+                <option [ngValue]="50">50</option>
+              </select>
+            </div>
+            <span>
+              {{ (currentPage - 1) * pageSize + 1 }}-{{ Math.min(currentPage * pageSize, filtered ? filtered.length : 0) }} de {{ filtered ? filtered.length : 0 }}
+            </span>
+            <div class="d-flex align-items-center gap-2">
+              <button class="btn btn-sm btn-icon rounded-pill btn-light shadow-sm" [disabled]="currentPage === 1" (click)="setPage(currentPage - 1)" title="Anterior">
+                <i class="ti ti-chevron-left fs-5"></i>
+              </button>
+              <button class="btn btn-sm btn-icon rounded-pill btn-light shadow-sm" [disabled]="currentPage === totalPages" (click)="setPage(currentPage + 1)" title="Siguiente">
+                <i class="ti ti-chevron-right fs-5"></i>
+              </button>
+            </div>
+          </div>
         }
-      </tbody>
-    </table>
+
+      </div>
+    </div>
   </div>
 </div>

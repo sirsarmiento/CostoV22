@@ -464,7 +464,7 @@ export class AddProductComponent implements OnInit {
       this.form.get('tasaFallo')?.setValue(tasaVal);
       this.form.get('margenGanancia')?.setValue(margenVal);
       
-      const rawPiezas = dRec['piezasProducto'] ?? dRec['piezas'] ?? dRec['piezasBase'] ?? dRec['piezas_base'] ?? data.piezasBase ?? [];
+      const rawPiezas = dRec['piezasProducto'] ?? dRec['piezas_producto'] ?? dRec['piezas'] ?? data.piezasProducto ?? [];
       const piezasArray = Array.isArray(rawPiezas) ? rawPiezas : [];
       this.piezasPendientes = piezasArray.map(p => {
         const pObj = p as unknown as Record<string, unknown>;

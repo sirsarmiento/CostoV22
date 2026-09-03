@@ -54,65 +54,105 @@
                 <div class="row g-3">
                   <div class="col-md-4">
                     <label class="form-label">Categoría</label>
-                    <input 
-                      type="text" 
-                      class="form-control" 
-                      formControlName="categoria" 
-                      list="categoriasExistentesList"
-                      placeholder="Ej. Mobiliario, Equipo...">
+                    <ng-select
+                      formControlName="categoria"
+                      [items]="categoriasFijoList"
+                      [addTag]="agregarCategoriaFijo"
+                      addTagText="Agregar categoría"
+                      [searchable]="true"
+                      [clearable]="true"
+                      placeholder="Seleccione o cree una categoría"
+                      appendTo="body"
+                      [class.is-invalid]="submitted && f['categoria'].errors">
+                    </ng-select>
+                    @if (submitted && f['categoria'].errors) {
+                      <div class="invalid-feedback d-block">Seleccione o ingrese la categoría</div>
+                    }
                   </div>
 
                   <div class="col-md-4">
                     <label class="form-label">Subcategoría</label>
-                    <input 
-                      type="text" 
-                      class="form-control" 
-                      formControlName="subcategoria" 
-                      list="subcategoriasExistentesList"
-                      placeholder="Ej. Impresora 3D FDM, Sillas...">
+                    <ng-select
+                      formControlName="subcategoria"
+                      [items]="subcategoriasFijoList"
+                      [addTag]="agregarSubcategoriaFijo"
+                      addTagText="Agregar subcategoría"
+                      [searchable]="true"
+                      [clearable]="true"
+                      [placeholder]="f['categoria'].value ? 'Seleccione o cree una subcategoría' : 'Seleccione primero una categoría...'"
+                      appendTo="body"
+                      [class.is-invalid]="submitted && f['subcategoria'].errors">
+                    </ng-select>
+                    @if (submitted && f['subcategoria'].errors) {
+                      <div class="invalid-feedback d-block">Seleccione o ingrese la subcategoría</div>
+                    }
                   </div>
 
                   @if (isEquipoCategory || f['categoria'].value === 'Equipo') {
                     <div class="col-md-4">
                       <label class="form-label">Consumo Máquina (Watts)</label>
-                      <input type="number" class="form-control" formControlName="consumoMaquina" min="0">
+                      <input type="number" class="form-control" formControlName="consumoMaquina" min="0" [class.is-invalid]="submitted && f['consumoMaquina'].errors">
+                      @if (submitted && f['consumoMaquina'].errors) {
+                        <div class="invalid-feedback">Ingrese el consumo</div>
+                      }
                     </div>
 
                     <div class="col-md-4">
                       <label class="form-label">Tarifa Energía ($/kWh)</label>
-                      <input type="number" step="0.01" class="form-control" formControlName="tarifa">
+                      <input type="number" step="0.01" class="form-control" formControlName="tarifa" [class.is-invalid]="submitted && f['tarifa'].errors">
+                      @if (submitted && f['tarifa'].errors) {
+                        <div class="invalid-feedback">Ingrese la tarifa</div>
+                      }
                     </div>
 
                     <div class="col-md-4">
                       <label class="form-label">Costo Mantenimiento ($/h)</label>
-                      <input type="number" step="0.01" class="form-control" formControlName="costoMantenimiento">
+                      <input type="number" step="0.01" class="form-control" formControlName="costoMantenimiento" [class.is-invalid]="submitted && f['costoMantenimiento'].errors">
+                      @if (submitted && f['costoMantenimiento'].errors) {
+                        <div class="invalid-feedback">Ingrese el costo de mantenimiento</div>
+                      }
                     </div>
                   }
 
                   <div class="col-md-4">
                     <label class="form-label">Costo Inicial (Unitario)</label>
-                    <input type="number" step="0.01" class="form-control" formControlName="costoInicial">
+                    <input type="number" step="0.01" class="form-control" formControlName="costoInicial" [class.is-invalid]="submitted && f['costoInicial'].errors">
+                    @if (submitted && f['costoInicial'].errors) {
+                      <div class="invalid-feedback">Ingrese el costo inicial</div>
+                    }
                   </div>
 
                   <div class="col-md-4">
                     <label class="form-label">Valor Residual</label>
-                    <input type="number" step="0.01" class="form-control" formControlName="valorResidual">
+                    <input type="number" step="0.01" class="form-control" formControlName="valorResidual" [class.is-invalid]="submitted && f['valorResidual'].errors">
+                    @if (submitted && f['valorResidual'].errors) {
+                      <div class="invalid-feedback">Ingrese el valor residual</div>
+                    }
                   </div>
 
                   <div class="col-md-4">
                     <label class="form-label">Cantidad</label>
-                    <input type="number" min="1" class="form-control" formControlName="cantidad" placeholder="1">
+                    <input type="number" min="1" class="form-control" formControlName="cantidad" placeholder="1" [class.is-invalid]="submitted && f['cantidad'].errors">
+                    @if (submitted && f['cantidad'].errors) {
+                      <div class="invalid-feedback">Ingrese la cantidad</div>
+                    }
                   </div>
 
                   <div class="col-md-4">
                     <label class="form-label">Vida Útil (Años)</label>
-                    <input type="number" class="form-control" formControlName="vidaUtil">
+                    <input type="number" class="form-control" formControlName="vidaUtil" [class.is-invalid]="submitted && f['vidaUtil'].errors">
                     <div class="form-text text-muted">Ej: 5 años</div>
+                    @if (submitted && f['vidaUtil'].errors) {
+                      <div class="invalid-feedback d-block">Ingrese la vida útil</div>
+                    }
                   </div>
 
                   <div class="col-md-4">
                     <label class="form-label">Fecha de Adquisición</label>
-                    <input type="date" class="form-control" formControlName="fechaCompra">
+                    <input type="date" class="form-control" formControlName="fechaCompra" [class.is-invalid]="submitted && f['fechaCompra'].errors">
+                    @if (submitted && f['fechaCompra'].errors) {
+                      <div class="invalid-feedback">Seleccione la fecha de compra</div>
+                    }
                   </div>
                 </div>
               </div>
@@ -131,8 +171,12 @@
                         placeholder="Seleccione categoría..."
                         [clearable]="false"
                         [searchable]="true"
-                        [items]="categoriasMaterialList">
+                        [items]="categoriasMaterialList"
+                        [class.is-invalid]="submitted && f['categoria'].errors">
                       </ng-select>
+                      @if (submitted && f['categoria'].errors) {
+                        <div class="invalid-feedback d-block">Seleccione la categoría de material</div>
+                      }
                     </div>
 
                     <div class="col-md-6">
@@ -142,55 +186,57 @@
                         placeholder="Seleccione subcategoría..."
                         [clearable]="true"
                         [searchable]="true"
-                        [items]="subcategoriasMaterialList">
+                        [items]="subcategoriasMaterialList"
+                        [class.is-invalid]="submitted && f['subcategoria'].errors">
                       </ng-select>
+                      @if (submitted && f['subcategoria'].errors) {
+                        <div class="invalid-feedback d-block">Seleccione la subcategoría</div>
+                      }
                     </div>
                   } @else {
                     <div class="col-md-6">
                       <label class="form-label">Categoría</label>
                       <ng-select
                         formControlName="categoria"
-                        [items]="categoriasExistentes"
-                        [addTag]="agregarCategoria"
+                        [items]="categoriasCirculanteList"
+                        [addTag]="agregarCategoriaCirculante"
                         addTagText="Agregar categoría"
                         [searchable]="true"
                         [clearable]="true"
                         placeholder="Seleccione o cree una categoría"
-                        appendTo="body">
+                        appendTo="body"
+                        [class.is-invalid]="submitted && f['categoria'].errors">
                       </ng-select>
+                      @if (submitted && f['categoria'].errors) {
+                        <div class="invalid-feedback d-block">Seleccione o ingrese la categoría</div>
+                      }
                     </div>
 
                     <div class="col-md-6">
                       <label class="form-label">Subcategoría</label>
                       <ng-select
                         formControlName="subcategoria"
-                        [items]="subcategoriasExistentes"
-                        [addTag]="agregarSubcategoria"
+                        [items]="subcategoriasCirculanteList"
+                        [addTag]="agregarSubcategoriaCirculante"
                         addTagText="Agregar subcategoría"
                         [searchable]="true"
                         [clearable]="true"
-                        placeholder="Seleccione o cree una subcategoría"
-                        appendTo="body">
+                        [placeholder]="f['categoria'].value ? 'Seleccione o cree una subcategoría' : 'Seleccione primero una categoría...'"
+                        appendTo="body"
+                        [class.is-invalid]="submitted && f['subcategoria'].errors">
                       </ng-select>
+                      @if (submitted && f['subcategoria'].errors) {
+                        <div class="invalid-feedback d-block">Seleccione o ingrese la subcategoría</div>
+                      }
                     </div>
                   }
 
-                  <!-- Datalists para autocompletar categorías y subcategorías existentes -->
-                  <datalist id="categoriasExistentesList">
-                    @for (cat of categoriasExistentes; track cat) {
-                      <option [value]="cat"></option>
-                    }
-                  </datalist>
-
-                  <datalist id="subcategoriasExistentesList">
-                    @for (sub of subcategoriasExistentes; track sub) {
-                      <option [value]="sub"></option>
-                    }
-                  </datalist>
-
                   <div class="col-md-6">
                     <label class="form-label">Cantidad</label>
-                    <input type="number" class="form-control" formControlName="cantidad">
+                    <input type="number" class="form-control" formControlName="cantidad" [class.is-invalid]="submitted && f['cantidad'].errors">
+                    @if (submitted && f['cantidad'].errors) {
+                      <div class="invalid-feedback">Ingrese la cantidad</div>
+                    }
                   </div>
 
                   <div class="col-md-6">
@@ -199,7 +245,8 @@
                       formControlName="unidadMedida"
                       placeholder="Seleccione..."
                       [clearable]="false"
-                      [searchable]="true">
+                      [searchable]="true"
+                      [class.is-invalid]="submitted && f['unidadMedida'].errors">
                       <ng-option value="Metros">Metros</ng-option>
                       <ng-option value="kilos">Kilos</ng-option>
                       <ng-option value="Toneladas">Toneladas</ng-option>
@@ -214,32 +261,46 @@
                       <ng-option value="Kilómetros">Kilómetros</ng-option>
                       <ng-option value="Transacciones">Transacciones - Operaciones</ng-option>
                     </ng-select>
+                    @if (submitted && f['unidadMedida'].errors) {
+                      <div class="invalid-feedback d-block">Seleccione la unidad de medida</div>
+                    }
                   </div>
 
                   <div class="col-md-6">
-                    <label class="form-label">Valor Unitario</label>
-                    <input type="number" step="0.01" class="form-control" formControlName="valorUnitario">
+                    <label class="form-label">Costo Unitario</label>
+                    <input type="number" step="0.01" class="form-control" formControlName="costoInicial" placeholder="0.00" [class.is-invalid]="submitted && f['costoInicial'].errors">
+                    @if (submitted && f['costoInicial'].errors) {
+                      <div class="invalid-feedback">Ingrese el costo unitario</div>
+                    }
                   </div>
 
                   <div class="col-md-6">
-                    <label class="form-label">Valor Total (Autocalculado)</label>
-                    <input type="number" class="form-control bg-light" formControlName="costoInicial" readonly>
-                    <small class="form-text text-muted">Autocalculado: Cantidad x Valor Unitario</small>
+                    <label class="form-label">Valor Total</label>
+                    <input type="number" step="0.01" class="form-control" [value]="((f['costoInicial']?.value || 0) * (f['cantidad']?.value || 1)) | number: '1.2-2'" disabled>
                   </div>
 
                   <div class="col-md-6">
                     <label class="form-label">Ubicación</label>
-                    <input type="text" class="form-control" formControlName="ubicacion" placeholder="Almacén, Estante...">
+                    <input type="text" class="form-control" formControlName="ubicacion" placeholder="Almacén, Estante..." [class.is-invalid]="submitted && f['ubicacion'].errors">
+                    @if (submitted && f['ubicacion'].errors) {
+                      <div class="invalid-feedback">Ingrese la ubicación</div>
+                    }
                   </div>
 
                   <div class="col-md-6">
                     <label class="form-label">Presentación</label>
-                    <input type="text" class="form-control" formControlName="presentacion" placeholder="Caja, Saco, Botella...">
+                    <input type="text" class="form-control" formControlName="presentacion" placeholder="Caja, Saco, Botella..." [class.is-invalid]="submitted && f['presentacion'].errors">
+                    @if (submitted && f['presentacion'].errors) {
+                      <div class="invalid-feedback">Ingrese la presentación</div>
+                    }
                   </div>
 
                   <div class="col-12">
                     <label class="form-label">Descripción</label>
-                    <input type="text" class="form-control" formControlName="descripcion">
+                    <input type="text" class="form-control" formControlName="descripcion" [class.is-invalid]="submitted && f['descripcion'].errors">
+                    @if (submitted && f['descripcion'].errors) {
+                      <div class="invalid-feedback">Ingrese la descripción</div>
+                    }
                   </div>
                 </div>
               </div>

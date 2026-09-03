@@ -163,7 +163,10 @@ export function calculateBudgetTotals(
       totalCostoInventario += val * cant;
     } else {
       const gramos = Number(pRec['gramos'] ?? pieza.gramos) || 0;
-      const precioMaterial = Number(pRec['precioMaterial'] ?? pRec['precio_material'] ?? pieza.precioMaterial) || 0;
+      let precioMaterial = Number(pRec['precioMaterial'] ?? pRec['precio_material'] ?? pieza.precioMaterial) || 0;
+      if (precioMaterial >= 1.0) {
+        precioMaterial = precioMaterial / 1000;
+      }
       rawMaterialCost += (gramos * precioMaterial) * cant;
 
       const horas = Number(pRec['horas'] ?? pieza.horas) || 0;

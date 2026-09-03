@@ -134,7 +134,7 @@ export class PricingComponent implements OnInit {
     
     if (prod) {
       const prodRec = prod as unknown as Record<string, unknown>;
-      const piezas = (prod.piezasBase || prodRec['piezas'] || prodRec['piezasProducto'] || []) as Record<string, unknown>[];
+      const piezas = (prod.piezasProducto || prodRec['piezas_producto'] || prodRec['piezas'] || []) as Record<string, unknown>[];
       const prodMargin = Number(prod.margenGanancia);
       const defaultMargin = (!isNaN(prodMargin) && prodMargin > 0) ? prodMargin : this.minMargenGanancia;
       this.margenDeseado = defaultMargin < this.minMargenGanancia ? this.minMargenGanancia : defaultMargin;

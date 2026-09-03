@@ -49,6 +49,7 @@ export class AddBudgetComponent implements OnInit {
 
   maquinasList: Asset[] = [];
   activosCirculantes: Asset[] = [];
+  activosMateriales: Asset[] = [];
   assetsMobiliario: Asset[] = [];
   productosList: Product[] = [];
   filteredItemsList: Product[] = [];
@@ -175,21 +176,51 @@ export class AddBudgetComponent implements OnInit {
       }));
       this.actualizarItemsFiltrados();
       
-      // Activos (Máquinas, Mobiliario y Circulantes)
-      this.maquinasList = data.assets.filter(asset => 
-        asset.tipo?.toLowerCase().trim() === 'fijo' && 
-        asset.categoria?.toLowerCase().trim() === 'equipo'
-      );
-      this.assetsMobiliario = data.assets.filter(asset => 
-        asset.categoria?.toLowerCase().trim() === 'mobiliario'
-      );
-      this.activosCirculantes = data.assets.filter(asset => {
-        const t = asset.tipo?.toLowerCase().trim() || '';
-        return t === 'material' || t === 'circulante';
+      // Activos (Máquinas, Mobiliario, Circulantes de Producción y Materiales)
+      // 1. Máquinas: Activos Fijos de Categoría Equipo y Subcategoría Fabricación
+      this.maquinasList = data.assets.filter(asset => {
+        const t = (asset.tipo || '').toLowerCase().trim();
+        const c = (asset.categoria || '').toLowerCase().trim();
+        const s = (asset.subCategoria || (asset as unknown as Record<string, unknown>)['sub_categoria'] || '').toString().toLowerCase().trim();
+        return t === 'fijo' && c === 'equipo' && (s === 'fabricación' || s === 'fabricacion');
       });
-      this.materialesFiltrados = [...this.activosCirculantes];
+
+      // Si no hay máquinas con subcategoría específica, fallback a activos fijos de equipo
+      if (this.maquinasList.length === 0) {
+        this.maquinasList = data.assets.filter(asset => 
+          (asset.tipo || '').toLowerCase().trim() === 'fijo' && 
+          (asset.categoria || '').toLowerCase().trim() === 'equipo'
+        );
+      }
+
+      this.assetsMobiliario = data.assets.filter(asset => 
+        (asset.categoria || '').toLowerCase().trim() === 'mobiliario'
+      );
+
+      // 2. Activos de Inventario: Activos Circulantes de Categoría Producción
+      this.activosCirculantes = data.assets.filter(asset => {
+        const t = (asset.tipo || '').toLowerCase().trim();
+        const c = (asset.categoria || '').toLowerCase().trim();
+        return t === 'circulante' && (c === 'producción' || c === 'produccion');
+      });
+
+      // Si no hay circulantes marcados como producción, incluir todos los circulantes
+      if (this.activosCirculantes.length === 0) {
+        this.activosCirculantes = data.assets.filter(asset => 
+          (asset.tipo || '').toLowerCase().trim() === 'circulante'
+        );
+      }
+
+      // 3. Activos Tipo Material: Materiales para impresión/fabricación
+      this.activosMateriales = data.assets.filter(asset => {
+        const t = (asset.tipo || '').toLowerCase().trim();
+        const c = (asset.categoria || '').toLowerCase().trim();
+        return t === 'material' || c === 'filamento' || c === 'resina' || c === 'filamentos' || c === 'resinas';
+      });
+
+      this.materialesFiltrados = [...this.activosMateriales];
       this.categoriasMaterial = [...new Set(
-        this.activosCirculantes.map(a => a.categoria).filter((c): c is string => !!c)
+        this.activosMateriales.map(a => a.categoria).filter((c): c is string => !!c)
       )].sort();
       
       this.actualizarCostoMaquina();
@@ -279,7 +310,7 @@ export class AddBudgetComponent implements OnInit {
     let gramos = 0;
     let horas = 0;
     let minutos = 0;
-    let precioMaterial = 0;
+    let precioMaterial: number;
     let materialDisplayName = '';
     const tipo = this.form.get('piezaTipo')?.value || 'Del Inventario';
 
@@ -292,8 +323,10 @@ export class AddBudgetComponent implements OnInit {
         Swal.fire('Por Favor', 'Debe seleccionar un activo del inventario', 'info');
         return;
       }
-      nombre = this.assetsMobiliario.find(a => a.id == asset)?.nombre || 'Activo';
+      const foundAsset = this.activosCirculantes.find(a => a.id == asset) || this.assetsMobiliario.find(a => a.id == asset);
+      nombre = foundAsset?.nombre || 'Activo';
       activoId = Number(asset);
+      precioMaterial = Number(foundAsset?.costoInicial || foundAsset?.valorUnitario) || 0;
     } else {
       nombre = this.form.get('piezaFabricada')?.value;
       gramos = Number(this.form.get('piezaGramos')?.value) || 0;
@@ -381,23 +414,37 @@ export class AddBudgetComponent implements OnInit {
         margenGanancia: Number(margenValue) || this.minMargenGanancia
       });
 
-      const rawPiezas = pRec['piezas'] ?? pRec['piezasBase'] ?? pRec['piezas_base'] ?? product.piezasBase ?? [];
+      const rawPiezas = pRec['piezasProducto'] ?? pRec['piezas_producto'] ?? pRec['piezas'] ?? product.piezasProducto ?? [];
       const piezasList = Array.isArray(rawPiezas) ? rawPiezas : [];
       if (piezasList.length > 0) {
         this.piezas = piezasList.map((pb: Record<string, unknown>, index: number) => {
+          const actId = Number(pb['activo'] ?? pb['activo_id'] ?? pb['assetId'] ?? pb['materialId']) || undefined;
+          const foundAsset = actId ? this.activosCirculantes.find(a => a.id == actId) || this.assetsMobiliario.find(a => a.id == actId) : undefined;
+          
+          let tipo = (pb['tipo'] as string) || '';
+          if (!tipo) {
+            tipo = (foundAsset && !pb['maquinaId'] && !pb['maquina']) ? 'Del Inventario' : 'Fabricada';
+          }
+          
+          const rawPrecio = Number(pb['precioMaterial'] ?? pb['precio_material']);
+          const precioMaterial = (!isNaN(rawPrecio) && rawPrecio > 0)
+            ? rawPrecio
+            : (Number(foundAsset?.costoInicial || foundAsset?.valorUnitario) || 0);
+
           return {
             id: index + 1,
-            tipo: (pb['tipo'] as string) || 'Fabricada',
-            nombre: (pb['nombre'] as string) || `PIEZA ${index + 1}`,
+            tipo: tipo,
+            nombre: (pb['nombre'] as string) || foundAsset?.nombre || `PIEZA ${index + 1}`,
             cantidad: Number(pb['cantidad']) || 1,
-            assetId: Number(pb['assetId']) || undefined,
-            materialTipo: (pb['materialDisplayName'] as string) || 'Sin material',
-            materialDisplayName: (pb['materialDisplayName'] as string) || '',
-            precioMaterial: Number(pb['precioMaterial']) || 0,
+            activo: actId,
+            assetId: actId,
+            materialTipo: (pb['materialDisplayName'] as string) || (pb['materialTipo'] as string) || (foundAsset ? foundAsset.nombre : 'Sin material'),
+            materialDisplayName: (pb['materialDisplayName'] as string) || (foundAsset ? foundAsset.nombre : ''),
+            precioMaterial: precioMaterial,
             gramos: Number(pb['gramos']) || 0,
             horas: Number(pb['horas']) || 0,
             minutos: Number(pb['minutos']) || 0,
-            maquinaId: Number(pb['maquinaId']) || undefined,
+            maquinaId: Number(pb['maquinaId'] ?? pb['maquina']) || undefined,
             maquinaNombre: (pb['maquinaNombre'] as string) || (pb['maquina'] as string) || undefined
           };
         });
@@ -693,7 +740,7 @@ export class AddBudgetComponent implements OnInit {
 
   onCategoriaChange(categoria: string) {
     if (categoria) {
-      this.materialesPorCategoria = this.activosCirculantes.filter(
+      this.materialesPorCategoria = this.activosMateriales.filter(
         a => a.categoria === categoria
       );
       this.materialesFiltrados = [...this.materialesPorCategoria];
@@ -730,18 +777,22 @@ export class AddBudgetComponent implements OnInit {
 
   onMaterialChange(materialId: number) {
     if (materialId) {
-      const selectedAsset = this.activosCirculantes.find(a => a.id == materialId);
+      const selectedAsset = this.activosMateriales.find(a => a.id == materialId) || this.activosCirculantes.find(a => a.id == materialId);
       if (selectedAsset) {
-        const valUnit = Number(selectedAsset.valorUnitario) || 0;
-        const uMedida = selectedAsset.unidadMedida?.toLowerCase().trim() || '';
+        const valUnit = Number(selectedAsset.valorUnitario) || Number(selectedAsset.costoInicial) || 0;
+        const uMedida = (selectedAsset.unidadMedida || '').toLowerCase().trim();
         
-        let precioPorGramo = valUnit;
-        if (uMedida === 'kilos' || uMedida === 'kilo') {
-          precioPorGramo = valUnit / 1000;
-        } else if (uMedida === 'gramos' || uMedida === 'gramo') {
+        let precioPorGramo: number;
+        if (uMedida === 'gramos' || uMedida === 'gramo') {
           precioPorGramo = valUnit;
+        } else {
+          // Si el activo es Kilos, Bobinas, Rollos, Litros o tiene precio de compra de bobina completa
+          precioPorGramo = valUnit > 0 ? (valUnit / 1000) : 0;
         }
-        this.form.get('piezaPrecioMaterial')?.setValue(precioPorGramo);
+        
+        // Redondear a 4 decimales
+        const rounded = Math.round(precioPorGramo * 10000) / 10000;
+        this.form.get('piezaPrecioMaterial')?.setValue(rounded);
       }
     } else {
       this.form.get('piezaPrecioMaterial')?.setValue('');

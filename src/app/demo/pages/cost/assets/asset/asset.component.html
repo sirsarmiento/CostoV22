@@ -125,9 +125,10 @@
                   <th style="cursor: pointer;" (click)="sortData('categoria')">Categoría <i class="ti fs-6" [class]="getSortClass('categoria')"></i></th>
                   <th style="cursor: pointer;" (click)="sortData('descripcion')">Descripción <i class="ti fs-6" [class]="getSortClass('descripcion')"></i></th>
                   <th>Ubicación</th>
-                  <th>Cant. / Unidad</th>
-                  <th style="cursor: pointer;" (click)="sortData('valorUnitario')">Val. Unitario <i class="ti fs-6" [class]="getSortClass('valorUnitario')"></i></th>
-                  <th style="cursor: pointer;" (click)="sortData('costoInicial')">Valor Total <i class="ti fs-6" [class]="getSortClass('costoInicial')"></i></th>
+                  <th style="cursor: pointer;" (click)="sortData('cantidad')">Cant. Total <i class="ti fs-6" [class]="getSortClass('cantidad')"></i></th>
+                  <th>Disponible</th>
+                  <th style="cursor: pointer;" (click)="sortData('costoInicial')">Val. Unitario <i class="ti fs-6" [class]="getSortClass('costoInicial')"></i></th>
+                  <th>Valor Total</th>
                   <th class="text-center pe-3">Acciones</th>
                 </tr>
               </thead>
@@ -143,10 +144,17 @@
                     <td>
                       <div class="cell-name-clamp" style="max-width: 250px;" [attr.title]="row.descripcion">{{ row.descripcion }}</div>
                     </td>
-                    <td>{{ row.ubicacion }}</td>
-                    <td>{{ (row.cantidad || 0) - (row.cantidadReservada || 0) | number:'1.0-2' }} disp. / {{ row.cantidad }} {{ row.unidadMedida }}</td>
-                    <td>{{ row.valorUnitario | number: '1.2-2' }}</td>
-                    <td class="text-primary fw-bold">{{ row.costoInicial | number: '1.2-2' }}</td>
+                    <td>{{ row.ubicacion || '-' }}</td>
+                    <td class="fw-medium">{{ row.cantidad | number:'1.0-2' }} <span class="text-muted small">{{ row.unidadMedida }}</span></td>
+                    <td>
+                      @if (((row.cantidad || 0) - (row.cantidadReservada || 0)) > 0) {
+                        <span class="badge bg-light-success text-success px-2 py-1 fw-semibold">{{ (row.cantidad || 0) - (row.cantidadReservada || 0) | number:'1.0-2' }}</span>
+                      } @else {
+                        <span class="badge bg-light-danger text-danger px-2 py-1 fw-semibold">0</span>
+                      }
+                    </td>
+                    <td>{{ row.costoInicial | number: '1.2-2' }}</td>
+                    <td class="text-primary fw-bold">{{ ((row.costoInicial || 0) * (row.cantidad || 1)) | number: '1.2-2' }}</td>
                     <td class="text-center pe-3">
                       <button class="btn btn-sm btn-icon btn-light-primary" (click)="onEdit(row)" title="Editar">
                         <i class="ti ti-edit fs-5"></i>
@@ -154,7 +162,7 @@
                     </td>
                   </tr>
                 } @empty {
-                  <tr><td colspan="8" class="text-center py-4 text-muted">No se encontraron activos circulantes.</td></tr>
+                  <tr><td colspan="9" class="text-center py-4 text-muted">No se encontraron activos circulantes.</td></tr>
                 }
               </tbody>
             </table>
@@ -179,9 +187,10 @@
                   <th style="cursor: pointer;" (click)="sortData('categoria')">Categoría <i class="ti fs-6" [class]="getSortClass('categoria')"></i></th>
                   <th style="cursor: pointer;" (click)="sortData('descripcion')">Descripción <i class="ti fs-6" [class]="getSortClass('descripcion')"></i></th>
                   <th>Ubicación</th>
-                  <th>Cant. / Unidad</th>
-                  <th style="cursor: pointer;" (click)="sortData('valorUnitario')">Val. Unitario <i class="ti fs-6" [class]="getSortClass('valorUnitario')"></i></th>
-                  <th style="cursor: pointer;" (click)="sortData('costoInicial')">Valor Total <i class="ti fs-6" [class]="getSortClass('costoInicial')"></i></th>
+                  <th style="cursor: pointer;" (click)="sortData('cantidad')">Cant. Total <i class="ti fs-6" [class]="getSortClass('cantidad')"></i></th>
+                  <th>Disponible</th>
+                  <th style="cursor: pointer;" (click)="sortData('costoInicial')">Val. Unitario <i class="ti fs-6" [class]="getSortClass('costoInicial')"></i></th>
+                  <th>Valor Total</th>
                   <th class="text-center pe-3">Acciones</th>
                 </tr>
               </thead>
@@ -197,10 +206,17 @@
                     <td>
                       <div class="cell-name-clamp" style="max-width: 250px;" [attr.title]="row.descripcion">{{ row.descripcion }}</div>
                     </td>
-                    <td>{{ row.ubicacion }}</td>
-                    <td>{{ row.cantidad }} {{ row.unidadMedida }}</td>
-                    <td>{{ row.valorUnitario | number: '1.2-2' }}</td>
-                    <td class="text-success fw-bold">{{ row.costoInicial | number: '1.2-2' }}</td>
+                    <td>{{ row.ubicacion || '-' }}</td>
+                    <td class="fw-medium">{{ row.cantidad | number:'1.0-2' }} <span class="text-muted small">{{ row.unidadMedida }}</span></td>
+                    <td>
+                      @if (((row.cantidad || 0) - (row.cantidadReservada || 0)) > 0) {
+                        <span class="badge bg-light-success text-success px-2 py-1 fw-semibold">{{ (row.cantidad || 0) - (row.cantidadReservada || 0) | number:'1.0-2' }}</span>
+                      } @else {
+                        <span class="badge bg-light-danger text-danger px-2 py-1 fw-semibold">0</span>
+                      }
+                    </td>
+                    <td>{{ row.costoInicial | number: '1.2-2' }}</td>
+                    <td class="text-success fw-bold">{{ ((row.costoInicial || 0) * (row.cantidad || 1)) | number: '1.2-2' }}</td>
                     <td class="text-center pe-3">
                       <button class="btn btn-sm btn-icon btn-light-primary" (click)="onEdit(row)" title="Editar">
                         <i class="ti ti-edit fs-5"></i>
@@ -208,7 +224,7 @@
                     </td>
                   </tr>
                 } @empty {
-                  <tr><td colspan="8" class="text-center py-4 text-muted">No se encontraron materiales registrados.</td></tr>
+                  <tr><td colspan="9" class="text-center py-4 text-muted">No se encontraron materiales registrados.</td></tr>
                 }
               </tbody>
             </table>
@@ -225,7 +241,7 @@
 
         <!-- Paginación Común -->
         @if (filteredAssets.length > 0) {
-          <div class="d-flex flex-column flex-md-row justify-content-end align-items-center pt-3 border-top gap-4 text-muted" style="font-size: 0.875rem;">
+          <div class="d-flex flex-column flex-md-row justify-content-end align-items-center mt-3 gap-4 text-muted" style="font-size: 0.875rem;">
             <div class="d-flex align-items-center gap-2">
               <span>Filas por página:</span>
               <select class="form-select form-select-sm border-0 shadow-none bg-light fw-medium" style="width: 70px; cursor: pointer;" [(ngModel)]="pageSize" (change)="onPageSizeChange()">

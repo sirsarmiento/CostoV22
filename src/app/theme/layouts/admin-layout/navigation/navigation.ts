@@ -93,95 +93,124 @@ export const NavigationItems: NavigationItem[] = [
     type: 'group',
     icon: 'icon-navigation',
     children: [
+      // Costos y Precios
       {
-        id: 'products',
-        title: 'Catálogo',
-        type: 'item',
-        classes: 'nav-item',
-        url: '/products',
-        icon: 'gold',
-        breadcrumbs: false
-      },
-      {
-        id: 'fixes',
-        title: 'Costos',
-        type: 'item',
-        classes: 'nav-item',
-        url: '/fixes',
-        icon: 'dollar',
-        breadcrumbs: false
-      },
-      {
-        id: 'assets',
-        title: 'Activos',
-        type: 'item',
-        classes: 'nav-item',
-        url: '/assets',
-        icon: 'database',
-        breadcrumbs: false
-      },
-      {
-        id: 'pricings',
-        title: 'Precios',
-        type: 'item',
-        classes: 'nav-item',
-        url: '/pricings',
+        id: 'costos-group',
+        title: 'Costos y Precios',
+        type: 'collapse',
         icon: 'calculator',
-        breadcrumbs: false
+        children: [
+          {
+            id: 'products',
+            title: 'Catálogo',
+            type: 'item',
+            classes: 'nav-item',
+            url: '/products',
+            icon: 'gold',
+            breadcrumbs: false
+          },
+          {
+            id: 'fixes',
+            title: 'Costos',
+            type: 'item',
+            classes: 'nav-item',
+            url: '/fixes',
+            icon: 'dollar',
+            breadcrumbs: false
+          },
+          {
+            id: 'assets',
+            title: 'Activos',
+            type: 'item',
+            classes: 'nav-item',
+            url: '/assets',
+            icon: 'database',
+            breadcrumbs: false
+          },
+          {
+            id: 'pricings',
+            title: 'Precios',
+            type: 'item',
+            classes: 'nav-item',
+            url: '/pricings',
+            icon: 'calculator',
+            breadcrumbs: false
+          }
+        ]
       },
+
+      // Inventario
       {
-        id: 'clients',
-        title: 'Clientes',
-        type: 'item',
-        classes: 'nav-item',
-        url: '/clients',
-        icon: 'team',
-        breadcrumbs: false
-      },
-      {
-        id: 'suppliers',
-        title: 'Proveedores',
-        type: 'item',
-        classes: 'nav-item',
-        url: '/suppliers',
-        icon: 'shop',
-        breadcrumbs: false
-      },
-      {
-        id: 'purchases',
-        title: 'Compras',
-        type: 'item',
-        classes: 'nav-item',
-        url: '/purchases',
+        id: 'almacen-group',
+        title: 'Inventario',
+        type: 'collapse',
         icon: 'inbox',
-        breadcrumbs: false
+        children: [
+          {
+            id: 'suppliers',
+            title: 'Proveedores',
+            type: 'item',
+            classes: 'nav-item',
+            url: '/suppliers',
+            icon: 'shop',
+            breadcrumbs: false
+          },
+          {
+            id: 'purchases',
+            title: 'Compras',
+            type: 'item',
+            classes: 'nav-item',
+            url: '/purchases',
+            icon: 'inbox',
+            breadcrumbs: false
+          },
+          {
+            id: 'stock',
+            title: 'Stock',
+            type: 'item',
+            classes: 'nav-item',
+            url: '/stock',
+            icon: 'container',
+            breadcrumbs: false
+          }
+        ]
       },
+
+      // Comercial
       {
-        id: 'budgets',
-        title: 'Presupuestos',
-        type: 'item',
-        classes: 'nav-item',
-        url: '/budgets',
-        icon: 'audit',
-        breadcrumbs: false
-      },
-      {
-        id: 'sales',
-        title: 'Ventas',
-        type: 'item',
-        classes: 'nav-item',
-        url: '/sales',
+        id: 'comercial-group',
+        title: 'Comercial',
+        type: 'collapse',
         icon: 'dollar-circle',
-        breadcrumbs: false
-      },
-      {
-        id: 'stock',
-        title: 'Stock',
-        type: 'item',
-        classes: 'nav-item',
-        url: '/stock',
-        icon: 'container',
-        breadcrumbs: false
+        children: [
+          {
+            id: 'clients',
+            title: 'Clientes',
+            type: 'item',
+            classes: 'nav-item',
+            url: '/clients',
+            icon: 'team',
+            breadcrumbs: false
+          },
+          {
+            id: 'budgets',
+            title: 'Presupuestos',
+            type: 'item',
+            classes: 'nav-item',
+            url: '/budgets',
+            icon: 'audit',
+            breadcrumbs: false
+          },
+          {
+            id: 'sales',
+            title: 'Ventas',
+            type: 'item',
+            classes: 'nav-item',
+            url: '/sales',
+            icon: 'dollar-circle',
+            breadcrumbs: false
+          }
+        ]
       }
     ]
   }

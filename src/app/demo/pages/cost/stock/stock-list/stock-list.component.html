@@ -388,24 +388,54 @@
                   <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                       <tr>
-                        <th>Material / Insumo Circulante</th>
-                        <th style="width: 200px;">Recuperado</th>
-                        <th style="width: 200px;">Merma</th>
-                        <th class="text-center" style="width: 100px;">Acciones</th>
+                        <th>Material / Insumo</th>
+                        <th style="width: 210px;">Recuperado (Reintegro)</th>
+                        <th style="width: 210px;">Merma (Pérdida)</th>
+                        <th class="text-center" style="width: 80px;">Acción</th>
                       </tr>
                     </thead>
                     <tbody>
                       @for (item of materialesDesacople; track $index; let i = $index) {
                         <tr>
-                          <td class="fw-medium">{{ item.nombre }}</td>
-                          <td class="fw-bold text-success">{{ item.recuperado | number:'1.0-2' }}</td>
-                          <td class="fw-bold text-danger">{{ item.merma | number:'1.0-2' }}</td>
+                          <td>
+                            <div class="fw-semibold text-dark">{{ item.nombre }}</div>
+                            <small class="badge" [ngClass]="item.tipo === 'Material (Merma)' ? 'bg-light-danger text-danger border border-danger-subtle' : 'bg-light-success text-success border border-success-subtle'">
+                              <i class="ti" [ngClass]="item.tipo === 'Material (Merma)' ? 'ti-flame me-1' : 'ti-recycle me-1'"></i>
+                              {{ item.tipo }}
+                            </small>
+                          </td>
+                          <td>
+                            <div class="input-group input-group-sm">
+                              <input 
+                                type="number" 
+                                min="0" 
+                                step="0.01" 
+                                class="form-control text-end fw-bold text-success" 
+                                [(ngModel)]="item.recuperado" 
+                                [ngModelOptions]="{standalone: true}"
+                                placeholder="0.00">
+                              <span class="input-group-text bg-light text-muted small">{{ item.unidadMedida || 'und' }}</span>
+                            </div>
+                          </td>
+                          <td>
+                            <div class="input-group input-group-sm">
+                              <input 
+                                type="number" 
+                                min="0" 
+                                step="0.01" 
+                                class="form-control text-end fw-bold text-danger" 
+                                [(ngModel)]="item.merma" 
+                                [ngModelOptions]="{standalone: true}"
+                                placeholder="0.00">
+                              <span class="input-group-text bg-light text-muted small">{{ item.unidadMedida || 'und' }}</span>
+                            </div>
+                          </td>
                           <td class="text-center">
                             <button 
                               type="button" 
                               class="btn btn-sm btn-icon btn-light-danger" 
                               (click)="removerMaterialDesacople(i)" 
-                              title="Eliminar">
+                              title="Eliminar de la lista">
                               <i class="ti ti-trash fs-5"></i>
                             </button>
                           </td>
@@ -413,7 +443,8 @@
                       } @empty {
                         <tr>
                           <td colspan="4" class="text-center py-4 text-muted">
-                            No hay materiales agregados para recuperar o merma.
+                            <i class="ti ti-info-circle fs-3 d-block mb-1 text-secondary"></i>
+                            Seleccione un producto terminado para calcular el desglose automático de materiales o agregue insumos manualmente.
                           </td>
                         </tr>
                       }

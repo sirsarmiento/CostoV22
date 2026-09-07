@@ -60,7 +60,7 @@ export class StockListComponent implements OnInit {
   tempMaterialId: number | null = null;
   tempRecuperado: number | null = null;
   tempMerma: number | null = null;
-  materialesDesacople: { activoId: number; nombre: string; recuperado: number; merma: number }[] = [];
+  materialesDesacople: { activoId: number; nombre: string; tipo?: string; recuperado: number; merma: number; unidadMedida?: string }[] = [];
   insumosFiltrados: Asset[] = [];
   productoSinPiezas = false;
   selectedProductPiecesCount = 0;
@@ -69,11 +69,13 @@ export class StockListComponent implements OnInit {
   movTipoFiltro = 'TODOS';
   tiposMovimientoList = [
     { value: 'TODOS', label: 'Todos los tipos' },
-    { value: 'PRODUCCIÓN (PT)', label: 'Producción (PT)' },
-    { value: 'VENTA (PT)', label: 'Venta (PT)' },
+    { value: 'PRODUCCIÓN', label: 'Producción' },
+    { value: 'VENTA', label: 'Venta' },
+    { value: 'DESACOPLE', label: 'Desacople' },
     { value: 'COMPRA INSUMO', label: 'Compra Insumo' },
     { value: 'CONSUMO INSUMO', label: 'Consumo Insumo' },
-    { value: 'DESACOPLE', label: 'Desacople / Desarme' }
+    { value: 'RECUPERACIÓN', label: 'Recuperación Insumo' },
+    { value: 'PÉRDIDA / MERMA', label: 'Pérdida / Merma' }
   ];
 
   hoveredDate: NgbDate | null = null;
@@ -106,16 +108,25 @@ export class StockListComponent implements OnInit {
                 }
               }
               this.actualizarInsumosFiltrados();
+              this.calcularDesgloseAutomatico();
             },
-            error: () => this.actualizarInsumosFiltrados()
+            error: () => {
+              this.actualizarInsumosFiltrados();
+              this.calcularDesgloseAutomatico();
+            }
           });
         }
       } else {
         this.insumosFiltrados = [];
         this.productoSinPiezas = false;
         this.selectedProductPiecesCount = 0;
+        this.materialesDesacople = [];
         this.cdr.detectChanges();
       }
+    });
+
+    this.decoupleForm.get('cantidadProducto')?.valueChanges.subscribe(() => {
+      this.calcularDesgloseAutomatico();
     });
 
     this.reload();
@@ -179,19 +190,21 @@ export class StockListComponent implements OnInit {
     const piezasActivosIds: number[] = [];
     const piezasNombres: string[] = [];
 
-    if (piezasList.length > 0) {
-      this.productoSinPiezas = false;
-      piezasList.forEach(p => {
-        const rawP = p as unknown as Record<string, unknown>;
-        const actId = Number(p.activo ?? rawP['activo_id'] ?? rawP['assetId'] ?? rawP['materialId']);
-        if (actId) {
-          piezasActivosIds.push(actId);
-        }
-        if (p.nombre) {
-          piezasNombres.push(p.nombre.trim().toLowerCase());
-        }
-      });
-    } else {
+    piezasList.forEach(pz => {
+      const rawPz = pz as unknown as Record<string, unknown>;
+      const actId = pz.activoId || pz.activo || (rawPz['activo_id'] as number) || (rawPz['assetId'] as number);
+      if (actId) {
+        piezasActivosIds.push(Number(actId));
+      }
+      if (pz.activoNombre) {
+        piezasNombres.push(pz.activoNombre.trim().toLowerCase());
+      }
+      if (pz.nombre) {
+        piezasNombres.push(pz.nombre.trim().toLowerCase());
+      }
+    });
+
+    if (piezasList.length === 0) {
       this.productoSinPiezas = true;
       this.selectedProductPiecesCount = 0;
     }
@@ -225,6 +238,84 @@ export class StockListComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
+  calcularDesgloseAutomatico() {
+    const selectedProdId = this.decoupleForm.get('producto')?.value;
+    const cantProd = Number(this.decoupleForm.get('cantidadProducto')?.value) || 1;
+    if (!selectedProdId || cantProd <= 0) {
+      this.materialesDesacople = [];
+      this.cdr.detectChanges();
+      return;
+    }
+
+    const currentProd = this.products.find(p => p.id == selectedProdId);
+    if (!currentProd) return;
+
+    const piezasList = (currentProd.piezasProducto || []) as PiezaProducto[];
+    if (piezasList.length === 0) {
+      this.materialesDesacople = [];
+      this.cdr.detectChanges();
+      return;
+    }
+
+    const lineasCalculadas: {
+      activoId: number;
+      nombre: string;
+      tipo: string;
+      recuperado: number;
+      merma: number;
+      unidadMedida: string;
+    }[] = [];
+
+    piezasList.forEach(pz => {
+      const rawPz = pz as unknown as Record<string, unknown>;
+      const actId = Number(pz.activoId || pz.activo || rawPz['activo_id'] || rawPz['assetId'] || rawPz['materialId']);
+      
+      const asset = this.allAssets.find(a => 
+        (actId && a.id == actId) || 
+        (a.nombre && pz.activoNombre && a.nombre.trim().toLowerCase() === pz.activoNombre.trim().toLowerCase()) || 
+        (a.nombre && pz.nombre && a.nombre.trim().toLowerCase() === pz.nombre.trim().toLowerCase())
+      );
+
+      const realActivoId = asset?.id || actId || 0;
+      const nombreActivo = asset?.nombre || pz.activoNombre || pz.nombre || `Insumo #${actId}`;
+      const tipoActivo = (asset?.tipo || pz.tipo || '').toLowerCase();
+      const catActivo = (asset?.categoria || '').toLowerCase();
+
+      // Es material de impresión 3D / resina / filamento (Merma Irrecuperable):
+      const esMaterial = tipoActivo === 'material' || catActivo === 'filamento' || catActivo === 'resina' || pz.tipo === 'Fabricada' || (pz.gramos && Number(pz.gramos) > 0);
+
+      if (esMaterial) {
+        const gramosUnitario = Number(pz.gramos) || Number(pz.cantidad) || 1;
+        const totalMerma = Math.round(gramosUnitario * cantProd * 100) / 100;
+        
+        lineasCalculadas.push({
+          activoId: realActivoId,
+          nombre: nombreActivo,
+          tipo: 'Material (Merma)',
+          recuperado: 0,
+          merma: totalMerma,
+          unidadMedida: asset?.unidadMedida || 'Gramos'
+        });
+      } else {
+        // Es insumo circulante / accesorio del inventario (Recuperable):
+        const cantUnitaria = Number(pz.cantidad) || 1;
+        const totalRecuperable = Math.round(cantUnitaria * cantProd * 100) / 100;
+        
+        lineasCalculadas.push({
+          activoId: realActivoId,
+          nombre: nombreActivo,
+          tipo: 'Del Inventario (Recuperable)',
+          recuperado: totalRecuperable,
+          merma: 0,
+          unidadMedida: asset?.unidadMedida || 'Unidades'
+        });
+      }
+    });
+
+    this.materialesDesacople = lineasCalculadas;
+    this.cdr.detectChanges();
+  }
+
   decoupleSubmitted = false;
 
   onSearch() {
@@ -237,38 +328,73 @@ export class StockListComponent implements OnInit {
     const rawM = m as unknown as Record<string, unknown>;
     const rawTipo = String(m.tipo || rawM['tipo_movimiento'] || rawM['tipoMovimiento'] || rawM['type'] || '').toUpperCase().trim();
     const obs = String(m.observacion || '').toLowerCase();
-    const isProductoTerminado = !!(m.producto || rawM['producto_id'] || rawM['productoId'] || obs.includes('producto terminado') || obs.includes(' pt'));
+    const isProductoTerminado = !!(m.producto || rawM['producto_id'] || rawM['productoId'] || (obs.includes('producto') && !obs.includes('insumo') && !obs.includes('material')));
 
-    if (rawTipo === 'PRODUCCIÓN (PT)' || rawTipo === 'PRODUCCION (PT)' || rawTipo === 'VENTA (PT)' || rawTipo === 'COMPRA INSUMO' || rawTipo === 'CONSUMO INSUMO') {
-      return rawTipo === 'PRODUCCION (PT)' ? 'PRODUCCIÓN (PT)' : rawTipo;
+    // 1. Pérdida o Merma específica
+    if (obs.includes('pérdida') || obs.includes('perdida') || obs.includes('merma') || rawTipo === 'PERDIDA' || rawTipo === 'MERMA' || rawTipo === 'PÉRDIDA / MERMA') {
+      return 'PÉRDIDA / MERMA';
     }
 
-    if (rawTipo === 'ENTRADA_PT' || (isProductoTerminado && (obs.includes('ingreso') || obs.includes('entrada') || obs.includes('fabricaci')))) {
-      return 'PRODUCCIÓN (PT)';
+    // 2. Recuperación de Insumos / Desacople de Insumos
+    if (obs.includes('material recuperado') || obs.includes('recuperad') || rawTipo === 'RECUPERADO' || rawTipo === 'RECUPERACION' || rawTipo === 'RECUPERACIÓN') {
+      return 'RECUPERACIÓN';
     }
 
-    if (rawTipo === 'SALIDA_PT' || (isProductoTerminado && (obs.includes('salida') || obs.includes('venta')))) {
-      return 'VENTA (PT)';
+    // 3. Desacople de Producto Terminado
+    if (obs.includes('desacople de producto') || (obs.includes('desacople') && isProductoTerminado) || rawTipo === 'DESACOPLE (PT)' || rawTipo === 'DESACOPLE') {
+      return isProductoTerminado ? 'DESACOPLE' : 'RECUPERACIÓN';
     }
 
+    // 4. Desacoples generales
+    if (obs.includes('desacople') || obs.includes('desarm') || rawTipo === 'DESACOPLE' || rawTipo === 'DESACOPLED') {
+      return isProductoTerminado ? 'DESACOPLE' : 'RECUPERACIÓN';
+    }
+
+    // 5. Coincidencias exactas predefinidas
+    if (
+      rawTipo === 'PRODUCCIÓN' ||
+      rawTipo === 'PRODUCCION' ||
+      rawTipo === 'PRODUCCIÓN (PT)' ||
+      rawTipo === 'PRODUCCION (PT)'
+    ) {
+      return 'PRODUCCIÓN';
+    }
+
+    if (rawTipo === 'VENTA' || rawTipo === 'VENTA (PT)') {
+      return 'VENTA';
+    }
+
+    if (rawTipo === 'COMPRA INSUMO' || rawTipo === 'CONSUMO INSUMO' || rawTipo === 'RECUPERACIÓN' || rawTipo === 'PÉRDIDA / MERMA' || rawTipo === 'DESACOPLE') {
+      return rawTipo;
+    }
+
+    // 6. Producción de PT
+    if (rawTipo === 'ENTRADA_PT' || (isProductoTerminado && (obs.includes('ingreso a stock') || obs.includes('fabricaci') || obs.includes('producci')))) {
+      return 'PRODUCCIÓN';
+    }
+
+    // 7. Venta de PT
+    if (rawTipo === 'SALIDA_PT' || (isProductoTerminado && (obs.includes('salida de producto') || obs.includes('venta')))) {
+      return 'VENTA';
+    }
+
+    // 8. Compras de Insumo
     if (obs.includes('compra') || obs.includes('proveedor')) {
       return 'COMPRA INSUMO';
     }
 
-    if (obs.includes('desacople') || obs.includes('desarm') || obs.includes('recuperado') || rawTipo === 'DESACOPLE' || rawTipo === 'DESACOPLED') {
-      return 'DESACOPLE';
+    // 9. Consumo de Insumo
+    if (obs.includes('consumo')) {
+      return 'CONSUMO INSUMO';
     }
 
-    if (obs.includes('pérdida') || obs.includes('perdida') || obs.includes('merma') || obs.includes('consumo') || rawTipo === 'SALIDA') {
-      return isProductoTerminado ? 'VENTA (PT)' : 'CONSUMO INSUMO';
+    // 10. Movimientos genéricos
+    if (rawTipo === 'SALIDA') {
+      return isProductoTerminado ? 'VENTA' : 'CONSUMO INSUMO';
     }
 
     if (rawTipo === 'ENTRADA' || rawTipo === 'INGRESO') {
-      return isProductoTerminado ? 'PRODUCCIÓN (PT)' : 'COMPRA INSUMO';
-    }
-
-    if (rawTipo === 'VENTA') {
-      return 'VENTA (PT)';
+      return isProductoTerminado ? 'PRODUCCIÓN' : 'COMPRA INSUMO';
     }
 
     return rawTipo && rawTipo !== 'UNDEFINED' && rawTipo !== 'NULL' ? rawTipo : 'MOVIMIENTO';
@@ -276,14 +402,17 @@ export class StockListComponent implements OnInit {
 
   getTipoBadgeClass(tipo: string): string {
     const t = (tipo || '').toUpperCase();
-    if (t.includes('PRODUCCIÓN') || t.includes('PRODUCCION') || t.includes('COMPRA') || t === 'ENTRADA' || t === 'INGRESO') {
+    if (t.includes('PRODUCCIÓN') || t.includes('PRODUCCION') || t.includes('COMPRA') || t.includes('RECUPERAC') || t === 'ENTRADA' || t === 'INGRESO') {
       return 'bg-light-success text-success';
     }
-    if (t.includes('VENTA') || t.includes('CONSUMO') || t.includes('SALIDA') || t.includes('MERMA')) {
+    if (t.includes('VENTA') || t.includes('CONSUMO') || t.includes('SALIDA')) {
       return 'bg-light-danger text-danger';
     }
-    if (t.includes('DESACOPLE') || t.includes('DESACOPLED')) {
+    if (t.includes('DESACOPLE')) {
       return 'bg-light-warning text-warning';
+    }
+    if (t.includes('PÉRDIDA') || t.includes('PERDIDA') || t.includes('MERMA')) {
+      return 'bg-light-secondary text-secondary';
     }
     return 'bg-light-primary text-primary';
   }
@@ -561,8 +690,10 @@ export class StockListComponent implements OnInit {
     this.materialesDesacople.push({
       activoId: this.tempMaterialId,
       nombre: asset?.nombre || `Insumo #${this.tempMaterialId}`,
+      tipo: this.tempTipoInsumo === 'Circulante' ? 'Insumo Recuperable' : 'Material (Merma)',
       recuperado: rec,
-      merma: mer
+      merma: mer,
+      unidadMedida: asset?.unidadMedida || (this.tempTipoInsumo === 'Material' ? 'Gramos' : 'Unidades')
     });
     this.tempMaterialId = null;
     this.tempRecuperado = null;

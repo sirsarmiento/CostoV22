@@ -45,22 +45,50 @@
 
           <!-- Fila de Inputs para Agregar Insumo (Estilo Catálogo) -->
           <div class="row g-3 align-items-end mt-2">
-            <div class="col-md-5">
-              <label class="form-label">Material / Insumo</label>
+            <div class="col-md-3">
+              <label class="form-label">Tipo</label>
               <ng-select 
-                [(ngModel)]="tempActivoId"
-                [ngModelOptions]="{standalone: true}"
-                [items]="circulantes" 
-                bindValue="id" 
-                bindLabel="nombre" 
-                placeholder="Seleccione..." 
-                appendTo="body" 
-                (change)="onTempAssetChange()"
-                [searchable]="true"
-                [clearable]="false">
+                [(ngModel)]="tempTipoInsumo" 
+                [ngModelOptions]="{standalone: true}" 
+                [clearable]="false"
+                (change)="onTipoInsumoChange()">
+                <ng-option value="Material">Material</ng-option>
+                <ng-option value="Circulante">Del Inventario</ng-option>
               </ng-select>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-4">
+              <label class="form-label">
+                @if (tempTipoInsumo === 'Circulante') {
+                  Activo del Inventario
+                } @else {
+                  Material / Insumo
+                }
+              </label>
+              <div class="d-flex gap-2">
+                <div class="flex-grow-1">
+                  <ng-select 
+                    [(ngModel)]="tempActivoId"
+                    [ngModelOptions]="{standalone: true}"
+                    [items]="insumosFiltrados" 
+                    bindValue="id" 
+                    bindLabel="nombre" 
+                    placeholder="Seleccione..." 
+                    appendTo="body" 
+                    (change)="onTempAssetChange()"
+                    [searchable]="true"
+                    [clearable]="false">
+                  </ng-select>
+                </div>
+                <button 
+                  type="button" 
+                  class="btn btn-primary btn-square-icon" 
+                  (click)="openAssetModal()" 
+                  title="Crear Nuevo Insumo / Material">
+                  <i class="ti ti-plus fs-4"></i>
+                </button>
+              </div>
+            </div>
+            <div class="col-md-2">
               <label class="form-label">Cantidad</label>
               <input 
                 type="number" 
@@ -71,7 +99,7 @@
                 [ngModelOptions]="{standalone: true}" 
                 placeholder="Cant.">
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
               <label class="form-label">Costo Unitario ($)</label>
               <input 
                 type="number" 
@@ -87,7 +115,7 @@
                 type="button" 
                 class="btn btn-primary btn-square-icon" 
                 (click)="agregarMaterialCompra()" 
-                title="Agregar Material">
+                title="Agregar a la Orden">
                 <i class="ti ti-plus fs-4"></i>
               </button>
             </div>
@@ -98,6 +126,7 @@
                 <table class="table table-hover align-middle mb-0">
                   <thead class="table-light">
                     <tr>
+                      <th style="width: 140px;">Tipo</th>
                       <th>Material / Insumo</th>
                       <th style="width: 150px;">Cantidad</th>
                       <th style="width: 180px;">Costo Unitario ($)</th>
@@ -108,6 +137,15 @@
                   <tbody>
                     @for (item of materialesCompra; track $index; let i = $index) {
                       <tr>
+                        <td>
+                          <span class="badge" 
+                            [class.bg-light-info]="item.tipo === 'Del Inventario'" 
+                            [class.text-info]="item.tipo === 'Del Inventario'" 
+                            [class.bg-light-success]="item.tipo === 'Material'" 
+                            [class.text-success]="item.tipo === 'Material'">
+                            {{ item.tipo }}
+                          </span>
+                        </td>
                         <td class="fw-medium">{{ item.nombre }}</td>
                         <td class="fw-bold">{{ item.cantidad | number:'1.0-2' }}</td>
                         <td>${{ item.valorUnitario | number:'1.2-2' }}</td>
@@ -124,7 +162,7 @@
                       </tr>
                     } @empty {
                       <tr>
-                        <td colspan="5" class="text-center py-4 text-muted">
+                        <td colspan="6" class="text-center py-4 text-muted">
                           No hay materiales o insumos agregados a esta orden de compra.
                         </td>
                       </tr>
@@ -157,3 +195,101 @@
     </div>
   </div>
 </div>
+
+<!-- MODAL: REGISTRO RÁPIDO DE ACTIVO / INSUMO -->
+@if (showAssetModal) {
+  <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);" (click)="closeAssetModal()">
+    <div class="modal-dialog modal-dialog-centered modal-lg" (click)="$event.stopPropagation()">
+      <div class="modal-content shadow border-0">
+        <div class="modal-header bg-primary text-white py-3">
+          <h5 class="modal-title text-white fs-5 fw-bold d-flex align-items-center gap-2">
+            <i class="ti ti-plus fs-4"></i> Registrar Nuevo Insumo / Material
+          </h5>
+          <button type="button" class="btn-close btn-close-white" (click)="closeAssetModal()"></button>
+        </div>
+        <div class="modal-body p-4">
+          <form [formGroup]="assetForm">
+            <div class="row g-3">
+              <!-- Fila 1: Nombre (50%) y Tipo (50%) -->
+              <div class="col-md-6">
+                <label class="form-label fw-bold">Nombre del Insumo / Material <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" formControlName="nombre" placeholder="Ej. Filamento PLA Azul / Tornillos M3">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold">Tipo <span class="text-danger">*</span></label>
+                <ng-select formControlName="tipo" [clearable]="false" (change)="onModalTipoChange()">
+                  <ng-option value="Material">Material (Filamento / Resina)</ng-option>
+                  <ng-option value="Circulante">Del Inventario (Circulante)</ng-option>
+                </ng-select>
+              </div>
+
+              <!-- Fila 2: Categoría (50%) y Subcategoría (50%) -->
+              <div class="col-md-6">
+                <label class="form-label fw-bold">Categoría <span class="text-danger">*</span></label>
+                <ng-select 
+                  formControlName="categoria" 
+                  [items]="modalCategoriasList" 
+                  [addTag]="true"
+                  (change)="onModalCategoriaChange()"
+                  placeholder="Seleccione o escriba una categoría..." 
+                  [clearable]="false">
+                </ng-select>
+                <small class="text-muted">Si es Circulante de Producción, use <b>Producción</b>.</small>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Subcategoría</label>
+                <ng-select 
+                  formControlName="subCategoria" 
+                  [items]="modalSubcategoriasList" 
+                  [addTag]="true"
+                  placeholder="Opcional: Seleccione o escriba...">
+                </ng-select>
+              </div>
+
+              <!-- Fila 3: Costo (25%) + Cantidad (25%) [Suma = 50%] | Unidad de Medida (50%) -->
+              <div class="col-md-3">
+                <label class="form-label fw-bold">Costo Unitario ($) <span class="text-danger">*</span></label>
+                <input type="number" step="0.01" min="0" class="form-control" formControlName="costoInicial" placeholder="0.00">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-bold">Cantidad a Comprar <span class="text-danger">*</span></label>
+                <input type="number" step="0.01" min="0.01" class="form-control" formControlName="cantidad" placeholder="1.00">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold">Unidad de Medida <span class="text-danger">*</span></label>
+                <ng-select 
+                  formControlName="unidadMedida" 
+                  [items]="unidadesMedidaList" 
+                  [addTag]="true"
+                  [clearable]="false">
+                </ng-select>
+              </div>
+
+              <!-- Fila 4: Presentación (50%) y Ubicación (50%) -->
+              <div class="col-md-6">
+                <label class="form-label">Presentación</label>
+                <input type="text" class="form-control" formControlName="presentacion" placeholder="Ej. Rollo 1kg / Bolsa 100u">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Ubicación</label>
+                <input type="text" class="form-control" formControlName="ubicacion" placeholder="Ej. Estante A-2 / Gaveta 3">
+              </div>
+
+              <!-- Fila 5: Descripción (100%) -->
+              <div class="col-12">
+                <label class="form-label">Descripción</label>
+                <textarea class="form-control" rows="2" formControlName="descripcion" placeholder="Detalles u observaciones adicionales..."></textarea>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer bg-light border-top py-2 px-4">
+          <button class="btn btn-outline-secondary" type="button" (click)="closeAssetModal()">Cancelar</button>
+          <button class="btn btn-primary d-inline-flex align-items-center gap-1" type="button" [disabled]="guardandoAsset" (click)="saveAssetModal()">
+            <i class="ti ti-shopping-cart-plus fs-5"></i> Guardar y Agregar a la Compra
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}

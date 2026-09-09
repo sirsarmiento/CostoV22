@@ -1,4 +1,5 @@
-import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -33,6 +34,7 @@ export class AddBudgetComponent implements OnInit {
   private fixeService = inject(FixeService);
   private clientService = inject(ClientService);
   private cdr = inject(ChangeDetectorRef);
+  private destroyRef = inject(DestroyRef);
   form!: FormGroup;
   id: number = 0;
   loading = false;
@@ -690,7 +692,9 @@ export class AddBudgetComponent implements OnInit {
       costoMaquina: [0]
     });
 
-    this.form.get('clasificacion')?.valueChanges.subscribe((clasif) => {
+    this.form.get('clasificacion')?.valueChanges.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe((clasif) => {
       const numeroControl = this.form.get('numero');
       numeroControl?.clearValidators();
       if (clasif === 'Producto') {
@@ -700,26 +704,36 @@ export class AddBudgetComponent implements OnInit {
       this.actualizarItemsFiltrados();
     });
 
-    this.form.get('productoId')?.valueChanges.subscribe(prodId => {
+    this.form.get('productoId')?.valueChanges.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(prodId => {
       if (prodId) {
         this.autoFillFromProduct(Number(prodId));
       }
     });
 
-    this.form.get('activoId')?.valueChanges.subscribe(() => {
+    this.form.get('activoId')?.valueChanges.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(() => {
       this.actualizarCostoMaquina();
       this.actualizarMinMargenGanancia();
     });
 
-    this.form.get('piezaMaterialCategoria')?.valueChanges.subscribe((categoria) => {
+    this.form.get('piezaMaterialCategoria')?.valueChanges.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe((categoria) => {
       this.onCategoriaChange(categoria);
     });
 
-    this.form.get('piezaMaterialSubcategoria')?.valueChanges.subscribe((subcategoria) => {
+    this.form.get('piezaMaterialSubcategoria')?.valueChanges.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe((subcategoria) => {
       this.onSubcategoriaChange(subcategoria);
     });
 
-    this.form.get('piezaMaterialId')?.valueChanges.subscribe((materialId) => {
+    this.form.get('piezaMaterialId')?.valueChanges.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe((materialId) => {
       this.onMaterialChange(materialId);
     });
   }

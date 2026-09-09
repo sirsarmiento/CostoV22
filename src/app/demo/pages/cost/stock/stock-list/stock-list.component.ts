@@ -1,4 +1,5 @@
-import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -28,6 +29,7 @@ export class StockListComponent implements OnInit {
   private calendar = inject(NgbCalendar);
   private fb = inject(FormBuilder);
   private cdr = inject(ChangeDetectorRef);
+  private destroyRef = inject(DestroyRef);
 
   activeTab: 'stock' | 'movimientos' | 'desacople' = 'stock';
   stock: StockItem[] = [];
@@ -92,12 +94,16 @@ export class StockListComponent implements OnInit {
       observacion: ['']
     });
 
-    this.decoupleForm.get('producto')?.valueChanges.subscribe(prodId => {
+    this.decoupleForm.get('producto')?.valueChanges.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(prodId => {
       this.tempMaterialId = null;
       if (prodId) {
         const pId = Number(prodId);
         if (!isNaN(pId) && pId > 0) {
-          this.productService.getProduct(pId).subscribe({
+          this.productService.getProduct(pId).pipe(
+            takeUntilDestroyed(this.destroyRef)
+          ).subscribe({
             next: (prodDetail) => {
               if (prodDetail && prodDetail.id) {
                 const idx = this.products.findIndex(p => p.id === prodDetail.id);
@@ -125,7 +131,9 @@ export class StockListComponent implements OnInit {
       }
     });
 
-    this.decoupleForm.get('cantidadProducto')?.valueChanges.subscribe(() => {
+    this.decoupleForm.get('cantidadProducto')?.valueChanges.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(() => {
       this.calcularDesgloseAutomatico();
     });
 

@@ -1,4 +1,5 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators, ValidatorFn } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -18,6 +19,7 @@ export class AddAssetComponent implements OnInit {
   private formBuilder = inject(FormBuilder);
   private router = inject(Router);
   private assetService = inject(AssetService);
+  private destroyRef = inject(DestroyRef);
   form!: FormGroup;
   id: number = 0;
   loading = false;
@@ -275,7 +277,9 @@ export class AddAssetComponent implements OnInit {
       valorUnitario: ['']
     });
 
-    this.form.get('tipo')?.valueChanges.subscribe(tipo => {
+    this.form.get('tipo')?.valueChanges.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(tipo => {
       this.isSwitchingType = true;
       if (tipo === 'Material' && !this.form.get('categoria')?.value) {
         this.form.get('categoria')?.setValue('Filamento');
@@ -290,7 +294,9 @@ export class AddAssetComponent implements OnInit {
       this.isSwitchingType = false;
     });
 
-    this.form.get('categoria')?.valueChanges.subscribe((cat) => {
+    this.form.get('categoria')?.valueChanges.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe((cat) => {
       const tipo = this.form.get('tipo')?.value;
       if (tipo === 'Material') {
         this.actualizarSubcategoriasMaterial(cat);
@@ -352,17 +358,26 @@ export class AddAssetComponent implements OnInit {
     const calcular = () => {
     };
 
-    this.form.get('cantidad')?.valueChanges.subscribe(calcular);
-    this.form.get('valorUnitario')?.valueChanges.subscribe(calcular);
+    this.form.get('cantidad')?.valueChanges.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(calcular);
+
+    this.form.get('valorUnitario')?.valueChanges.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(calcular);
     
     // El bolsillo siempre guarda lo último que se escribió manualmente en Fijo, ignorando falsos positivos
-    this.form.get('costoInicial')?.valueChanges.subscribe(val => {
+    this.form.get('costoInicial')?.valueChanges.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(val => {
       if (this.form.get('tipo')?.value === 'Fijo' && !this.isSwitchingType) {
         this.originalCostoInicial = val;
       }
     });
     
-    this.form.get('tipo')?.valueChanges.subscribe((tipo) => {
+    this.form.get('tipo')?.valueChanges.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe((tipo) => {
       if (tipo === 'Circulante') {
         calcular();
       } else if (tipo === 'Fijo') {

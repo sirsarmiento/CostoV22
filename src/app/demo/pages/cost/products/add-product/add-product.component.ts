@@ -1,4 +1,5 @@
-import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -29,6 +30,7 @@ export class AddProductComponent implements OnInit {
   private fixeService = inject(FixeService);
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
+  private destroyRef = inject(DestroyRef);
 
   form!: FormGroup;
   submitted = false;
@@ -431,10 +433,21 @@ export class AddProductComponent implements OnInit {
       activoId: [null]
     });
 
-    this.form.get('piezaMaterialCategoria')?.valueChanges.subscribe(val => this.onPiezaCategoriaChange(val));
-    this.form.get('piezaMaterialSubcategoria')?.valueChanges.subscribe(val => this.onPiezaSubcategoriaChange(val));
-    this.form.get('piezaMaterialId')?.valueChanges.subscribe(val => this.onPiezaMaterialChange(val));
-    this.form.get('perfil')?.valueChanges.subscribe(() => this.actualizarMinMargenGanancia());
+    this.form.get('piezaMaterialCategoria')?.valueChanges.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(val => this.onPiezaCategoriaChange(val));
+
+    this.form.get('piezaMaterialSubcategoria')?.valueChanges.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(val => this.onPiezaSubcategoriaChange(val));
+
+    this.form.get('piezaMaterialId')?.valueChanges.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(val => this.onPiezaMaterialChange(val));
+
+    this.form.get('perfil')?.valueChanges.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(() => this.actualizarMinMargenGanancia());
   }
 
   back() {

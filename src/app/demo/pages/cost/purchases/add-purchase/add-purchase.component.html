@@ -135,7 +135,7 @@
                     </tr>
                   </thead>
                   <tbody>
-                    @for (item of materialesCompra; track $index; let i = $index) {
+                    @for (item of materialesCompra(); track $index; let i = $index) {
                       <tr>
                         <td>
                           <span class="badge" 
@@ -174,7 +174,7 @@
               <!-- Total Compra -->
               <div class="d-flex justify-content-end align-items-center gap-3 mt-3 pt-2">
                 <span class="fs-6 fw-bold text-muted">Total Compra:</span>
-                <span class="fs-5 fw-bold text-success">${{ totalCompra | number:'1.2-2' }}</span>
+                <span class="fs-5 fw-bold text-success">${{ totalCompra() | number:'1.2-2' }}</span>
               </div>
             </div>
           </div>
@@ -196,100 +196,15 @@
   </div>
 </div>
 
-<!-- MODAL: REGISTRO RÁPIDO DE ACTIVO / INSUMO -->
-@if (showAssetModal) {
-  <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);" (click)="closeAssetModal()">
-    <div class="modal-dialog modal-dialog-centered modal-lg" (click)="$event.stopPropagation()">
-      <div class="modal-content shadow border-0">
-        <div class="modal-header bg-primary text-white py-3">
-          <h5 class="modal-title text-white fs-5 fw-bold d-flex align-items-center gap-2">
-            <i class="ti ti-plus fs-4"></i> Registrar Nuevo Insumo / Material
-          </h5>
-          <button type="button" class="btn-close btn-close-white" (click)="closeAssetModal()"></button>
-        </div>
-        <div class="modal-body p-4">
-          <form [formGroup]="assetForm">
-            <div class="row g-3">
-              <!-- Fila 1: Nombre (50%) y Tipo (50%) -->
-              <div class="col-md-6">
-                <label class="form-label fw-bold">Nombre del Insumo / Material <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" formControlName="nombre" placeholder="Ej. Filamento PLA Azul / Tornillos M3">
-              </div>
-              <div class="col-md-6">
-                <label class="form-label fw-bold">Tipo <span class="text-danger">*</span></label>
-                <ng-select formControlName="tipo" [clearable]="false" (change)="onModalTipoChange()">
-                  <ng-option value="Material">Material (Filamento / Resina)</ng-option>
-                  <ng-option value="Circulante">Del Inventario (Circulante)</ng-option>
-                </ng-select>
-              </div>
+<!-- COMPONENTE REUTILIZABLE: MODAL DE ALTA RÁPIDA DE ACTIVO / INSUMO -->
+<app-quick-asset-modal
+  [isOpen]="showAssetModal"
+  [defaultTipo]="tempTipoInsumo"
+  [allAssets]="allAssets"
+  [initialCosto]="tempValorUnitario"
+  [initialCantidad]="tempCantidad"
+  submitButtonText="Guardar y Agregar a la Compra"
+  (assetCreated)="onAssetCreated($event)"
+  (modalClosed)="closeAssetModal()">
+</app-quick-asset-modal>
 
-              <!-- Fila 2: Categoría (50%) y Subcategoría (50%) -->
-              <div class="col-md-6">
-                <label class="form-label fw-bold">Categoría <span class="text-danger">*</span></label>
-                <ng-select 
-                  formControlName="categoria" 
-                  [items]="modalCategoriasList" 
-                  [addTag]="true"
-                  (change)="onModalCategoriaChange()"
-                  placeholder="Seleccione o escriba una categoría..." 
-                  [clearable]="false">
-                </ng-select>
-                <small class="text-muted">Si es Circulante de Producción, use <b>Producción</b>.</small>
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Subcategoría</label>
-                <ng-select 
-                  formControlName="subCategoria" 
-                  [items]="modalSubcategoriasList" 
-                  [addTag]="true"
-                  placeholder="Opcional: Seleccione o escriba...">
-                </ng-select>
-              </div>
-
-              <!-- Fila 3: Costo (25%) + Cantidad (25%) [Suma = 50%] | Unidad de Medida (50%) -->
-              <div class="col-md-3">
-                <label class="form-label fw-bold">Costo Unitario ($) <span class="text-danger">*</span></label>
-                <input type="number" step="0.01" min="0" class="form-control" formControlName="costoInicial" placeholder="0.00">
-              </div>
-              <div class="col-md-3">
-                <label class="form-label fw-bold">Cantidad a Comprar <span class="text-danger">*</span></label>
-                <input type="number" step="0.01" min="0.01" class="form-control" formControlName="cantidad" placeholder="1.00">
-              </div>
-              <div class="col-md-6">
-                <label class="form-label fw-bold">Unidad de Medida <span class="text-danger">*</span></label>
-                <ng-select 
-                  formControlName="unidadMedida" 
-                  [items]="unidadesMedidaList" 
-                  [addTag]="true"
-                  [clearable]="false">
-                </ng-select>
-              </div>
-
-              <!-- Fila 4: Presentación (50%) y Ubicación (50%) -->
-              <div class="col-md-6">
-                <label class="form-label">Presentación</label>
-                <input type="text" class="form-control" formControlName="presentacion" placeholder="Ej. Rollo 1kg / Bolsa 100u">
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Ubicación</label>
-                <input type="text" class="form-control" formControlName="ubicacion" placeholder="Ej. Estante A-2 / Gaveta 3">
-              </div>
-
-              <!-- Fila 5: Descripción (100%) -->
-              <div class="col-12">
-                <label class="form-label">Descripción</label>
-                <textarea class="form-control" rows="2" formControlName="descripcion" placeholder="Detalles u observaciones adicionales..."></textarea>
-              </div>
-            </div>
-          </form>
-        </div>
-        <div class="modal-footer bg-light border-top py-2 px-4">
-          <button class="btn btn-outline-secondary" type="button" (click)="closeAssetModal()">Cancelar</button>
-          <button class="btn btn-primary d-inline-flex align-items-center gap-1" type="button" [disabled]="guardandoAsset" (click)="saveAssetModal()">
-            <i class="ti ti-shopping-cart-plus fs-5"></i> Guardar y Agregar a la Compra
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-}

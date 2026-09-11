@@ -374,13 +374,13 @@
                           <td class="fw-bold">{{ p['cantidad'] }}</td>
                           <td class="fw-medium">{{ p['nombre'] }}</td>
                           <td>
-                            @if (p['maquinaNombre']) {
-                              <span class="badge bg-light-primary text-primary px-2 py-1"><i class="ti ti-printer me-1"></i>{{ p['maquinaNombre'] }}</span>
+                            @if (getNombreMaquina(p) !== '-') {
+                              <span class="badge bg-light-primary text-primary px-2 py-1"><i class="ti ti-printer me-1"></i>{{ getNombreMaquina(p) }}</span>
                             } @else {
                               <span class="text-muted">-</span>
                             }
                           </td>
-                          <td>{{ p['materialDisplayName'] || '-' }}</td>
+                          <td>{{ getNombreMaterial(p) }}</td>
                           <td>{{ p['gramos'] ? p['gramos'] + ' g' : '-' }}</td>
                           <td>{{ p['horas'] || 0 }}h : {{ p['minutos'] || 0 }}m</td>
                           <td class="text-center">

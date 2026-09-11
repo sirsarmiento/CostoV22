@@ -12,7 +12,7 @@ import { ProductService } from '../../../../../core/services/cost/product.servic
 import { AssetService } from '../../../../../core/services/cost/asset.service';
 import { FixeService } from '../../../../../core/services/cost/fixe.service';
 import Swal from 'sweetalert2';
-import { calculateBudgetTotals, depreciacionMensualMaquinas } from '../../../../../core/utils/budget-calculator';
+import { calculateBudgetTotals, depreciacionMensualMaquinas, isMachineAsset } from '../../../../../core/utils/budget-calculator';
 
 
 @Component({
@@ -87,13 +87,20 @@ export class PricingComponent implements OnInit {
             configObj.parametros.forEach((machine) => {
               const unidad = machine.unidad?.toLowerCase().trim() || '';
               if (unidad.includes('hora') || unidad.includes('hs') || unidad === '') {
-                capacidadTotal += (Number(machine.horasUso) || 0) * (Number(machine.prodMaxHoras) || 0);
+                const hUso = Number(machine.horasUso) || 0;
+                const hMes = (hUso > 0 && hUso <= 24) ? (hUso * 22) : (hUso > 24 ? hUso : 176);
+                capacidadTotal += hMes;
               }
             });
           }
         }
 
-        this.capacidadHorasMaquina = capacidadTotal > 0 ? capacidadTotal : 160;
+        if (capacidadTotal <= 0) {
+          const maquinasFijas = (data.assets || []).filter(a => isMachineAsset(a));
+          capacidadTotal = maquinasFijas.length > 0 ? (maquinasFijas.length * 176) : 176;
+        }
+
+        this.capacidadHorasMaquina = capacidadTotal > 0 ? capacidadTotal : 176;
 
         this.productos = data.products;
         this.allAssets = data.assets;

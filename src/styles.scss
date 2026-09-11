@@ -215,3 +215,14 @@ textarea.is-invalid:focus {
   border-color: #dc2626 !important;
   box-shadow: 0 0 0 0.25rem rgba(220, 38, 38, 0.2) !important;
 }
+
+/* SweetAlert2 Modal debe estar siempre por encima de cualquier loader y recibir clicks */
+.swal2-container {
+  z-index: 100000 !important;
+  pointer-events: auto !important;
+}
+
+#http-loader,
+.loader-bg {
+  pointer-events: none !important;
+}

@@ -4,6 +4,7 @@ import { AbstractControl, FormBuilder, FormGroup, ReactiveFormsModule, Validator
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
 import Swal from 'sweetalert2';
+import { ComponentCanDeactivate } from '../../../../core/guards/pending-changes.guard';
 
 @Component({
   selector: 'app-change-pass',
@@ -11,7 +12,7 @@ import Swal from 'sweetalert2';
   imports: [CommonModule, ReactiveFormsModule, RouterModule],
   templateUrl: './change-pass.component.html'
 })
-export class ChangePassComponent {
+export class ChangePassComponent implements ComponentCanDeactivate {
   private authService = inject(AuthService);
   private formBuilder = inject(FormBuilder);
   private router = inject(Router);
@@ -40,6 +41,8 @@ export class ChangePassComponent {
 
     this.loading = false;
     if (result) {
+      this.submitted = true;
+      this.form?.markAsPristine();
       Swal.fire({
         title: '¡Contraseña Actualizada!',
         text: 'Su contraseña ha sido modificada con éxito.',
@@ -52,6 +55,13 @@ export class ChangePassComponent {
     } else {
       this.form.reset();
     }
+  }
+
+  canDeactivate(): boolean {
+    if (this.submitted && !this.loading) {
+      return true;
+    }
+    return !this.form?.dirty;
   }
 
   myFormValues() {

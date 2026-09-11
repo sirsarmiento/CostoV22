@@ -5,6 +5,7 @@ import { Router, RouterModule } from '@angular/router';
 import { Family, Subfamily } from '../../../../../core/models/Cost/family';
 import { CodingService } from '../../../../../core/services/cost/coding.service';
 import Swal from 'sweetalert2';
+import { ComponentCanDeactivate } from '../../../../../core/guards/pending-changes.guard';
 
 @Component({
   selector: 'app-add-family',
@@ -12,7 +13,7 @@ import Swal from 'sweetalert2';
   imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule],
   templateUrl: './add-family.component.html'
 })
-export class AddFamilyComponent implements OnInit {
+export class AddFamilyComponent implements OnInit, ComponentCanDeactivate {
   private formBuilder = inject(FormBuilder);
   private router = inject(Router);
   private codingService = inject(CodingService);
@@ -123,6 +124,8 @@ export class AddFamilyComponent implements OnInit {
     request.subscribe({
       next: () => {
         this.loading = false;
+        this.submitted = true;
+        this.form?.markAsPristine();
         const msg = this.id > 0 ? 'Familia actualizada correctamente.' : 'Familia registrada correctamente.';
         Swal.fire('Éxito', msg, 'success').then(() => {
           this.router.navigate(['/codings']);
@@ -133,5 +136,14 @@ export class AddFamilyComponent implements OnInit {
         Swal.fire('Error', 'Ha ocurrido un error al guardar.', 'error');
       }
     });
+  }
+
+  canDeactivate(): boolean {
+    if (this.submitted && !this.loading) {
+      return true;
+    }
+    const isFormDirty = this.form?.dirty;
+    const hasSubfamilies = !this.id && this.subfamiliesList && this.subfamiliesList.length > 0;
+    return !isFormDirty && !hasSubfamilies;
   }
 }

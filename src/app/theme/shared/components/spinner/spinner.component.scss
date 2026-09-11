@@ -5,6 +5,7 @@
   width: 100%;
   position: fixed;
   z-index: 9999;
+  pointer-events: none !important;
 }
 
 .loader-bg {
@@ -14,6 +15,7 @@
   filter: alpha(opacity=70);
   opacity: 0.7;
   background-color: #f1f1f1;
+  pointer-events: none !important;
 }
 
 .colored-parent,

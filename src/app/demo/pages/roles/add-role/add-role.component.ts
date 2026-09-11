@@ -5,6 +5,7 @@ import { Router, RouterModule } from '@angular/router';
 import { Rol } from '../../../../core/models/rol';
 import { RolesPermissionsService } from '../../../../core/services/roles-permissions.service';
 import Swal from 'sweetalert2';
+import { ComponentCanDeactivate } from '../../../../core/guards/pending-changes.guard';
 
 @Component({
   selector: 'app-add-role',
@@ -12,7 +13,7 @@ import Swal from 'sweetalert2';
   imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule],
   templateUrl: './add-role.component.html'
 })
-export class AddRoleComponent implements OnInit {
+export class AddRoleComponent implements OnInit, ComponentCanDeactivate {
   private formBuilder = inject(FormBuilder);
   private router = inject(Router);
   private rolesService = inject(RolesPermissionsService);
@@ -74,6 +75,8 @@ export class AddRoleComponent implements OnInit {
       next: () => {
         localStorage.removeItem('security_edit_role');
         this.loading = false;
+        this.submitted = true;
+        this.form?.markAsPristine();
         Swal.fire({
           title: '¡Guardado!',
           text: 'Rol guardado exitosamente.',
@@ -94,6 +97,13 @@ export class AddRoleComponent implements OnInit {
         }
       }
     });
+  }
+
+  canDeactivate(): boolean {
+    if (this.submitted && !this.loading) {
+      return true;
+    }
+    return !this.form?.dirty;
   }
 
   back() {

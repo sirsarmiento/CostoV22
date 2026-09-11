@@ -6,6 +6,7 @@ import { NgSelectModule } from '@ng-select/ng-select';
 import { CapacityResults, Config, Machine } from '../../../../../core/models/Cost/config';
 import { ConfigService } from '../../../../../core/services/cost/config.service';
 import Swal from 'sweetalert2';
+import { ComponentCanDeactivate } from '../../../../../core/guards/pending-changes.guard';
 
 @Component({
   selector: 'app-add-config',
@@ -13,7 +14,7 @@ import Swal from 'sweetalert2';
   imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, NgSelectModule],
   templateUrl: './add-config.component.html'
 })
-export class AddConfigComponent implements OnInit {
+export class AddConfigComponent implements OnInit, ComponentCanDeactivate {
   private formBuilder = inject(FormBuilder);
   private router = inject(Router);
   private configService = inject(ConfigService);
@@ -238,6 +239,8 @@ export class AddConfigComponent implements OnInit {
     request.subscribe({
       next: () => {
         this.loading = false;
+        this.submitted = true;
+        this.form?.markAsPristine();
         Swal.fire({
           title: '¡Guardado!',
           text: 'Perfil de empresa guardado exitosamente.',
@@ -254,6 +257,13 @@ export class AddConfigComponent implements OnInit {
         Swal.fire('Error', 'Ha ocurrido un error. Intente más tarde.', 'error');
       }
     });
+  }
+
+  canDeactivate(): boolean {
+    if (this.submitted && !this.loading) {
+      return true;
+    }
+    return !this.form?.dirty;
   }
 
   onEdit(row: Machine) {

@@ -8,6 +8,7 @@ import { Product } from '../../../../../core/models/Cost/product';
 import { FixeService } from '../../../../../core/services/cost/fixe.service';
 import { ProductService } from '../../../../../core/services/cost/product.service';
 import Swal from 'sweetalert2';
+import { ComponentCanDeactivate } from '../../../../../core/guards/pending-changes.guard';
 
 @Component({
   selector: 'app-add-fixe',
@@ -15,7 +16,7 @@ import Swal from 'sweetalert2';
   imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, NgSelectModule],
   templateUrl: './add-fixe.component.html'
 })
-export class AddFixeComponent implements OnInit {
+export class AddFixeComponent implements OnInit, ComponentCanDeactivate {
   private formBuilder = inject(FormBuilder);
   private router = inject(Router);
   private fixeService = inject(FixeService);
@@ -268,6 +269,8 @@ export class AddFixeComponent implements OnInit {
     request.subscribe({
       next: () => {
         this.loading = false;
+        this.submitted = true;
+        this.form?.markAsPristine();
         Swal.fire({
           title: '¡Guardado!',
           text: 'Costo guardado exitosamente.',
@@ -283,5 +286,12 @@ export class AddFixeComponent implements OnInit {
         Swal.fire('Error', 'Ha ocurrido un error al guardar el costo.', 'error');
       }
     });
+  }
+
+  canDeactivate(): boolean {
+    if (this.submitted && !this.loading) {
+      return true;
+    }
+    return !this.form?.dirty;
   }
 }

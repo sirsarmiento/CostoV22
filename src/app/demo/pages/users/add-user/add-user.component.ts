@@ -10,6 +10,7 @@ import { StructureService } from '../../../../core/services/structure.service';
 import { SelectOption } from '../../../../core/models/select-option';
 import { NgSelectModule } from '@ng-select/ng-select';
 import Swal from 'sweetalert2';
+import { ComponentCanDeactivate } from '../../../../core/guards/pending-changes.guard';
 
 @Component({
   selector: 'app-add-user',
@@ -17,7 +18,7 @@ import Swal from 'sweetalert2';
   imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, NgSelectModule],
   templateUrl: './add-user.component.html'
 })
-export class AddUserComponent implements OnInit, OnDestroy {
+export class AddUserComponent implements OnInit, OnDestroy, ComponentCanDeactivate {
   private userService = inject(UserService);
   private commonsService = inject(CommonsService);
   private rolesService = inject(RolesPermissionsService);
@@ -334,6 +335,9 @@ export class AddUserComponent implements OnInit, OnDestroy {
 
     try {
        await this.userService.storeUser(payload);
+       this.loading = false;
+       this.submitted = true;
+       this.form?.markAsPristine();
        Swal.fire('Éxito', 'Usuario guardado correctamente.', 'success');
        this.router.navigate(['/users']);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -345,6 +349,13 @@ export class AddUserComponent implements OnInit, OnDestroy {
          Swal.fire('Error', 'Ha ocurrido un error. Intente más tarde.', 'error');
        }
     }
+  }
+
+  canDeactivate(): boolean {
+    if (this.submitted && !this.loading) {
+      return true;
+    }
+    return !this.form?.dirty;
   }
 
   myFormValues() {

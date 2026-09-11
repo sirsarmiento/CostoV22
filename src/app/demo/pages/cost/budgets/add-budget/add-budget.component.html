@@ -303,13 +303,13 @@
                       <td class="fw-bold">{{ row.cantidad || 1 }}</td>
                       <td class="fw-bold">{{ row.nombre }}</td>
                       <td>
-                        @if (row.maquinaNombre) {
-                          <span class="badge bg-light-primary text-primary px-2 py-1"><i class="ti ti-printer me-1"></i>{{ row.maquinaNombre }}</span>
+                        @if (getNombreMaquina(row) !== '-') {
+                          <span class="badge bg-light-primary text-primary px-2 py-1"><i class="ti ti-printer me-1"></i>{{ getNombreMaquina(row) }}</span>
                         } @else {
                           <span class="text-muted">-</span>
                         }
                       </td>
-                      <td>{{ row.materialDisplayName || row.materialTipo }}</td>
+                      <td>{{ getNombreMaterial(row) }}</td>
                       <td>{{ row.precioMaterial ? (row.precioMaterial | currency:'USD') : '-' }}</td>
                       <td>{{ row.gramos ? (row.gramos | number:'1.1-2') + ' g' : '-' }}</td>
                       <td>{{ row.horas || 0 }}h : {{ row.minutos || 0 }}m</td>

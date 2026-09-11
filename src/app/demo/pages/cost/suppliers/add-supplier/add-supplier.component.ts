@@ -5,6 +5,7 @@ import { Router, RouterModule } from '@angular/router';
 import { InventoryService } from '../../../../../core/services/cost/inventory.service';
 import { Supplier } from '../../../../../core/models/Cost/inventory';
 import Swal from 'sweetalert2';
+import { ComponentCanDeactivate } from '../../../../../core/guards/pending-changes.guard';
 
 @Component({
   selector: 'app-add-supplier',
@@ -12,7 +13,7 @@ import Swal from 'sweetalert2';
   imports: [CommonModule, ReactiveFormsModule, RouterModule],
   templateUrl: './add-supplier.component.html'
 })
-export class AddSupplierComponent implements OnInit {
+export class AddSupplierComponent implements OnInit, ComponentCanDeactivate {
   private fb = inject(FormBuilder);
   private router = inject(Router);
   private service = inject(InventoryService);
@@ -55,6 +56,8 @@ export class AddSupplierComponent implements OnInit {
     req.subscribe({
       next: () => {
         this.loading = false;
+        this.submitted = true;
+        this.form?.markAsPristine();
         Swal.fire('Guardado', 'Proveedor registrado.', 'success').then(() => this.back());
       },
       error: () => {
@@ -62,5 +65,12 @@ export class AddSupplierComponent implements OnInit {
         Swal.fire('Error', 'No se pudo guardar el proveedor.', 'error');
       }
     });
+  }
+
+  canDeactivate(): boolean {
+    if (this.submitted && !this.loading) {
+      return true;
+    }
+    return !this.form?.dirty;
   }
 }

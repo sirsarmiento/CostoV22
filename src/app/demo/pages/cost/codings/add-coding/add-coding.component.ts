@@ -11,6 +11,7 @@ import { ProductService } from '../../../../../core/services/cost/product.servic
 import { BudgetService } from '../../../../../core/services/cost/budget.service';
 import Swal from 'sweetalert2';
 import { SkuCoding } from '../../../../../core/models/Cost/coding';
+import { ComponentCanDeactivate } from '../../../../../core/guards/pending-changes.guard';
 
 @Component({
   selector: 'app-add-coding',
@@ -18,7 +19,7 @@ import { SkuCoding } from '../../../../../core/models/Cost/coding';
   imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, NgSelectModule],
   templateUrl: './add-coding.component.html'
 })
-export class AddCodingComponent implements OnInit {
+export class AddCodingComponent implements OnInit, ComponentCanDeactivate {
   private formBuilder = inject(FormBuilder);
   private router = inject(Router);
   private codingService = inject(CodingService);
@@ -408,6 +409,8 @@ export class AddCodingComponent implements OnInit {
           this.codingService.createSKU(codingResult).subscribe({
             next: () => {
               this.loading = false;
+              this.submitted = true;
+              this.form?.markAsPristine();
               Swal.fire({
                 title: 'Código Generado con Éxito',
                 html: `Se ha registrado el SKU: <strong class="text-primary font-monospace">${generatedSku}</strong> para <strong>${pName}</strong>.`,
@@ -425,6 +428,13 @@ export class AddCodingComponent implements OnInit {
         Swal.fire('Error', 'No se pudieron procesar los datos.', 'error');
       }
     });
+  }
+
+  canDeactivate(): boolean {
+    if (this.submitted && !this.loading) {
+      return true;
+    }
+    return !this.form?.dirty;
   }
 
   filterProducts(event: Event) {

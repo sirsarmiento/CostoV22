@@ -17,6 +17,7 @@ import { ClientService } from '../../../../../core/services/cost/client.service'
 import { forkJoin } from 'rxjs';
 import Swal from 'sweetalert2';
 import { calculateBudgetTotals, getNumFromRecord } from '../../../../../core/utils/budget-calculator';
+import { ComponentCanDeactivate } from '../../../../../core/guards/pending-changes.guard';
 
 @Component({
   selector: 'app-add-budget',
@@ -24,7 +25,7 @@ import { calculateBudgetTotals, getNumFromRecord } from '../../../../../core/uti
   imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, NgSelectModule],
   templateUrl: './add-budget.component.html'
 })
-export class AddBudgetComponent implements OnInit {
+export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
   private formBuilder = inject(FormBuilder);
   private router = inject(Router);
   private budgetService = inject(BudgetService);
@@ -163,12 +164,17 @@ export class AddBudgetComponent implements OnInit {
           configObj.parametros.forEach((machine: Machine) => {
             const unidad = machine.unidad?.toLowerCase().trim() || '';
             if (unidad.includes('hora') || unidad.includes('hs') || unidad === '') {
-              capacidad += (Number(machine.horasUso) || 0) * (Number(machine.prodMaxHoras) || 0);
+              const hUso = Number(machine.horasUso) || 0;
+              const hMes = (hUso > 0 && hUso <= 24) ? (hUso * 22) : (hUso > 24 ? hUso : 176);
+              capacidad += hMes;
             }
           });
         }
-        // Si no hay capacidad parametrizada en la empresa, usar 160 horas/mes (mes estándar) en lugar de 1 hora
-        this.capacidadHorasMaquina = capacidad > 0 ? capacidad : 160;
+        if (capacidad <= 0) {
+          const maquinasFijas = (data.assets || []).filter(a => (a.tipo || '').toLowerCase() === 'fijo' && (a.categoria || '').toLowerCase() === 'equipo');
+          capacidad = maquinasFijas.length > 0 ? (maquinasFijas.length * 176) : 176;
+        }
+        this.capacidadHorasMaquina = capacidad > 0 ? capacidad : 176;
       }
       
       // Productos
@@ -420,14 +426,31 @@ export class AddBudgetComponent implements OnInit {
       const piezasList = Array.isArray(rawPiezas) ? rawPiezas : [];
       if (piezasList.length > 0) {
         this.piezas = piezasList.map((pb: Record<string, unknown>, index: number) => {
-          const actId = Number(pb['activo'] ?? pb['activo_id'] ?? pb['assetId'] ?? pb['materialId']) || undefined;
-          const foundAsset = actId ? this.activosCirculantes.find(a => a.id == actId) || this.assetsMobiliario.find(a => a.id == actId) : undefined;
+          const rawAct = pb['activo'] ?? pb['activo_id'] ?? pb['assetId'] ?? pb['materialId'];
+          const actObj = typeof rawAct === 'object' && rawAct !== null ? rawAct as Record<string, unknown> : undefined;
+          const actId = actObj ? Number(actObj['id']) : (Number(rawAct) || undefined);
           
+          const foundAsset = actId 
+            ? (this.activosMateriales.find(a => a.id == actId) || this.activosCirculantes.find(a => a.id == actId) || this.assetsMobiliario.find(a => a.id == actId)) 
+            : undefined;
+          
+          const rawMaq = pb['maquina'] ?? pb['maquinaId'] ?? pb['maquina_id'];
+          const maqObj = typeof rawMaq === 'object' && rawMaq !== null ? rawMaq as Record<string, unknown> : undefined;
+          const maqId = maqObj ? Number(maqObj['id']) : (Number(rawMaq) || undefined);
+          const foundMaq = maqId ? this.maquinasList.find(m => m.id == maqId) : undefined;
+          
+          const maqName = (maqObj?.['nombre'] as string) || (foundMaq?.nombre) || (typeof pb['maquinaNombre'] === 'string' && pb['maquinaNombre'] !== '[object Object]' ? pb['maquinaNombre'] as string : undefined);
+
           let tipo = (pb['tipo'] as string) || '';
           if (!tipo) {
-            tipo = (foundAsset && !pb['maquinaId'] && !pb['maquina']) ? 'Del Inventario' : 'Fabricada';
+            tipo = (foundAsset && !maqId) ? 'Del Inventario' : 'Fabricada';
           }
           
+          const matName = (actObj?.['nombre'] as string) 
+            || (foundAsset ? foundAsset.nombre : undefined) 
+            || (typeof pb['materialDisplayName'] === 'string' && pb['materialDisplayName'] !== '[object Object]' ? pb['materialDisplayName'] as string : undefined)
+            || (typeof pb['materialTipo'] === 'string' && pb['materialTipo'] !== '[object Object]' && pb['materialTipo'] !== 'Sin material' ? pb['materialTipo'] as string : undefined);
+
           const rawPrecio = Number(pb['precioMaterial'] ?? pb['precio_material']);
           const precioMaterial = (!isNaN(rawPrecio) && rawPrecio > 0)
             ? rawPrecio
@@ -440,14 +463,14 @@ export class AddBudgetComponent implements OnInit {
             cantidad: Number(pb['cantidad']) || 1,
             activo: actId,
             assetId: actId,
-            materialTipo: (pb['materialDisplayName'] as string) || (pb['materialTipo'] as string) || (foundAsset ? foundAsset.nombre : 'Sin material'),
-            materialDisplayName: (pb['materialDisplayName'] as string) || (foundAsset ? foundAsset.nombre : ''),
+            materialTipo: matName || 'Sin material',
+            materialDisplayName: matName || '',
             precioMaterial: precioMaterial,
             gramos: Number(pb['gramos']) || 0,
             horas: Number(pb['horas']) || 0,
             minutos: Number(pb['minutos']) || 0,
-            maquinaId: Number(pb['maquinaId'] ?? pb['maquina']) || undefined,
-            maquinaNombre: (pb['maquinaNombre'] as string) || (pb['maquina'] as string) || undefined
+            maquinaId: maqId,
+            maquinaNombre: maqName
           };
         });
         this.piezaCounter = this.piezas.length + 1;
@@ -624,23 +647,25 @@ export class AddBudgetComponent implements OnInit {
     return piezasList.map(p => {
       const pObj = p as unknown as Record<string, unknown>;
       
-      const maqId = p.maquina ?? pObj['maquina_id'] ?? pObj['maquina'];
+      const rawMaq = p.maquina ?? pObj['maquina_id'] ?? pObj['maquina'];
+      const maqObj = typeof rawMaq === 'object' && rawMaq !== null ? rawMaq as Record<string, unknown> : undefined;
+      const maqId = maqObj ? Number(maqObj['id']) : (Number(rawMaq) || undefined);
       if (maqId) {
-        p.maquina = Number(maqId);
+        p.maquina = maqId;
         const foundMaq = this.maquinasList.find(m => m.id == maqId);
-        if (foundMaq) {
-          p.maquinaNombre = foundMaq.nombre;
-        }
+        p.maquinaNombre = (maqObj?.['nombre'] as string) || foundMaq?.nombre;
       }
 
-      const actId = p.activo ?? pObj['activo_id'] ?? pObj['activo'] ?? pObj['material_id'] ?? pObj['materialId'];
+      const rawAct = p.activo ?? pObj['activo_id'] ?? pObj['activo'] ?? pObj['material_id'] ?? pObj['materialId'];
+      const actObj = typeof rawAct === 'object' && rawAct !== null ? rawAct as Record<string, unknown> : undefined;
+      const actId = actObj ? Number(actObj['id']) : (Number(rawAct) || undefined);
       if (actId) {
-        p.activo = Number(actId);
-        const foundCirc = this.activosCirculantes.find(a => a.id == actId);
-        const foundMob = this.assetsMobiliario.find(a => a.id == actId);
-        const assetObj = foundCirc || foundMob;
-        if (assetObj) {
-          p.materialDisplayName = assetObj.nombre;
+        p.activo = actId;
+        const foundMat = this.activosMateriales.find(a => a.id == actId)
+          || this.activosCirculantes.find(a => a.id == actId)
+          || this.assetsMobiliario.find(a => a.id == actId);
+        if (foundMat || actObj?.['nombre']) {
+          p.materialDisplayName = (actObj?.['nombre'] as string) || foundMat?.nombre;
         }
       }
 
@@ -654,6 +679,52 @@ export class AddBudgetComponent implements OnInit {
 
       return { ...p, fromDb: true };
     });
+  }
+
+  getNombreMaquina(row: Parts | Record<string, unknown> | unknown): string {
+    if (!row) return '-';
+    const r = row as Record<string, unknown>;
+    const rawMaq = r['maquina'] ?? r['maquinaId'] ?? r['maquina_id'];
+    if (typeof rawMaq === 'object' && rawMaq !== null) {
+      const nom = (rawMaq as Record<string, unknown>)['nombre'];
+      if (nom) return String(nom);
+    }
+    const maqNom = r['maquinaNombre'];
+    if (typeof maqNom === 'string' && maqNom && maqNom !== '-' && maqNom !== '[object Object]') {
+      return maqNom;
+    }
+    const maqId = typeof rawMaq === 'object' && rawMaq !== null ? Number((rawMaq as Record<string, unknown>)['id']) : Number(rawMaq);
+    if (maqId && !isNaN(maqId)) {
+      const found = this.maquinasList.find(m => m.id == maqId);
+      if (found?.nombre) return found.nombre;
+    }
+    return '-';
+  }
+
+  getNombreMaterial(row: Parts | Record<string, unknown> | unknown): string {
+    if (!row) return '-';
+    const r = row as Record<string, unknown>;
+    const rawAct = r['activo'] ?? r['assetId'] ?? r['activo_id'] ?? r['materialId'];
+    if (typeof rawAct === 'object' && rawAct !== null) {
+      const nom = (rawAct as Record<string, unknown>)['nombre'];
+      if (nom) return String(nom);
+    }
+    const matDisp = r['materialDisplayName'];
+    if (typeof matDisp === 'string' && matDisp && matDisp !== 'Sin material' && matDisp !== '-' && matDisp !== '[object Object]') {
+      return matDisp;
+    }
+    const matTipo = r['materialTipo'];
+    if (typeof matTipo === 'string' && matTipo && matTipo !== 'Sin material' && matTipo !== '-' && matTipo !== '[object Object]') {
+      return matTipo;
+    }
+    const actId = typeof rawAct === 'object' && rawAct !== null ? Number((rawAct as Record<string, unknown>)['id']) : Number(rawAct);
+    if (actId && !isNaN(actId)) {
+      const found = this.activosMateriales.find(a => a.id == actId) 
+        || this.activosCirculantes.find(a => a.id == actId) 
+        || this.assetsMobiliario.find(a => a.id == actId);
+      if (found?.nombre) return found.nombre;
+    }
+    return r['tipo'] === 'Del Inventario' ? String(r['nombre'] || 'Activo Inventario') : '-';
   }
 
   myFormValues() {
@@ -817,6 +888,25 @@ export class AddBudgetComponent implements OnInit {
     this.submitted = true;
     this.form.markAllAsTouched();
 
+    // Auto-agregar pieza si el usuario llenó los campos superiores pero olvidó hacer clic en [+]
+    const tipoPieza = this.form.get('piezaTipo')?.value;
+    if (tipoPieza === 'Del Inventario' && this.form.get('piezaInventario')?.value) {
+      this.addPart();
+    } else if (tipoPieza === 'Fabricada' && (this.form.get('piezaFabricada')?.value || this.form.get('piezaGramos')?.value)) {
+      this.addPart();
+    }
+
+    if (this.piezas.length === 0) {
+      Swal.fire({
+        title: 'Sin Piezas',
+        text: 'Debe agregar al menos una pieza al presupuesto antes de guardarlo.',
+        icon: 'warning',
+        confirmButtonText: 'Entendido',
+        confirmButtonColor: '#4680ff'
+      });
+      return;
+    }
+
     if (this.form.invalid) {
       Swal.fire('Error', 'Complete los datos obligatorios del presupuesto.', 'error');
       return;
@@ -908,6 +998,8 @@ export class AddBudgetComponent implements OnInit {
       request.subscribe({
         next: () => {
           this.loading = false;
+          this.submitted = true;
+          this.form?.markAsPristine();
           Swal.fire({
             title: '¡Guardado!',
             text: 'Presupuesto guardado exitosamente.',
@@ -954,5 +1046,14 @@ export class AddBudgetComponent implements OnInit {
     } else {
       executeSubmit(undefined);
     }
+  }
+
+  canDeactivate(): boolean {
+    if (this.submitted && !this.loading) {
+      return true;
+    }
+    const isFormDirty = this.form?.dirty;
+    const hasUnsavedPieces = !this.id && this.piezas && this.piezas.length > 0;
+    return !isFormDirty && !hasUnsavedPieces;
   }
 }

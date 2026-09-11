@@ -6,6 +6,7 @@ import { NgSelectModule } from '@ng-select/ng-select';
 import { ClientService } from '../../../../../core/services/cost/client.service';
 import { Client } from '../../../../../core/models/Cost/client';
 import Swal from 'sweetalert2';
+import { ComponentCanDeactivate } from '../../../../../core/guards/pending-changes.guard';
 
 @Component({
   selector: 'app-add-client',
@@ -13,7 +14,7 @@ import Swal from 'sweetalert2';
   imports: [CommonModule, ReactiveFormsModule, RouterModule, NgSelectModule],
   templateUrl: './add-client.component.html'
 })
-export class AddClientComponent implements OnInit {
+export class AddClientComponent implements OnInit, ComponentCanDeactivate {
   private fb = inject(FormBuilder);
   private router = inject(Router);
   private clientService = inject(ClientService);
@@ -118,6 +119,8 @@ export class AddClientComponent implements OnInit {
     req$.subscribe({
       next: () => {
         this.loading = false;
+        this.submitted = true;
+        this.form?.markAsPristine();
         const msg = this.id > 0 ? 'Cliente actualizado con éxito.' : 'Cliente registrado con éxito.';
         Swal.fire('¡Éxito!', msg, 'success').then(() => {
           this.volver();
@@ -129,5 +132,12 @@ export class AddClientComponent implements OnInit {
         Swal.fire('Error', 'Ocurrió un error al guardar el cliente.', 'error');
       }
     });
+  }
+
+  canDeactivate(): boolean {
+    if (this.submitted && !this.loading) {
+      return true;
+    }
+    return !this.form?.dirty;
   }
 }

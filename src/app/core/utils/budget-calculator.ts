@@ -164,6 +164,15 @@ export function calculateBudgetTotals(
     } else {
       const gramos = Number(pRec['gramos'] ?? pieza.gramos) || 0;
       let precioMaterial = Number(pRec['precioMaterial'] ?? pRec['precio_material'] ?? pieza.precioMaterial) || 0;
+      if (precioMaterial <= 0) {
+        const actId = pRec['activo'] ?? pRec['activo_id'] ?? pRec['assetId'] ?? pieza.activo;
+        if (actId && allAssets && allAssets.length > 0) {
+          const foundAsset = allAssets.find(a => a.id == actId);
+          if (foundAsset) {
+            precioMaterial = Number(foundAsset.valorUnitario) || Number(foundAsset.costoInicial) || 0;
+          }
+        }
+      }
       if (precioMaterial >= 1.0) {
         precioMaterial = precioMaterial / 1000;
       }

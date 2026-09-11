@@ -10,6 +10,7 @@ import { Asset } from '../../../../../core/models/Cost/asset';
 import { Supplier, Purchase } from '../../../../../core/models/Cost/inventory';
 import { QuickAssetModalComponent, QuickAssetCreatedEvent } from '../../../../../theme/shared/components/quick-asset-modal/quick-asset-modal.component';
 import Swal from 'sweetalert2';
+import { ComponentCanDeactivate } from '../../../../../core/guards/pending-changes.guard';
 
 export interface MaterialCompraItem {
   activoId: number;
@@ -26,7 +27,7 @@ export interface MaterialCompraItem {
   imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, NgSelectModule, QuickAssetModalComponent],
   templateUrl: './add-purchase.component.html'
 })
-export class AddPurchaseComponent implements OnInit {
+export class AddPurchaseComponent implements OnInit, ComponentCanDeactivate {
   private fb = inject(FormBuilder);
   private router = inject(Router);
   private inventory = inject(InventoryService);
@@ -236,6 +237,8 @@ export class AddPurchaseComponent implements OnInit {
     this.inventory.createPurchase(payload).subscribe({
       next: () => {
         this.loading = false;
+        this.submitted = true;
+        this.form?.markAsPristine();
         Swal.fire({
           icon: 'success',
           title: '¡Compra Registrada!',
@@ -249,5 +252,14 @@ export class AddPurchaseComponent implements OnInit {
         Swal.fire('Error', err?.error?.msg || 'No se pudo registrar la compra.', 'error');
       }
     });
+  }
+
+  canDeactivate(): boolean {
+    if (this.submitted && !this.loading) {
+      return true;
+    }
+    const isFormDirty = this.form?.dirty;
+    const hasMaterials = this.materialesCompra().length > 0;
+    return !isFormDirty && !hasMaterials;
   }
 }

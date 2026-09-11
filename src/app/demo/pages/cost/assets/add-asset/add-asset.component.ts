@@ -7,6 +7,7 @@ import { NgSelectModule } from '@ng-select/ng-select';
 import { Asset } from '../../../../../core/models/Cost/asset';
 import { AssetService } from '../../../../../core/services/cost/asset.service';
 import { CATALOGO_MATERIALES } from '../../../../../core/constants/material-catalog';
+import { ComponentCanDeactivate } from '../../../../../core/guards/pending-changes.guard';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -15,7 +16,7 @@ import Swal from 'sweetalert2';
   imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, NgSelectModule],
   templateUrl: './add-asset.component.html'
 })
-export class AddAssetComponent implements OnInit {
+export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
   private formBuilder = inject(FormBuilder);
   private router = inject(Router);
   private assetService = inject(AssetService);
@@ -435,6 +436,8 @@ export class AddAssetComponent implements OnInit {
     request.subscribe({
       next: () => {
         this.loading = false;
+        this.submitted = true;
+        this.form?.markAsPristine();
         Swal.fire({
           title: '¡Guardado!',
           text: 'Activo guardado exitosamente.',
@@ -450,5 +453,12 @@ export class AddAssetComponent implements OnInit {
         Swal.fire('Error', 'Ha ocurrido un error al guardar el activo.', 'error');
       }
     });
+  }
+
+  canDeactivate(): boolean {
+    if (this.submitted && !this.loading) {
+      return true;
+    }
+    return !this.form?.dirty;
   }
 }

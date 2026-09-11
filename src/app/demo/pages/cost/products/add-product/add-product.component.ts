@@ -8,7 +8,7 @@ import { ProductService } from '../../../../../core/services/cost/product.servic
 import { ConfigService } from '../../../../../core/services/cost/config.service';
 import { AssetService } from '../../../../../core/services/cost/asset.service';
 import { FixeService } from '../../../../../core/services/cost/fixe.service';
-import { Product } from '../../../../../core/models/Cost/product';
+import { Product, PiezaProducto } from '../../../../../core/models/Cost/product';
 import { Config } from '../../../../../core/models/Cost/config';
 import { Asset } from '../../../../../core/models/Cost/asset';
 import { Fixe } from '../../../../../core/models/Cost/fixe';
@@ -16,13 +16,15 @@ import Swal from 'sweetalert2';
 import { Observable, forkJoin } from 'rxjs';
 import { tap } from 'rxjs/operators';
 
+import { ComponentCanDeactivate } from '../../../../../core/guards/pending-changes.guard';
+
 @Component({
   selector: 'app-add-product',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterModule, NgSelectModule],
   templateUrl: './add-product.component.html'
 })
-export class AddProductComponent implements OnInit {
+export class AddProductComponent implements OnInit, ComponentCanDeactivate {
   private formBuilder = inject(FormBuilder);
   private productService = inject(ProductService);
   private configService = inject(ConfigService);
@@ -152,18 +154,20 @@ export class AddProductComponent implements OnInit {
     }
   }
 
+  allAssets: Asset[] = [];
   activosMateriales: Asset[] = [];
 
   loadAssets() {
     this.assetService.getAssets().subscribe({
       next: (assets) => {
         if (assets) {
+          this.allAssets = assets;
           // 1. Máquinas: Activos Fijos de Categoría Equipo y Subcategoría Fabricación
           this.maquinasList = assets.filter((a: Asset) => {
             const t = (a.tipo || '').toLowerCase().trim();
             const c = (a.categoria || '').toLowerCase().trim();
-            const s = (a.subCategoria || (a as unknown as Record<string, unknown>)['sub_categoria'] || '').toString().toLowerCase().trim();
-            return t === 'fijo' && c === 'equipo' && (s === 'fabricación' || s === 'fabricacion');
+            const s = (a.subCategoria || (a as unknown as Record<string, unknown>)['sub_categoria'] || (a as unknown as Record<string, unknown>)['subcategoria'] || '').toString().toLowerCase().trim();
+            return t === 'fijo' && c === 'equipo' && (s === 'fabricación' || s === 'fabricacion' || s.includes('fabricac'));
           });
 
           if (this.maquinasList.length === 0) {
@@ -194,7 +198,7 @@ export class AddProductComponent implements OnInit {
           this.activosMateriales = assets.filter((a: Asset) => {
             const t = (a.tipo || '').toLowerCase().trim();
             const c = (a.categoria || '').toLowerCase().trim();
-            return t === 'material' || c === 'filamento' || c === 'resina' || c === 'filamentos' || c === 'resinas';
+            return t === 'material' || c === 'filamento' || c === 'resina' || c === 'filamentos' || c === 'resinas' || c.includes('filamento') || c.includes('resina');
           });
 
           this.categoriasMaterial = [...new Set(
@@ -202,10 +206,74 @@ export class AddProductComponent implements OnInit {
           )];
           this.materialesFiltradosCirculantes = [...this.activosMateriales];
           this.form.get('piezaMaterialId')?.enable();
+
+          this.actualizarNombresPiezas();
           this.cdr.detectChanges();
         }
       }
     });
+  }
+
+  actualizarNombresPiezas() {
+    if (!this.piezasPendientes || this.piezasPendientes.length === 0) return;
+    this.piezasPendientes = this.piezasPendientes.map(p => {
+      const pObj = p as Record<string, unknown>;
+      const maqName = this.getNombreMaquina(pObj);
+      const matName = this.getNombreMaterial(pObj);
+
+      const rawMaq = pObj['maquina'] ?? pObj['maquinaId'] ?? pObj['maquina_id'];
+      const maqId = typeof rawMaq === 'object' && rawMaq !== null ? Number((rawMaq as Record<string, unknown>)['id']) : (Number(rawMaq) || undefined);
+
+      const rawAct = pObj['activo'] ?? pObj['assetId'] ?? pObj['activo_id'];
+      const actId = typeof rawAct === 'object' && rawAct !== null ? Number((rawAct as Record<string, unknown>)['id']) : (Number(rawAct) || undefined);
+
+      return {
+        ...pObj,
+        maquinaId: maqId,
+        maquinaNombre: maqName !== '-' ? maqName : (pObj['maquinaNombre'] || undefined),
+        assetId: actId,
+        materialDisplayName: matName !== '-' ? matName : (pObj['materialDisplayName'] || undefined)
+      };
+    });
+  }
+
+  getNombreMaquina(p: Record<string, unknown> | PiezaProducto | unknown): string {
+    if (!p) return '-';
+    const pObj = p as Record<string, unknown>;
+    if (pObj['maquinaNombre'] && pObj['maquinaNombre'] !== '-') return String(pObj['maquinaNombre']);
+    
+    const rawMaq = pObj['maquina'] ?? pObj['maquinaId'] ?? pObj['maquina_id'];
+    if (typeof rawMaq === 'object' && rawMaq !== null) {
+      const nom = (rawMaq as Record<string, unknown>)['nombre'];
+      if (nom) return String(nom);
+    }
+    const maqId = typeof rawMaq === 'object' && rawMaq !== null ? Number((rawMaq as Record<string, unknown>)['id']) : Number(rawMaq);
+    if (maqId && !isNaN(maqId)) {
+      const found = this.maquinasList.find(m => m.id == maqId) || this.allAssets.find(a => a.id == maqId);
+      if (found?.nombre) return found.nombre;
+    }
+    return '-';
+  }
+
+  getNombreMaterial(p: Record<string, unknown> | PiezaProducto | unknown): string {
+    if (!p) return '-';
+    const pObj = p as Record<string, unknown>;
+    if (pObj['materialDisplayName'] && pObj['materialDisplayName'] !== '-') return String(pObj['materialDisplayName']);
+    if (pObj['materialTipo'] && pObj['materialTipo'] !== 'Sin material') return String(pObj['materialTipo']);
+    
+    const rawAct = pObj['activo'] ?? pObj['assetId'] ?? pObj['activo_id'];
+    if (typeof rawAct === 'object' && rawAct !== null) {
+      const nom = (rawAct as Record<string, unknown>)['nombre'];
+      if (nom) return String(nom);
+    }
+    const actId = typeof rawAct === 'object' && rawAct !== null ? Number((rawAct as Record<string, unknown>)['id']) : Number(rawAct);
+    if (actId && !isNaN(actId)) {
+      const found = this.activosMateriales.find(a => a.id == actId) 
+        || this.activosCirculantes.find(a => a.id == actId) 
+        || this.allAssets.find(a => a.id == actId);
+      if (found?.nombre) return found.nombre;
+    }
+    return '-';
   }
 
   onPiezaCategoriaChange(categoria: string) {
@@ -481,24 +549,26 @@ export class AddProductComponent implements OnInit {
       const piezasArray = Array.isArray(rawPiezas) ? rawPiezas : [];
       this.piezasPendientes = piezasArray.map(p => {
         const pObj = p as unknown as Record<string, unknown>;
-        const maqId = pObj['maquina'] ?? pObj['maquinaId'] ?? pObj['maquina_id'];
+        const maqId = Number(pObj['maquina'] ?? pObj['maquinaId'] ?? pObj['maquina_id']) || undefined;
         let maqName = pObj['maquinaNombre'] as string | undefined;
         if (maqId && !maqName) {
-          const found = this.maquinasList.find(m => m.id == maqId);
+          const found = this.maquinasList.find(m => m.id == maqId) || this.allAssets.find(a => a.id == maqId);
           if (found) maqName = found.nombre;
         }
-        const actId = pObj['activo'] ?? pObj['assetId'] ?? pObj['activo_id'];
+        const actId = Number(pObj['activo'] ?? pObj['assetId'] ?? pObj['activo_id']) || undefined;
         let matName = pObj['materialDisplayName'] as string | undefined;
         if (actId && !matName) {
-          const foundMat = this.activosCirculantes.find(a => a.id == actId);
+          const foundMat = this.activosMateriales.find(a => a.id == actId) 
+            || this.activosCirculantes.find(a => a.id == actId) 
+            || this.allAssets.find(a => a.id == actId);
           if (foundMat) matName = foundMat.nombre;
         }
         return {
           ...pObj,
           fromDb: true,
-          maquinaId: maqId ? Number(maqId) : undefined,
+          maquinaId: maqId,
           maquinaNombre: maqName,
-          assetId: actId ? Number(actId) : undefined,
+          assetId: actId,
           materialDisplayName: matName
         };
       });
@@ -670,6 +740,8 @@ export class AddProductComponent implements OnInit {
       forkJoin(reqs).subscribe({
         next: () => {
           this.loading = false;
+          this.submitted = true;
+          this.form?.markAsPristine();
           Swal.fire('¡Éxito!', 'Producto y costos guardados correctamente.', 'success').then(() => {
             this.back();
           });
@@ -677,6 +749,8 @@ export class AddProductComponent implements OnInit {
         error: (err) => {
           console.error('Error syncing costs:', err);
           this.loading = false;
+          this.submitted = true;
+          this.form?.markAsPristine();
           Swal.fire('Atención', 'El producto se guardó pero ocurrió un error con los costos vinculados.', 'warning').then(() => {
             this.back();
           });
@@ -684,9 +758,21 @@ export class AddProductComponent implements OnInit {
       });
     } else {
       this.loading = false;
+      this.submitted = true;
+      this.form?.markAsPristine();
       Swal.fire('¡Éxito!', 'Producto guardado correctamente.', 'success').then(() => {
         this.back();
       });
     }
+  }
+
+  canDeactivate(): boolean {
+    if (this.submitted && !this.loading) {
+      return true;
+    }
+    const isFormDirty = this.form?.dirty;
+    const hasUnsavedPieces = !this.id && this.piezasPendientes && this.piezasPendientes.length > 0;
+    const hasUnsavedCosts = !this.id && this.costosPendientes && this.costosPendientes.length > 0;
+    return !isFormDirty && !hasUnsavedPieces && !hasUnsavedCosts;
   }
 }

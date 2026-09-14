@@ -64,7 +64,7 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
           const rawRec = a as unknown as Record<string, unknown>;
           const tipo = String(a.tipo || rawRec['tipo'] || '').toLowerCase().trim();
           const cat = this.formatTitleCase(String(a.categoria || rawRec['Categoria'] || '').trim());
-          const sub = this.formatTitleCase(String(a.subCategoria || rawRec['subcategoria'] || rawRec['Subcategoria'] || rawRec['sub_categoria'] || '').trim());
+          const sub = this.formatTitleCase(String(a.subCategoria || '').trim());
 
           if (tipo === 'fijo' || (!tipo && a.vidaUtil && a.vidaUtil > 0)) {
             if (cat) {

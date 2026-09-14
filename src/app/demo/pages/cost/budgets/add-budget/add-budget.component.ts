@@ -7,9 +7,10 @@ import { NgSelectModule } from '@ng-select/ng-select';
 import { Budget, Parts } from '../../../../../core/models/Cost/budge';
 import { Asset } from '../../../../../core/models/Cost/asset';
 import { Product } from '../../../../../core/models/Cost/product';
+import { Client } from '../../../../../core/models/Cost/client';
+import { Machine } from '../../../../../core/models/Cost/config';
 import { BudgetService } from '../../../../../core/services/cost/budget.service';
 import { ConfigService } from '../../../../../core/services/cost/config.service';
-import { Machine } from '../../../../../core/models/Cost/config';
 import { ProductService } from '../../../../../core/services/cost/product.service';
 import { AssetService } from '../../../../../core/services/cost/asset.service';
 import { FixeService } from '../../../../../core/services/cost/fixe.service';
@@ -17,12 +18,21 @@ import { ClientService } from '../../../../../core/services/cost/client.service'
 import { forkJoin } from 'rxjs';
 import Swal from 'sweetalert2';
 import { calculateBudgetTotals, getNumFromRecord } from '../../../../../core/utils/budget-calculator';
+import {
+  AssetCatalog,
+  resolvePiezasDisplay,
+  getNombreMaquina,
+  getNombreMaterial,
+  mapProductToPieces,
+  buildBudgetPayload
+} from '../../../../../core/utils/budget-mapper';
 import { ComponentCanDeactivate } from '../../../../../core/guards/pending-changes.guard';
+import { QuickClientModalComponent, QuickClientData } from '../../../../../theme/shared/components/quick-client-modal/quick-client-modal.component';
 
 @Component({
   selector: 'app-add-budget',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, NgSelectModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, NgSelectModule, QuickClientModalComponent],
   templateUrl: './add-budget.component.html'
 })
 export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
@@ -36,11 +46,12 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
   private clientService = inject(ClientService);
   private cdr = inject(ChangeDetectorRef);
   private destroyRef = inject(DestroyRef);
+
   form!: FormGroup;
-  id: number = 0;
+  id = 0;
   loading = false;
   submitted = false;
-  
+
   piezas: Parts[] = [];
   piezaCounter = 1;
   minMargenGanancia = 0;
@@ -63,10 +74,11 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
   categoriasMaterial: string[] = [];
   subcategoriasMaterial: string[] = [];
 
-  isCreandoClienteNuevo = false;
+  // Modal de Cliente / Prospecto (SRP)
   showClienteModal = false;
-  guardarEnCatalogo = false;
-  tempClienteData = {
+  isCreandoClienteNuevo = false;
+  guardarEnCatalogo = true;
+  tempClienteData: QuickClientData = {
     nombre: '',
     rifCedula: '',
     categoria: '',
@@ -75,70 +87,24 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
     direccion: ''
   };
 
-  openClienteModal() {
-    if (!this.tempClienteData.nombre) {
-      this.tempClienteData.nombre = String(this.form?.get('clienteNombreTexto')?.value || '');
-    }
-    this.showClienteModal = true;
-  }
-
-  closeClienteModal() {
-    this.showClienteModal = false;
-  }
-
-  confirmClienteModal() {
-    if (!this.tempClienteData.nombre.trim()) {
-      Swal.fire('Error', 'Ingrese el nombre del cliente.', 'warning');
-      return;
-    }
-    this.isCreandoClienteNuevo = true;
-    this.form.get('clienteId')?.setValue(null);
-    this.form.get('clienteNombreTexto')?.setValue(this.tempClienteData.nombre.trim());
-    this.showClienteModal = false;
-  }
-
-  clearClienteNuevo() {
-    this.isCreandoClienteNuevo = false;
-    this.form.get('clienteNombreTexto')?.setValue('');
-    this.tempClienteData = {
-      nombre: '',
-      rifCedula: '',
-      categoria: '',
-      telefono: '',
-      email: '',
-      direccion: ''
-    };
-  }
-
   constructor() {
     this.myFormValues();
   }
 
-  get f() { return this.form.controls; }
-
-  actualizarItemsFiltrados() {
-    const clasif = this.form?.get('clasificacion')?.value;
-    const currentProdId = Number(this.form?.get('productoId')?.value);
-    if (!clasif && !currentProdId) {
-      this.filteredItemsList = [];
-      return;
-    }
-
-    const cLower = String(clasif || '').toLowerCase().trim();
-    this.filteredItemsList = this.productosList.filter(p => {
-      if (currentProdId && Number(p.id) === currentProdId) {
-        return true;
-      }
-      if (!clasif) return false;
-      const pClasif = String(p.clasificacion || '').toLowerCase().trim();
-      if (cLower === 'producto' || cLower === 'productos') {
-        return pClasif === 'producto' || pClasif === 'productos';
-      }
-      return pClasif === cLower;
-    });
+  get f() {
+    return this.form.controls;
   }
 
-  ngOnInit() {
+  get catalog(): AssetCatalog {
+    return {
+      maquinas: this.maquinasList,
+      materiales: this.activosMateriales,
+      circulantes: this.activosCirculantes,
+      mobiliario: this.assetsMobiliario
+    };
+  }
+
+  ngOnInit(): void {
     forkJoin({
       configs: this.configService.getConfigs(),
       products: this.productService.getProducts(),
@@ -146,21 +112,21 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
       fixes: this.fixeService.getFixes(),
       clients: this.clientService.getClients()
     }).subscribe(data => {
-      if (data.clients && data.clients.length > 0) {
+      if (data.clients?.length) {
         this.clientesList = data.clients.map(c => ({
           id: Number(c.id) || 0,
-          nombre: `${c.nombre} ${c.apellido}`.trim()
+          nombre: `${c.nombre} ${c.apellido || ''}`.trim()
         }));
       }
-      // Configuración global
-      if (data.configs && data.configs.length > 0) {
+
+      if (data.configs?.length) {
         const configObj = data.configs[0];
         const configRec = configObj as unknown as Record<string, unknown>;
         const minVal = Number(configRec['margenGanancia'] ?? configRec['minMargenGanancia'] ?? configRec['margen_ganancia']) || 0;
         this.actualizarMinMargenGanancia(minVal);
-        
+
         let capacidad = 0;
-        if (configObj.parametros && configObj.parametros.length > 0) {
+        if (configObj.parametros?.length) {
           configObj.parametros.forEach((machine: Machine) => {
             const unidad = machine.unidad?.toLowerCase().trim() || '';
             if (unidad.includes('hora') || unidad.includes('hs') || unidad === '') {
@@ -176,53 +142,39 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
         }
         this.capacidadHorasMaquina = capacidad > 0 ? capacidad : 176;
       }
-      
-      // Productos
-      this.productosList = (data.products || []).map(p => ({
-        ...p,
-        id: Number(p.id) || 0
-      }));
+
+      this.productosList = data.products || [];
       this.actualizarItemsFiltrados();
-      
-      // Activos (Máquinas, Mobiliario, Circulantes de Producción y Materiales)
-      // 1. Máquinas: Activos Fijos de Categoría Equipo y Subcategoría Fabricación
-      this.maquinasList = data.assets.filter(asset => {
-        const t = (asset.tipo || '').toLowerCase().trim();
-        const c = (asset.categoria || '').toLowerCase().trim();
-        const s = (asset.subCategoria || (asset as unknown as Record<string, unknown>)['sub_categoria'] || '').toString().toLowerCase().trim();
+
+      // Clasificación de Activos
+      this.maquinasList = data.assets.filter(a => {
+        const t = (a.tipo || '').toLowerCase().trim();
+        const c = (a.categoria || '').toLowerCase().trim();
+        const s = (a.subCategoria || '').toLowerCase().trim();
         return t === 'fijo' && c === 'equipo' && (s === 'fabricación' || s === 'fabricacion');
       });
 
-      // Si no hay máquinas con subcategoría específica, fallback a activos fijos de equipo
       if (this.maquinasList.length === 0) {
-        this.maquinasList = data.assets.filter(asset => 
-          (asset.tipo || '').toLowerCase().trim() === 'fijo' && 
-          (asset.categoria || '').toLowerCase().trim() === 'equipo'
+        this.maquinasList = data.assets.filter(a =>
+          (a.tipo || '').toLowerCase().trim() === 'fijo' && (a.categoria || '').toLowerCase().trim() === 'equipo'
         );
       }
 
-      this.assetsMobiliario = data.assets.filter(asset => 
-        (asset.categoria || '').toLowerCase().trim() === 'mobiliario'
-      );
+      this.assetsMobiliario = data.assets.filter(a => (a.categoria || '').toLowerCase().trim() === 'mobiliario');
 
-      // 2. Activos de Inventario: Activos Circulantes de Categoría Producción
-      this.activosCirculantes = data.assets.filter(asset => {
-        const t = (asset.tipo || '').toLowerCase().trim();
-        const c = (asset.categoria || '').toLowerCase().trim();
+      this.activosCirculantes = data.assets.filter(a => {
+        const t = (a.tipo || '').toLowerCase().trim();
+        const c = (a.categoria || '').toLowerCase().trim();
         return t === 'circulante' && (c === 'producción' || c === 'produccion');
       });
 
-      // Si no hay circulantes marcados como producción, incluir todos los circulantes
       if (this.activosCirculantes.length === 0) {
-        this.activosCirculantes = data.assets.filter(asset => 
-          (asset.tipo || '').toLowerCase().trim() === 'circulante'
-        );
+        this.activosCirculantes = data.assets.filter(a => (a.tipo || '').toLowerCase().trim() === 'circulante');
       }
 
-      // 3. Activos Tipo Material: Materiales para impresión/fabricación
-      this.activosMateriales = data.assets.filter(asset => {
-        const t = (asset.tipo || '').toLowerCase().trim();
-        const c = (asset.categoria || '').toLowerCase().trim();
+      this.activosMateriales = data.assets.filter(a => {
+        const t = (a.tipo || '').toLowerCase().trim();
+        const c = (a.categoria || '').toLowerCase().trim();
         return t === 'material' || c === 'filamento' || c === 'resina' || c === 'filamentos' || c === 'resinas';
       });
 
@@ -230,27 +182,91 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
       this.categoriasMaterial = [...new Set(
         this.activosMateriales.map(a => a.categoria).filter((c): c is string => !!c)
       )].sort();
-      
+
       this.actualizarCostoMaquina();
       this.actualizarMinMargenGanancia();
-      
+
       const indirectos = data.fixes.filter(item => item.clasificacion === 'Indirecto');
       this.totalFijoIndirecto = indirectos.reduce((total, item) => total + (Number(item.precio) || 0), 0);
-      
       this.actualizarIndirectoProrrateado();
-      
+
       this.setValues();
-      this.piezas = this.resolvePiezasDisplay(this.piezas);
+      this.piezas = resolvePiezasDisplay(this.piezas, this.catalog);
       this.cdr.detectChanges();
       setTimeout(() => this.cdr.detectChanges(), 50);
     });
   }
 
-  back() {
+  back(): void {
     this.router.navigate(['/budgets']);
   }
 
-  actualizarCostoMaquina() {
+  // --- Modal de Cliente ---
+  openClienteModal(): void {
+    if (!this.tempClienteData.nombre) {
+      this.tempClienteData.nombre = String(this.form?.get('clienteNombreTexto')?.value || '');
+    }
+    this.showClienteModal = true;
+  }
+
+  closeClienteModal(): void {
+    this.showClienteModal = false;
+  }
+
+  onClientConfirmed(client: QuickClientData): void {
+    this.isCreandoClienteNuevo = true;
+    this.tempClienteData = client;
+    this.form.get('clienteId')?.setValue(null);
+    this.form.get('clienteNombreTexto')?.setValue(client.nombre);
+    this.showClienteModal = false;
+  }
+
+  confirmClienteModal(): void {
+    this.onClientConfirmed(this.tempClienteData);
+  }
+
+  clearClienteNuevo(): void {
+    this.isCreandoClienteNuevo = false;
+    this.form.get('clienteNombreTexto')?.setValue('');
+    this.tempClienteData = {
+      nombre: '',
+      rifCedula: '',
+      categoria: '',
+      telefono: '',
+      email: '',
+      direccion: ''
+    };
+  }
+
+  // --- Helpers de visualización delegados al mapper ---
+  getNombreMaquina(row: Parts | Record<string, unknown> | unknown): string {
+    return getNombreMaquina(row, this.maquinasList);
+  }
+
+  getNombreMaterial(row: Parts | Record<string, unknown> | unknown): string {
+    return getNombreMaterial(row, this.catalog);
+  }
+
+  actualizarItemsFiltrados(): void {
+    const clasif = this.form?.get('clasificacion')?.value;
+    const currentProdId = Number(this.form?.get('productoId')?.value);
+    if (!clasif && !currentProdId) {
+      this.filteredItemsList = [];
+      return;
+    }
+
+    const cLower = String(clasif || '').toLowerCase().trim();
+    this.filteredItemsList = this.productosList.filter(p => {
+      if (currentProdId && Number(p.id) === currentProdId) return true;
+      if (!clasif) return false;
+      const pClasif = String(p.clasificacion || '').toLowerCase().trim();
+      return (cLower === 'producto' || cLower === 'productos')
+        ? (pClasif === 'producto' || pClasif === 'productos')
+        : pClasif === cLower;
+    });
+  }
+
+  actualizarCostoMaquina(): void {
     const activoId = this.form.get('activoId')?.value;
     if (activoId) {
       const machine = this.maquinasList.find(m => m.id == activoId);
@@ -273,7 +289,7 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
     this.tasaDepreciacionMaquina = 0;
   }
 
-  actualizarMinMargenGanancia(minMarginValue?: number) {
+  actualizarMinMargenGanancia(minMarginValue?: number): void {
     if (minMarginValue !== undefined) {
       this.minMargenGanancia = Number(minMarginValue) || 0;
     }
@@ -281,7 +297,6 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
     const control = this.form?.get('margenGanancia');
     if (control) {
       control.setValidators([Validators.required, Validators.min(this.minMargenGanancia), Validators.max(100)]);
-      
       const currentVal = Number(control.value) || 0;
       if (!this.id || currentVal < this.minMargenGanancia) {
         control.setValue(this.minMargenGanancia);
@@ -290,7 +305,7 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
     }
   }
 
-  onMargenBlur() {
+  onMargenBlur(): void {
     const control = this.form?.get('margenGanancia');
     if (control) {
       const val = Number(control.value) || 0;
@@ -307,11 +322,11 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
     }
   }
 
-  actualizarIndirectoProrrateado() {
+  actualizarIndirectoProrrateado(): void {
     this.tasaCIF = this.totalFijoIndirecto / (this.capacidadHorasMaquina || 1);
   }
 
-  addPart() {
+  addPart(): void {
     let nombre: string;
     const cantidad = Number(this.form.get('piezaCantidad')?.value) || 1;
     let activoId: number | undefined;
@@ -340,7 +355,7 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
       gramos = Number(this.form.get('piezaGramos')?.value) || 0;
       horas = Number(this.form.get('piezaHoras')?.value) || 0;
       minutos = Number(this.form.get('piezaMinutos')?.value) || 0;
-      
+
       const maqVal = this.form.get('activoId')?.value;
       if (maqVal) {
         maquinaId = Number(maqVal);
@@ -354,7 +369,7 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
       }
       activoId = Number(matId);
       precioMaterial = Number(this.form.get('piezaPrecioMaterial')?.value) || 0;
-      
+
       const assetCirc = this.activosCirculantes.find(a => a.id == matId);
       if (assetCirc) {
         materialDisplayName = assetCirc.nombre;
@@ -389,7 +404,7 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
       activo: activoId || undefined,
       maquina: maquinaId,
       maquinaNombre: maquinaNombre,
-      producto: 0,
+      producto: 0
     };
 
     this.piezaCounter++;
@@ -398,14 +413,14 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
     this.cdr.detectChanges();
   }
 
-  onProductSelect(item: { id: number } | number | null) {
+  onProductSelect(item: { id: number } | number | null): void {
     const prodId = typeof item === 'object' && item !== null ? item.id : item;
     if (prodId) {
       this.autoFillFromProduct(Number(prodId));
     }
   }
 
-  autoFillFromProduct(productId: number) {
+  autoFillFromProduct(productId: number): void {
     const product = this.productosList.find(p => p.id == productId);
     if (product) {
       const pRec = product as unknown as Record<string, unknown>;
@@ -422,59 +437,8 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
         margenGanancia: Number(margenValue) || this.minMargenGanancia
       });
 
-      const rawPiezas = pRec['piezasProducto'] ?? pRec['piezas_producto'] ?? pRec['piezas'] ?? product.piezasProducto ?? [];
-      const piezasList = Array.isArray(rawPiezas) ? rawPiezas : [];
-      if (piezasList.length > 0) {
-        this.piezas = piezasList.map((pb: Record<string, unknown>, index: number) => {
-          const rawAct = pb['activo'] ?? pb['activo_id'] ?? pb['assetId'] ?? pb['materialId'];
-          const actObj = typeof rawAct === 'object' && rawAct !== null ? rawAct as Record<string, unknown> : undefined;
-          const actId = actObj ? Number(actObj['id']) : (Number(rawAct) || undefined);
-          
-          const foundAsset = actId 
-            ? (this.activosMateriales.find(a => a.id == actId) || this.activosCirculantes.find(a => a.id == actId) || this.assetsMobiliario.find(a => a.id == actId)) 
-            : undefined;
-          
-          const rawMaq = pb['maquina'] ?? pb['maquinaId'] ?? pb['maquina_id'];
-          const maqObj = typeof rawMaq === 'object' && rawMaq !== null ? rawMaq as Record<string, unknown> : undefined;
-          const maqId = maqObj ? Number(maqObj['id']) : (Number(rawMaq) || undefined);
-          const foundMaq = maqId ? this.maquinasList.find(m => m.id == maqId) : undefined;
-          
-          const maqName = (maqObj?.['nombre'] as string) || (foundMaq?.nombre) || (typeof pb['maquinaNombre'] === 'string' && pb['maquinaNombre'] !== '[object Object]' ? pb['maquinaNombre'] as string : undefined);
-
-          let tipo = (pb['tipo'] as string) || '';
-          if (!tipo) {
-            tipo = (foundAsset && !maqId) ? 'Del Inventario' : 'Fabricada';
-          }
-          
-          const matName = (actObj?.['nombre'] as string) 
-            || (foundAsset ? foundAsset.nombre : undefined) 
-            || (typeof pb['materialDisplayName'] === 'string' && pb['materialDisplayName'] !== '[object Object]' ? pb['materialDisplayName'] as string : undefined)
-            || (typeof pb['materialTipo'] === 'string' && pb['materialTipo'] !== '[object Object]' && pb['materialTipo'] !== 'Sin material' ? pb['materialTipo'] as string : undefined);
-
-          const rawPrecio = Number(pb['precioMaterial'] ?? pb['precio_material']);
-          const precioMaterial = (!isNaN(rawPrecio) && rawPrecio > 0)
-            ? rawPrecio
-            : (Number(foundAsset?.costoInicial || foundAsset?.valorUnitario) || 0);
-
-          return {
-            id: index + 1,
-            tipo: tipo,
-            nombre: (pb['nombre'] as string) || foundAsset?.nombre || `PIEZA ${index + 1}`,
-            cantidad: Number(pb['cantidad']) || 1,
-            activo: actId,
-            assetId: actId,
-            materialTipo: matName || 'Sin material',
-            materialDisplayName: matName || '',
-            precioMaterial: precioMaterial,
-            gramos: Number(pb['gramos']) || 0,
-            horas: Number(pb['horas']) || 0,
-            minutos: Number(pb['minutos']) || 0,
-            maquinaId: maqId,
-            maquinaNombre: maqName
-          };
-        });
-        this.piezaCounter = this.piezas.length + 1;
-      }
+      this.piezas = mapProductToPieces(product, this.catalog);
+      this.piezaCounter = this.piezas.length + 1;
       this.cdr.detectChanges();
     }
   }
@@ -492,12 +456,10 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
   }
 
   generateUniqueId(): number {
-    return this.piezas.length > 0 
-      ? Math.max(...this.piezas.map(m => m.id || 0)) + 1 
-      : 1;
+    return this.piezas.length > 0 ? Math.max(...this.piezas.map(m => m.id || 0)) + 1 : 1;
   }
 
-  clearForm() {
+  clearForm(): void {
     this.f['nombre'].setValue(`PIEZA ${this.piezaCounter}`);
     this.form.patchValue({
       piezaTipo: 'Del Inventario',
@@ -515,7 +477,7 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
     this.form.get('piezaMaterialId')?.disable();
   }
 
-  onDelete(row: Parts) {
+  onDelete(row: Parts): void {
     Swal.fire({
       title: `¿Estás seguro que deseas eliminar de la lista ${row.nombre}?`,
       showDenyButton: true,
@@ -531,26 +493,24 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
     });
   }
 
-  setValues() {
-    const data: Budget | Record<string, unknown> | undefined = history.state.edit_budget;
-    if (data && ((data as Record<string, unknown>)['id'] || (data as Record<string, unknown>)['id'] === 0)) {
+  setValues(): void {
+    const data: Budget | Record<string, unknown> | undefined = history.state?.edit_budget;
+    if (data && ((data as Record<string, unknown>)['id'] !== undefined)) {
+      const dRec = data as Record<string, unknown>;
       let dateStr = '';
-      if ((data as Record<string, unknown>)['fecha']) {
-        const rawDate = new Date((data as Record<string, unknown>)['fecha'] as string);
+      if (dRec['fecha']) {
+        const rawDate = new Date(dRec['fecha'] as string);
         if (!isNaN(rawDate.getTime())) {
           dateStr = rawDate.toISOString().substring(0, 10);
         }
       }
 
-      const rawProd = (data as Record<string, unknown>)['productoId'] ?? (data as Record<string, unknown>)['producto_id'] ?? (data as Record<string, unknown>)['producto'];
-      let parsedProductoId: number | null = null;
-      if (rawProd && typeof rawProd === 'object') {
-        parsedProductoId = Number((rawProd as Record<string, unknown>)['id']) || null;
-      } else if (rawProd !== null && rawProd !== undefined && rawProd !== '') {
-        parsedProductoId = Number(rawProd) || null;
-      }
+      const rawProd = dRec['productoId'] ?? dRec['producto_id'] ?? dRec['producto'];
+      const parsedProductoId = rawProd && typeof rawProd === 'object'
+        ? Number((rawProd as Record<string, unknown>)['id']) || null
+        : (rawProd !== null && rawProd !== undefined && rawProd !== '' ? Number(rawProd) || null : null);
 
-      const rawCli = (data as Record<string, unknown>)['clienteId'] ?? (data as Record<string, unknown>)['cliente_id'] ?? (data as Record<string, unknown>)['cliente'];
+      const rawCli = dRec['clienteId'] ?? dRec['cliente_id'] ?? dRec['cliente'];
       let parsedClienteId: number | null = null;
       if (rawCli && typeof rawCli === 'object') {
         parsedClienteId = Number((rawCli as Record<string, unknown>)['id']) || null;
@@ -562,15 +522,11 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
         parsedClienteId = Number(rawCli) || null;
       }
 
-      const rawAct = (data as Record<string, unknown>)['activoId'] ?? (data as Record<string, unknown>)['activo_id'] ?? (data as Record<string, unknown>)['activo'];
-      let parsedActivoId: number | null = null;
-      if (rawAct && typeof rawAct === 'object') {
-        parsedActivoId = Number((rawAct as Record<string, unknown>)['id']) || null;
-      } else if (rawAct !== null && rawAct !== undefined && rawAct !== '') {
-        parsedActivoId = Number(rawAct) || null;
-      }
+      const rawAct = dRec['activoId'] ?? dRec['activo_id'] ?? dRec['activo'];
+      const parsedActivoId = rawAct && typeof rawAct === 'object'
+        ? Number((rawAct as Record<string, unknown>)['id']) || null
+        : (rawAct !== null && rawAct !== undefined && rawAct !== '' ? Number(rawAct) || null : null);
 
-      const dRec = data as Record<string, unknown>;
       const cliDet = (dRec['clienteDetalle'] ?? dRec['cliente_detalle'] ?? dRec['clienteInfo'] ?? dRec['tempClienteData']) as Record<string, string> | undefined;
       const cliNombreStr = String(dRec['clienteNombre'] || dRec['nombreCliente'] || dRec['cliente_nombre'] || cliDet?.['nombre'] || dRec['clienteNombreTexto'] || '').trim();
 
@@ -578,7 +534,7 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
         this.isCreandoClienteNuevo = true;
         this.tempClienteData = {
           nombre: String(cliDet?.['nombre'] || cliDet?.['nombreRazonSocial'] || cliNombreStr),
-          rifCedula: String(cliDet?.['cedula'] || cliDet?.['rifCedula'] || cliDet?.['rif_cedula'] || dRec['cedula'] || dRec['rifCedula'] || dRec['rif_cedula'] || dRec['rif'] || ''),
+          rifCedula: String(cliDet?.['cedula'] || cliDet?.['rifCedula'] || cliDet?.['rif_cedula'] || dRec['cedula'] || dRec['rifCedula'] || dRec['rif_cedula'] || ''),
           categoria: String(cliDet?.['categoria'] || dRec['clienteCategoria'] || dRec['categoria'] || ''),
           telefono: String(cliDet?.['telefono'] || dRec['telefono'] || ''),
           email: String(cliDet?.['email'] || dRec['email'] || ''),
@@ -586,33 +542,11 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
         };
         this.form.get('clienteNombreTexto')?.setValue(this.tempClienteData.nombre);
       }
-      const getFirstNonZero = (obj: Record<string, unknown> | null | undefined, keys: string[]): number => {
-        if (!obj) return 0;
-        for (const k of keys) {
-          if (obj[k] !== undefined && obj[k] !== null && obj[k] !== '') {
-            const num = Number(obj[k]);
-            if (!isNaN(num) && num > 0) return num;
-          }
-        }
-        return 0;
-      };
 
-      let setupValue = getFirstNonZero(dRec, ['tiempoSetup', 'prepSlicing', 'tiempo_setup', 'prep_slicing']);
-      let postValue = getFirstNonZero(dRec, ['postProcesado', 'tiempoPostProcesado', 'tiempo_post_procesado', 'post_procesado']);
-      let tasaValue = getFirstNonZero(dRec, ['tasaFallo', 'tasaFalloGlobal', 'tasa_fallo_global', 'tasa_fallo']);
-      let margenValue = getFirstNonZero(dRec, ['margenGanancia', 'margen_ganancia']);
-
-      if (parsedProductoId) {
-        const linkedProd = this.productosList.find(p => p.id == parsedProductoId);
-        if (linkedProd) {
-          const pRec = linkedProd as unknown as Record<string, unknown>;
-          if (setupValue === 0) setupValue = getFirstNonZero(pRec, ['prepSlicing', 'tiempoSetup', 'prep_slicing', 'tiempo_setup']) || Number(linkedProd.prepSlicing) || 0;
-          if (postValue === 0) postValue = getFirstNonZero(pRec, ['postProcesado', 'tiempoPostProcesado', 'post_procesado', 'tiempo_post_procesado']) || Number(linkedProd.postProcesado) || 0;
-          if (tasaValue === 0) tasaValue = getFirstNonZero(pRec, ['tasaFallo', 'tasaFalloGlobal', 'tasa_fallo_global', 'tasa_fallo']) || Number(linkedProd.tasaFallo) || 0;
-          if (margenValue === 0) margenValue = getFirstNonZero(pRec, ['margenGanancia', 'margen_ganancia']) || Number(linkedProd.margenGanancia) || this.minMargenGanancia;
-        }
-      }
-      if (margenValue === 0) margenValue = this.minMargenGanancia;
+      const setupValue = getNumFromRecord(dRec, ['tiempoSetup', 'prepSlicing', 'tiempo_setup', 'prep_slicing'], 0);
+      const postValue = getNumFromRecord(dRec, ['postProcesado', 'tiempoPostProcesado', 'tiempo_post_procesado', 'post_procesado'], 0);
+      const tasaValue = getNumFromRecord(dRec, ['tasaFallo', 'tasaFalloGlobal', 'tasa_fallo_global', 'tasa_fallo'], 0);
+      const margenValue = getNumFromRecord(dRec, ['margenGanancia', 'margen_ganancia'], this.minMargenGanancia);
 
       this.form.patchValue({
         clasificacion: dRec['clasificacion'],
@@ -627,11 +561,11 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
         tasaFalloGlobal: tasaValue,
         tiempoSetup: setupValue,
         tiempoPostProcesado: postValue,
-        margenGanancia: margenValue
+        margenGanancia: margenValue || this.minMargenGanancia
       }, { emitEvent: false });
 
-      this.id = Number((data as Record<string, unknown>)['id']) || 0;
-      this.piezas = this.resolvePiezasDisplay(((data as Record<string, unknown>)['piezas'] as Parts[]) || []);
+      this.id = Number(dRec['id']) || 0;
+      this.piezas = resolvePiezasDisplay((dRec['piezas'] as Parts[]) || [], this.catalog);
       this.f['nombre'].setValue(`PIEZA ${this.piezas.length + 1}`);
       this.actualizarCostoMaquina();
       this.actualizarMinMargenGanancia();
@@ -641,93 +575,7 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
     }
   }
 
-  resolvePiezasDisplay(piezasList: Parts[]): Parts[] {
-    if (!piezasList || !Array.isArray(piezasList)) return [];
-
-    return piezasList.map(p => {
-      const pObj = p as unknown as Record<string, unknown>;
-      
-      const rawMaq = p.maquina ?? pObj['maquina_id'] ?? pObj['maquina'];
-      const maqObj = typeof rawMaq === 'object' && rawMaq !== null ? rawMaq as Record<string, unknown> : undefined;
-      const maqId = maqObj ? Number(maqObj['id']) : (Number(rawMaq) || undefined);
-      if (maqId) {
-        p.maquina = maqId;
-        const foundMaq = this.maquinasList.find(m => m.id == maqId);
-        p.maquinaNombre = (maqObj?.['nombre'] as string) || foundMaq?.nombre;
-      }
-
-      const rawAct = p.activo ?? pObj['activo_id'] ?? pObj['activo'] ?? pObj['material_id'] ?? pObj['materialId'];
-      const actObj = typeof rawAct === 'object' && rawAct !== null ? rawAct as Record<string, unknown> : undefined;
-      const actId = actObj ? Number(actObj['id']) : (Number(rawAct) || undefined);
-      if (actId) {
-        p.activo = actId;
-        const foundMat = this.activosMateriales.find(a => a.id == actId)
-          || this.activosCirculantes.find(a => a.id == actId)
-          || this.assetsMobiliario.find(a => a.id == actId);
-        if (foundMat || actObj?.['nombre']) {
-          p.materialDisplayName = (actObj?.['nombre'] as string) || foundMat?.nombre;
-        }
-      }
-
-      if (!p.materialDisplayName || p.materialDisplayName === 'Sin material') {
-        if (p.materialTipo && p.materialTipo !== 'Sin material') {
-          p.materialDisplayName = p.materialTipo;
-        } else if (p.tipo === 'Del Inventario') {
-          p.materialDisplayName = p.nombre;
-        }
-      }
-
-      return { ...p, fromDb: true };
-    });
-  }
-
-  getNombreMaquina(row: Parts | Record<string, unknown> | unknown): string {
-    if (!row) return '-';
-    const r = row as Record<string, unknown>;
-    const rawMaq = r['maquina'] ?? r['maquinaId'] ?? r['maquina_id'];
-    if (typeof rawMaq === 'object' && rawMaq !== null) {
-      const nom = (rawMaq as Record<string, unknown>)['nombre'];
-      if (nom) return String(nom);
-    }
-    const maqNom = r['maquinaNombre'];
-    if (typeof maqNom === 'string' && maqNom && maqNom !== '-' && maqNom !== '[object Object]') {
-      return maqNom;
-    }
-    const maqId = typeof rawMaq === 'object' && rawMaq !== null ? Number((rawMaq as Record<string, unknown>)['id']) : Number(rawMaq);
-    if (maqId && !isNaN(maqId)) {
-      const found = this.maquinasList.find(m => m.id == maqId);
-      if (found?.nombre) return found.nombre;
-    }
-    return '-';
-  }
-
-  getNombreMaterial(row: Parts | Record<string, unknown> | unknown): string {
-    if (!row) return '-';
-    const r = row as Record<string, unknown>;
-    const rawAct = r['activo'] ?? r['assetId'] ?? r['activo_id'] ?? r['materialId'];
-    if (typeof rawAct === 'object' && rawAct !== null) {
-      const nom = (rawAct as Record<string, unknown>)['nombre'];
-      if (nom) return String(nom);
-    }
-    const matDisp = r['materialDisplayName'];
-    if (typeof matDisp === 'string' && matDisp && matDisp !== 'Sin material' && matDisp !== '-' && matDisp !== '[object Object]') {
-      return matDisp;
-    }
-    const matTipo = r['materialTipo'];
-    if (typeof matTipo === 'string' && matTipo && matTipo !== 'Sin material' && matTipo !== '-' && matTipo !== '[object Object]') {
-      return matTipo;
-    }
-    const actId = typeof rawAct === 'object' && rawAct !== null ? Number((rawAct as Record<string, unknown>)['id']) : Number(rawAct);
-    if (actId && !isNaN(actId)) {
-      const found = this.activosMateriales.find(a => a.id == actId) 
-        || this.activosCirculantes.find(a => a.id == actId) 
-        || this.assetsMobiliario.find(a => a.id == actId);
-      if (found?.nombre) return found.nombre;
-    }
-    return r['tipo'] === 'Del Inventario' ? String(r['nombre'] || 'Activo Inventario') : '-';
-  }
-
-  myFormValues() {
+  myFormValues(): void {
     this.form = this.formBuilder.group({
       clasificacion: [''],
       productoId: [''],
@@ -765,7 +613,7 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
 
     this.form.get('clasificacion')?.valueChanges.pipe(
       takeUntilDestroyed(this.destroyRef)
-    ).subscribe((clasif) => {
+    ).subscribe(clasif => {
       const numeroControl = this.form.get('numero');
       numeroControl?.clearValidators();
       if (clasif === 'Producto') {
@@ -792,24 +640,24 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
 
     this.form.get('piezaMaterialCategoria')?.valueChanges.pipe(
       takeUntilDestroyed(this.destroyRef)
-    ).subscribe((categoria) => {
+    ).subscribe(categoria => {
       this.onCategoriaChange(categoria);
     });
 
     this.form.get('piezaMaterialSubcategoria')?.valueChanges.pipe(
       takeUntilDestroyed(this.destroyRef)
-    ).subscribe((subcategoria) => {
+    ).subscribe(subcategoria => {
       this.onSubcategoriaChange(subcategoria);
     });
 
     this.form.get('piezaMaterialId')?.valueChanges.pipe(
       takeUntilDestroyed(this.destroyRef)
-    ).subscribe((materialId) => {
+    ).subscribe(materialId => {
       this.onMaterialChange(materialId);
     });
   }
 
-  filterMaterials(event: Event) {
+  filterMaterials(event: Event): void {
     const input = event.target as HTMLInputElement;
     const query = input.value.toLowerCase().trim();
 
@@ -823,17 +671,13 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
     );
   }
 
-  onCategoriaChange(categoria: string) {
+  onCategoriaChange(categoria: string): void {
     if (categoria) {
-      this.materialesPorCategoria = this.activosMateriales.filter(
-        a => a.categoria === categoria
-      );
+      this.materialesPorCategoria = this.activosMateriales.filter(a => a.categoria === categoria);
       this.materialesFiltrados = [...this.materialesPorCategoria];
-      
       this.subcategoriasMaterial = [...new Set(
-        this.materialesPorCategoria.map(a => a.subCategoria || ((a as unknown as Record<string, unknown>)['subcategoria'] as string) || ((a as unknown as Record<string, unknown>)['Subcategoria'] as string) || ((a as unknown as Record<string, unknown>)['SUBCATEGORIA'] as string)).filter(Boolean)
+        this.materialesPorCategoria.map(a => a.subCategoria).filter(Boolean)
       )] as string[];
-
       this.form.get('piezaMaterialId')?.enable();
     } else {
       this.materialesPorCategoria = [];
@@ -846,13 +690,10 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
     this.form.get('piezaMaterialSubcategoria')?.setValue('', { emitEvent: false });
   }
 
-  onSubcategoriaChange(subcategoria: string) {
+  onSubcategoriaChange(subcategoria: string): void {
     if (subcategoria) {
       const subLower = subcategoria.toLowerCase().trim();
-      this.materialesFiltrados = this.materialesPorCategoria.filter(a => {
-        const itemSub = (a.subCategoria || (a as unknown as Record<string, string>)['subcategoria'] || (a as unknown as Record<string, string>)['Subcategoria'] || '').toLowerCase().trim();
-        return itemSub === subLower;
-      });
+      this.materialesFiltrados = this.materialesPorCategoria.filter(a => (a.subCategoria || '').toLowerCase().trim() === subLower);
     } else {
       this.materialesFiltrados = [...this.materialesPorCategoria];
     }
@@ -860,22 +701,13 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
     this.form.get('piezaPrecioMaterial')?.setValue('');
   }
 
-  onMaterialChange(materialId: number) {
+  onMaterialChange(materialId: number): void {
     if (materialId) {
       const selectedAsset = this.activosMateriales.find(a => a.id == materialId) || this.activosCirculantes.find(a => a.id == materialId);
       if (selectedAsset) {
         const valUnit = Number(selectedAsset.valorUnitario) || Number(selectedAsset.costoInicial) || 0;
         const uMedida = (selectedAsset.unidadMedida || '').toLowerCase().trim();
-        
-        let precioPorGramo: number;
-        if (uMedida === 'gramos' || uMedida === 'gramo') {
-          precioPorGramo = valUnit;
-        } else {
-          // Si el activo es Kilos, Bobinas, Rollos, Litros o tiene precio de compra de bobina completa
-          precioPorGramo = valUnit > 0 ? (valUnit / 1000) : 0;
-        }
-        
-        // Redondear a 4 decimales
+        const precioPorGramo = (uMedida === 'gramos' || uMedida === 'gramo') ? valUnit : (valUnit > 0 ? valUnit / 1000 : 0);
         const rounded = Math.round(precioPorGramo * 10000) / 10000;
         this.form.get('piezaPrecioMaterial')?.setValue(rounded);
       }
@@ -884,11 +716,10 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
     }
   }
 
-  onSubmit() {
+  onSubmit(): void {
     this.submitted = true;
     this.form.markAllAsTouched();
 
-    // Auto-agregar pieza si el usuario llenó los campos superiores pero olvidó hacer clic en [+]
     const tipoPieza = this.form.get('piezaTipo')?.value;
     if (tipoPieza === 'Del Inventario' && this.form.get('piezaInventario')?.value) {
       this.addPart();
@@ -916,84 +747,26 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
 
     const prodVal = this.f['productoId']?.value;
     const cliVal = this.f['clienteId']?.value;
-
-    const parsedProdId = prodVal !== null && prodVal !== undefined && prodVal !== '' ? Number(prodVal) : undefined;
-    const parsedCliId = cliVal !== null && cliVal !== undefined && cliVal !== '' ? Number(cliVal) : undefined;
-
+    const parsedProdId = (prodVal !== null && prodVal !== undefined && prodVal !== '') ? Number(prodVal) : undefined;
+    const parsedCliId = (cliVal !== null && cliVal !== undefined && cliVal !== '') ? Number(cliVal) : undefined;
     const clienteTexto = String(this.f['clienteNombreTexto']?.value || '').trim();
-
-    const mappedPiezas = this.piezas.map((p, idx) => {
-      const pObj = p as unknown as Record<string, unknown>;
-      const actId = p.activo ?? pObj['activo_id'] ?? pObj['assetId'] ?? pObj['materialId'];
-      const maqId = p.maquina ?? pObj['maquina_id'] ?? pObj['maquinaId'];
-      const prodId = p.producto ?? pObj['producto_id'] ?? pObj['productoId'] ?? parsedProdId;
-      const pieceObj: Record<string, unknown> = {
-        nombre: String(p.nombre || `PIEZA ${idx + 1}`).trim(),
-        gramos: Number(p.gramos) || 0,
-        metros: Number(p.metros) || 0,
-        horas: Number(p.horas) || 0,
-        minutos: Number(p.minutos) || 0,
-        precioMaterial: Number(p.precioMaterial ?? pObj['precio_material']) || 0,
-        tipo: String(p.tipo || 'Producción').trim(),
-        cantidad: Number(p.cantidad) || 1,
-        producto: prodId ? Number(prodId) : null,
-        activo: actId ? Number(actId) : null,
-        maquina: maqId ? Number(maqId) : null
-      };
-
-      if (pObj['fromDb'] && p.id && Number(p.id) > 0) {
-        pieceObj['id'] = Number(p.id);
-      }
-
-      return pieceObj;
-    });
-
-    const rawNum = String(this.f['numero']?.value || '').trim();
-    const clasifCode = String(this.f['clasificacion']?.value || 'GEN').substring(0, 3).toUpperCase();
-    const isProducto = this.f['clasificacion']?.value === 'Producto';
-    const finalNumero = (isProducto || !rawNum) ? 'x' : rawNum;
 
     const executeSubmit = (effectiveCliId?: number) => {
       const totales = this.getTotales();
-      const budgetPayload: Record<string, unknown> = {
-        id: this.id > 0 ? this.id : 0,
-        sku: this.id > 0 ? (finalNumero || `P-${this.id}`) : `B-${clasifCode}-${Math.floor(Math.random() * 900) + 100}`,
-        clasificacion: this.f['clasificacion'].value || 'General',
-        descripcion: this.f['descripcion'].value,
-        numero: finalNumero,
-        fecha: this.f['fecha'].value,
-        costoOperador: Number(this.f['costoOperador']?.value) || 0,
-        costoMaquina: Number(this.f['costoMaquina']?.value) || 0,
-        tasaFalloGlobal: Number(this.f['tasaFalloGlobal']?.value) || 0,
-        tiempoSetup: Number(this.f['tiempoSetup']?.value) || 0,
-        margenGanancia: Number(this.f['margenGanancia']?.value) || 0,
-        tiempoPostProcesado: Number(this.f['tiempoPostProcesado']?.value) || 0,
-        cantidadGlobal: Number(this.f['cantidadGlobal']?.value) || 1,
-        delivery: Number(this.f['delivery']?.value) || 0,
-        cliente: effectiveCliId ?? parsedCliId,
-        clienteNombre: clienteTexto || undefined,
-        nombreCliente: clienteTexto || undefined,
-        cliente_nombre: clienteTexto || undefined,
-        clienteDetalle: this.isCreandoClienteNuevo ? { ...this.tempClienteData } : undefined,
-        cliente_detalle: this.isCreandoClienteNuevo ? { ...this.tempClienteData } : undefined,
-        rifCedula: this.isCreandoClienteNuevo ? this.tempClienteData.rifCedula : undefined,
-        rif_cedula: this.isCreandoClienteNuevo ? this.tempClienteData.rifCedula : undefined,
-        telefono: this.isCreandoClienteNuevo ? this.tempClienteData.telefono : undefined,
-        email: this.isCreandoClienteNuevo ? this.tempClienteData.email : undefined,
-        direccion: this.isCreandoClienteNuevo ? this.tempClienteData.direccion : undefined,
-        clienteCategoria: this.isCreandoClienteNuevo ? this.tempClienteData.categoria : undefined,
-        producto: parsedProdId,
-        piezas: mappedPiezas,
-        total: totales.costoTotalFinal
-      };
-
-      console.log('>>> PAYLOAD DE PRESUPUESTO A ENVIAR AL SERVIDOR:', JSON.stringify(budgetPayload, null, 2));
+      const budgetPayload = buildBudgetPayload({
+        id: this.id,
+        formValue: this.form.value,
+        piezas: this.piezas,
+        totalCostoFinal: totales.costoTotalFinal,
+        isCreandoClienteNuevo: this.isCreandoClienteNuevo,
+        tempClienteData: this.tempClienteData,
+        parsedCliId: effectiveCliId ?? parsedCliId,
+        parsedProdId,
+        clienteTexto
+      });
 
       const budget = budgetPayload as unknown as Budget;
-
-      const request = this.id === 0
-        ? this.budgetService.createBudget(budget)
-        : this.budgetService.updateBudget(this.id, budget);
+      const request = this.id === 0 ? this.budgetService.createBudget(budget) : this.budgetService.updateBudget(this.id, budget);
 
       request.subscribe({
         next: () => {
@@ -1025,16 +798,14 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
       const newClientPayload = {
         nombre: firstWord,
         apellido: remainingWords,
-        rifCedula: this.tempClienteData.rifCedula,
         cedula: this.tempClienteData.rifCedula,
-        rif_cedula: this.tempClienteData.rifCedula,
         categoria: this.tempClienteData.categoria,
         telefono: this.tempClienteData.telefono,
         email: this.tempClienteData.email,
         direccion: this.tempClienteData.direccion
       };
 
-      this.clientService.createClient(newClientPayload as unknown as import('../../../../../core/models/Cost/client').Client).subscribe({
+      this.clientService.createClient(newClientPayload as unknown as Client).subscribe({
         next: (resp) => {
           const newId = Number(resp?.id);
           executeSubmit(newId > 0 ? newId : undefined);

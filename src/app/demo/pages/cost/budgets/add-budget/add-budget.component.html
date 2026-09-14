@@ -455,81 +455,10 @@
   </div>
 </div>
 
-<!-- MODAL: DATOS DEL CLIENTE / PROSPECTO -->
-@if (showClienteModal) {
-  <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);" (click)="closeClienteModal()">
-    <div class="modal-dialog modal-dialog-centered" (click)="$event.stopPropagation()">
-      <div class="modal-content shadow border-0">
-        <div class="modal-header bg-primary text-white py-3">
-          <h5 class="modal-title text-white fs-5 fw-bold d-flex align-items-center gap-2">
-            <i class="ti ti-user-plus fs-4"></i> Datos del Cliente
-          </h5>
-          <button type="button" class="btn-close btn-close-white" (click)="closeClienteModal()"></button>
-        </div>
-        <div class="modal-body p-4">
-          <div class="row g-3">
-            <div class="col-12">
-              <label class="form-label fw-bold">Nombre <span class="text-danger">*</span></label>
-              <input 
-                type="text" 
-                class="form-control" 
-                [(ngModel)]="tempClienteData.nombre" 
-                placeholder="Ej. Juan Pérez o Inversiones Alpha">
-            </div>
-
-            <div class="col-md-6">
-              <label class="form-label">Cédula</label>
-              <input 
-                type="text" 
-                class="form-control" 
-                [(ngModel)]="tempClienteData.rifCedula" 
-                placeholder="Ej. 12345678">
-            </div>
-
-            <div class="col-md-6">
-              <label class="form-label">Categoría</label>
-              <input 
-                type="text" 
-                class="form-control" 
-                [(ngModel)]="tempClienteData.categoria" 
-                placeholder="Ej. Frecuente, VIP...">
-            </div>
-
-            <div class="col-md-6">
-              <label class="form-label">Teléfono</label>
-              <input 
-                type="text" 
-                class="form-control" 
-                [(ngModel)]="tempClienteData.telefono" 
-                placeholder="Ej. +58 412 1234567">
-            </div>
-
-            <div class="col-md-6">
-              <label class="form-label">Email</label>
-              <input 
-                type="email" 
-                class="form-control" 
-                [(ngModel)]="tempClienteData.email" 
-                placeholder="cliente@ejemplo.com">
-            </div>
-
-            <div class="col-12">
-              <label class="form-label">Dirección</label>
-              <textarea 
-                class="form-control" 
-                rows="2" 
-                [(ngModel)]="tempClienteData.direccion" 
-                placeholder="Dirección fiscal o de entrega..."></textarea>
-            </div>
-          </div>
-        </div>
-        <div class="modal-footer bg-light border-top py-2 px-4">
-          <button class="btn btn-outline-secondary" type="button" (click)="closeClienteModal()">Cancelar</button>
-          <button class="btn btn-primary" type="button" (click)="confirmClienteModal()">
-            <i class="ti ti-check me-1"></i> Asignar al Presupuesto
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-}
+<!-- MODAL: DATOS DEL CLIENTE / PROSPECTO (SRP Componente Desacoplado) -->
+<app-quick-client-modal
+  [isOpen]="showClienteModal"
+  [initialData]="tempClienteData"
+  (clientConfirmed)="onClientConfirmed($event)"
+  (modalClosed)="showClienteModal = false">
+</app-quick-client-modal>

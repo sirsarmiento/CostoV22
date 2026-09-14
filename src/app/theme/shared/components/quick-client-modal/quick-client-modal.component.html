@@ -1,0 +1,79 @@
+@if (isOpen) {
+  <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);" (click)="close()">
+    <div class="modal-dialog modal-dialog-centered" (click)="$event.stopPropagation()">
+      <div class="modal-content shadow border-0">
+        <div class="modal-header bg-primary text-white py-3">
+          <h5 class="modal-title text-white fs-5 fw-bold d-flex align-items-center gap-2">
+            <i class="ti ti-user-plus fs-4"></i> Datos del Cliente
+          </h5>
+          <button type="button" class="btn-close btn-close-white" (click)="close()"></button>
+        </div>
+        <form [formGroup]="clientForm" (ngSubmit)="confirm()">
+          <div class="modal-body p-4">
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label fw-bold">Nombre <span class="text-danger">*</span></label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  formControlName="nombre"
+                  placeholder="Ej. Juan Pérez o Inversiones Alpha">
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Cédula / RIF</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  formControlName="rifCedula"
+                  placeholder="Ej. 12345678">
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Categoría</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  formControlName="categoria"
+                  placeholder="Ej. Frecuente, VIP...">
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Teléfono</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  formControlName="telefono"
+                  placeholder="Ej. +58 412 1234567">
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Email</label>
+                <input 
+                  type="email" 
+                  class="form-control" 
+                  formControlName="email"
+                  placeholder="cliente@ejemplo.com">
+              </div>
+
+              <div class="col-12">
+                <label class="form-label">Dirección</label>
+                <textarea 
+                  class="form-control" 
+                  rows="2" 
+                  formControlName="direccion"
+                  placeholder="Dirección fiscal o de entrega..."></textarea>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer bg-light border-top py-2 px-4">
+            <button class="btn btn-outline-secondary" type="button" (click)="close()">Cancelar</button>
+            <button class="btn btn-primary" type="submit">
+              <i class="ti ti-check me-1"></i> Asignar al Presupuesto
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+}

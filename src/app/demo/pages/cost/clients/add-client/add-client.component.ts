@@ -45,15 +45,14 @@ export class AddClientComponent implements OnInit, ComponentCanDeactivate {
     if (editClient && editClient.id) {
       this.id = editClient.id;
       const full = [editClient.nombre, editClient.apellido].filter(Boolean).join(' ');
-      const raw = editClient as unknown as Record<string, unknown>;
-      const existingCedula = String(editClient.cedula || editClient.rifCedula || raw['cedula'] || raw['rif_cedula'] || raw['rif'] || '');
+      const existingCedula = String(editClient.cedula || '');
       const parsed = this.parseCedula(existingCedula);
 
       this.form.patchValue({
         nombreRazonSocial: full,
         nacionalidad: parsed.nac,
         nroDocumento: parsed.num,
-        categoria: editClient.categoria || raw['categoria'] || '',
+        categoria: editClient.categoria || '',
         email: editClient.email || '',
         telefono: editClient.telefono || '',
         direccion: editClient.direccion || ''

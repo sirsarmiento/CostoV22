@@ -166,7 +166,7 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
           this.maquinasList = assets.filter((a: Asset) => {
             const t = (a.tipo || '').toLowerCase().trim();
             const c = (a.categoria || '').toLowerCase().trim();
-            const s = (a.subCategoria || (a as unknown as Record<string, unknown>)['sub_categoria'] || (a as unknown as Record<string, unknown>)['subcategoria'] || '').toString().toLowerCase().trim();
+            const s = (a.subCategoria || '').toLowerCase().trim();
             return t === 'fijo' && c === 'equipo' && (s === 'fabricación' || s === 'fabricacion' || s.includes('fabricac'));
           });
 

@@ -657,6 +657,22 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
     });
   }
 
+  formatAssetOption(asset: Asset): string {
+    if (!asset) return '';
+    const detalles: string[] = [];
+    const desc = asset.descripcion?.trim();
+    if (desc && !['n/a', 'null', '-', 'N/A'].includes(desc.toLowerCase())) {
+      detalles.push(desc);
+    }
+    if (asset.cantidad !== undefined && asset.cantidad !== null) {
+      const unidad = asset.unidadMedida ? ` ${asset.unidadMedida}` : '';
+      detalles.push(`Cant: ${asset.cantidad}${unidad}`);
+    }
+    return detalles.length > 0 
+      ? `${asset.nombre} (${detalles.join(' - ')})` 
+      : asset.nombre;
+  }
+
   filterMaterials(event: Event): void {
     const input = event.target as HTMLInputElement;
     const query = input.value.toLowerCase().trim();

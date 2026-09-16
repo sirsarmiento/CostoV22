@@ -17,6 +17,7 @@ import { Observable, forkJoin } from 'rxjs';
 import { tap } from 'rxjs/operators';
 
 import { ComponentCanDeactivate } from '../../../../../core/guards/pending-changes.guard';
+import { ImageSelectedEvent } from '../../../../../theme/shared/components/image-uploader/image-uploader.component';
 
 @Component({
   selector: 'app-add-product',
@@ -44,6 +45,7 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
   activeTab: 'def' | 'costos' | 'piezas' = 'def';
   costosPendientes: Fixe[] = [];
   costosEliminados: number[] = [];
+  imagenSrc: string | null = null;
 
   // Parámetros de Presupuesto y Piezas
   piezasPendientes: Record<string, unknown>[] = [];
@@ -498,7 +500,8 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       piezaMaterialSubcategoria: [''],
       piezaMaterialId: [{value: null, disabled: false}],
       piezaPrecioMaterial: [''],
-      activoId: [null]
+      activoId: [null],
+      imagen: ['']
     });
 
     this.form.get('piezaMaterialCategoria')?.valueChanges.pipe(
@@ -518,6 +521,34 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
     ).subscribe(() => this.actualizarMinMargenGanancia());
   }
 
+  onImageSelected(event: ImageSelectedEvent) {
+    this.imagenSrc = event.base64;
+    this.form.get('imagen')?.setValue(event.base64);
+    this.form.markAsDirty();
+  }
+
+  onImageRemoved() {
+    this.imagenSrc = null;
+    this.form.get('imagen')?.setValue(null);
+    this.form.markAsDirty();
+  }
+
+  formatAssetOption(asset: Asset): string {
+    if (!asset) return '';
+    const detalles: string[] = [];
+    const desc = asset.descripcion?.trim();
+    if (desc && !['n/a', 'null', '-', 'N/A'].includes(desc.toLowerCase())) {
+      detalles.push(desc);
+    }
+    if (asset.cantidad !== undefined && asset.cantidad !== null) {
+      const unidad = asset.unidadMedida ? ` ${asset.unidadMedida}` : '';
+      detalles.push(`Cant: ${asset.cantidad}${unidad}`);
+    }
+    return detalles.length > 0 
+      ? `${asset.nombre} (${detalles.join(' - ')})` 
+      : asset.nombre;
+  }
+
   back() {
     this.router.navigate(['/products']);
   }
@@ -525,6 +556,9 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
   setValues() {
     const data: Product | undefined = history?.state?.edit_product;
     if (data && data.id && data.id > 0) {
+      this.imagenSrc = data.imagen || ((data as unknown as Record<string, unknown>)['imagen'] as string) || null;
+      this.form.get('imagen')?.setValue(this.imagenSrc);
+
       this.form.get('nombre')?.setValue(data.nombre);
       this.form.get('medida')?.setValue(data.medida);
       this.form.get('sku')?.setValue(data.sku);
@@ -678,7 +712,8 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       tiempoSetup: prepNum,
       postProcesado: postNum,
       margenGanancia: margenNum,
-      piezasProducto: mappedPiezas
+      piezasProducto: mappedPiezas,
+      imagen: this.form.get('imagen')?.value || this.imagenSrc || undefined
     };
 
     if (this.id > 0) {

@@ -54,65 +54,83 @@
           
           <!-- TAB 1: DEFINICION DEL PRODUCTO -->
           @if (activeTab === 'def') {
-            <div class="row g-3">
-              <div class="col-md-8">
-                <label class="form-label">Nombre del producto *</label>
-                <input 
-                  type="text" 
-                  class="form-control" 
-                  formControlName="nombre" 
-                  maxlength="100" 
-                  [class.is-invalid]="submitted && f['nombre'].errors">
-                @if (submitted && f['nombre'].errors?.['required']) {
-                  <div class="invalid-feedback">Ingrese el nombre del producto</div>
-                }
-              </div>
-
-              <div class="col-md-4">
-                <label class="form-label">Clasificación de Costo *</label>
-                <ng-select 
-                  formControlName="clasificacion"
-                  placeholder="Seleccione..."
-                  [clearable]="false"
-                  [searchable]="false"
-                  appendTo="body"
-                  [class.is-invalid]="submitted && f['clasificacion'].errors">
-                  <ng-option value="Proyecto">Proyecto</ng-option>
-                  <ng-option value="Servicio">Servicio</ng-option>
-                  <ng-option value="Productos">Producto</ng-option>
-                </ng-select>
-                @if (submitted && f['clasificacion'].errors?.['required']) {
-                  <div class="invalid-feedback d-block">Ingrese la Clasificación de Costo</div>
-                }
-              </div>
-
+            <div class="row g-4">
+              <!-- Datos Principales -->
               <div class="col-12">
-                <label class="form-label">Descripción *</label>
-                <textarea 
-                  class="form-control" 
-                  formControlName="descripcion" 
-                  maxlength="1000" 
-                  rows="3"
-                  placeholder="Descripción del producto" 
-                  [class.is-invalid]="submitted && f['descripcion'].errors"></textarea>
-                @if (submitted && f['descripcion'].errors?.['required']) {
-                  <div class="invalid-feedback">Ingrese la descripción del producto</div>
-                }
+                <div class="row g-3">
+                  <div class="col-md-7">
+                    <label class="form-label">Nombre del producto *</label>
+                    <input 
+                      type="text" 
+                      class="form-control" 
+                      formControlName="nombre" 
+                      maxlength="100" 
+                      [class.is-invalid]="submitted && f['nombre'].errors">
+                    @if (submitted && f['nombre'].errors?.['required']) {
+                      <div class="invalid-feedback">Ingrese el nombre del producto</div>
+                    }
+                  </div>
+
+                  <div class="col-md-5">
+                    <label class="form-label">Clasificación de Costo *</label>
+                    <ng-select 
+                      formControlName="clasificacion"
+                      placeholder="Seleccione..."
+                      [clearable]="false"
+                      [searchable]="false"
+                      appendTo="body"
+                      [class.is-invalid]="submitted && f['clasificacion'].errors">
+                      <ng-option value="Proyecto">Proyecto</ng-option>
+                      <ng-option value="Servicio">Servicio</ng-option>
+                      <ng-option value="Productos">Producto</ng-option>
+                    </ng-select>
+                    @if (submitted && f['clasificacion'].errors?.['required']) {
+                      <div class="invalid-feedback d-block">Ingrese la Clasificación de Costo</div>
+                    }
+                  </div>
+
+                  <div class="col-12">
+                    <label class="form-label">Descripción *</label>
+                    <textarea 
+                      class="form-control" 
+                      formControlName="descripcion" 
+                      maxlength="1000" 
+                      rows="3"
+                      placeholder="Descripción del producto o servicio" 
+                      [class.is-invalid]="submitted && f['descripcion'].errors"></textarea>
+                    @if (submitted && f['descripcion'].errors?.['required']) {
+                      <div class="invalid-feedback">Ingrese la descripción del producto</div>
+                    }
+                  </div>
+
+                  <div class="col-12">
+                    <label class="form-label">Empresa</label>
+                    <ng-select 
+                      formControlName="perfil"
+                      [items]="configs"
+                      bindLabel="nombre"
+                      bindValue="id"
+                      placeholder="Seleccione empresa..."
+                      [clearable]="false"
+                      [searchable]="true"
+                      appendTo="body">
+                    </ng-select>
+                  </div>
+                </div>
               </div>
 
-              <div class="col-12">
-                <label class="form-label">Empresa</label>
-                <ng-select 
-                  formControlName="perfil"
-                  [items]="configs"
-                  bindLabel="nombre"
-                  bindValue="id"
-                  placeholder="Seleccione empresa..."
-                  [clearable]="false"
-                  [searchable]="true"
-                  appendTo="body">
-                </ng-select>
+              <!-- Foto / Imagen del Producto (Comentado temporalmente)
+              <div class="col-lg-4">
+                <app-image-uploader
+                  label="Foto del Producto / Servicio"
+                  [imageSrc]="imagenSrc"
+                  [height]="220"
+                  aspectRatio="square"
+                  (fileSelected)="onImageSelected($event)"
+                  (imageRemoved)="onImageRemoved()">
+                </app-image-uploader>
               </div>
+              -->
             </div>
           }
 
@@ -257,7 +275,7 @@
                   <label class="form-label">Activo Circulante (Producción / Insumo)</label>
                   <ng-select formControlName="piezaInventario" placeholder="Seleccione insumo o material de producción..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom">
                     @for (asset of activosCirculantes; track asset.id) {
-                      <ng-option [value]="asset.id">{{ asset.nombre }}</ng-option>
+                      <ng-option [value]="asset.id">{{ formatAssetOption(asset) }}</ng-option>
                     }
                   </ng-select>
                 </div>
@@ -319,7 +337,7 @@
                     <label class="form-label">Material Insumo</label>
                     <ng-select formControlName="piezaMaterialId" placeholder="Seleccione material..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom">
                       @for (m of materialesFiltradosCirculantes; track m.id) {
-                        <ng-option [value]="m.id">{{ m.nombre }}</ng-option>
+                        <ng-option [value]="m.id">{{ formatAssetOption(m) }}</ng-option>
                       }
                     </ng-select>
                   </div>

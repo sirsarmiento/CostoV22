@@ -182,7 +182,7 @@
                     <label class="form-label text-xs mb-1">Activo del Inventario</label>
                     <ng-select formControlName="piezaInventario" placeholder="Seleccione activo del inventario..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
                       @for (asset of activosCirculantes; track asset.id) {
-                        <ng-option [value]="asset.id">{{ asset.nombre }}</ng-option>
+                        <ng-option [value]="asset.id">{{ formatAssetOption(asset) }}</ng-option>
                       }
                     </ng-select>
                   </div>
@@ -244,7 +244,7 @@
                       <label class="form-label text-xs mb-1">Material Insumo</label>
                       <ng-select formControlName="piezaMaterialId" placeholder="Seleccione material..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
                         @for (m of materialesFiltrados; track m.id) {
-                          <ng-option [value]="m.id">{{ m.nombre }}</ng-option>
+                          <ng-option [value]="m.id">{{ formatAssetOption(m) }}</ng-option>
                         }
                       </ng-select>
                     </div>

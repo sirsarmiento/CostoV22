@@ -27,6 +27,8 @@ export interface Purchase {
   itemsResumen?: string;
 }
 
+export type EstadoVenta = 'PAGADO' | 'PENDIENTE' | 'ABONADO';
+
 export interface Sale {
   id?: number;
   numero?: string;
@@ -37,6 +39,11 @@ export interface Sale {
   presupuesto?: number;
   cliente?: { id: number; nombre: string };
   producto?: { id: number; nombre: string };
+  estadoVenta?: EstadoVenta;
+  montoAbonado?: number;
+  montoPendiente?: number;
+  metodoPago?: string;
+  observacionesPago?: string;
 }
 
 export interface StockItem {

@@ -5,6 +5,7 @@ import { map } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
 import {
   Decouple,
+  EstadoVenta,
   InventoryMovement,
   Purchase,
   Sale,
@@ -64,8 +65,17 @@ export class InventoryService {
     );
   }
 
-  createSale(presupuestoId: number, cantidad?: number): Observable<Sale> {
-    return this.http.post<Sale>(`${this.api}/venta`, { presupuesto: presupuestoId, cantidad });
+  createSale(presupuestoId: number, cantidad?: number, estadoVenta?: EstadoVenta, montoAbonado?: number): Observable<Sale> {
+    return this.http.post<Sale>(`${this.api}/venta`, { 
+      presupuesto: presupuestoId, 
+      cantidad,
+      estadoVenta: estadoVenta || 'PENDIENTE',
+      montoAbonado: montoAbonado ?? 0
+    });
+  }
+
+  updateSale(id: number, payload: Partial<Sale>): Observable<Sale> {
+    return this.http.put<Sale>(`${this.api}/venta/${id}`, payload);
   }
 
   // ==========================================

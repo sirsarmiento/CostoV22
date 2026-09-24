@@ -89,6 +89,18 @@
                   [class.table-primary]="selectedRow && selectedRow.id === row.id"
                   style="cursor: pointer;">
                   <td>
+                    <!--
+                    <div class="d-flex align-items-center gap-2">
+                      @if (row.imagen) {
+                        <img [src]="row.imagen" class="rounded border shadow-sm" style="width: 36px; height: 36px; min-width: 36px; object-fit: cover;" alt="Foto">
+                      } @else {
+                        <div class="rounded bg-light-primary text-primary border border-primary border-opacity-25 d-flex align-items-center justify-content-center fw-bold" style="width: 36px; height: 36px; min-width: 36px; font-size: 0.75rem;">
+                          {{ (row.nombre || 'PR').slice(0, 2).toUpperCase() }}
+                        </div>
+                      }
+                      <div class="cell-name-clamp" [attr.title]="row.nombre">{{ row.nombre }}</div>
+                    </div>
+                    -->
                     <div class="cell-name-clamp" [attr.title]="row.nombre">{{ row.nombre }}</div>
                   </td>
                   <td>{{ row.sku || 'n/a' }}</td>

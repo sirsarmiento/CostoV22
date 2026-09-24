@@ -485,7 +485,7 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       costoOtroConcepto: [''],
       costoPrecio: [''],
       // Parámetros de Presupuesto
-      prepSlicing: [''],
+      tiempoSetup: [''],
       postProcesado: [0],
       tasaFallo: [0],
       margenGanancia: [0, [Validators.min(this.minMargenGanancia), Validators.max(100)]],
@@ -569,12 +569,12 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       this.form.get('perfil')?.setValue(perfilId || null);
       
       const dRec = data as unknown as Record<string, unknown>;
-      const prepVal = dRec['tiempoSetup'] ?? dRec['prepSlicing'] ?? dRec['tiempo_setup'] ?? dRec['prep_slicing'] ?? '';
-      const postVal = dRec['postProcesado'] ?? dRec['post_procesado'] ?? dRec['tiempo_post_procesado'] ?? dRec['tiempoPostProcesado'] ?? 0;
-      const tasaVal = dRec['tasaFallo'] ?? dRec['tasa_fallo'] ?? dRec['tasaFalloGlobal'] ?? 0;
-      const margenVal = dRec['margenGanancia'] ?? dRec['margen_ganancia'] ?? this.minMargenGanancia;
+      const prepVal = data.tiempoSetup ?? dRec['tiempoSetup'] ?? '';
+      const postVal = data.postProcesado ?? 0;
+      const tasaVal = data.tasaFallo ?? 0;
+      const margenVal = data.margenGanancia ?? this.minMargenGanancia;
 
-      this.form.get('prepSlicing')?.setValue(prepVal);
+      this.form.get('tiempoSetup')?.setValue(prepVal);
       this.form.get('postProcesado')?.setValue(postVal);
       this.form.get('tasaFallo')?.setValue(tasaVal);
       this.form.get('margenGanancia')?.setValue(margenVal);
@@ -696,7 +696,7 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       return piece;
     });
 
-    const prepNum = Number(this.form.get('prepSlicing')?.value) || 0;
+    const prepNum = Number(this.form.get('tiempoSetup')?.value) || 0;
     const postNum = Number(this.form.get('postProcesado')?.value) || 0;
     const tasaNum = Number(this.form.get('tasaFallo')?.value) || 0;
     const margenNum = Number(this.form.get('margenGanancia')?.value) || 0;
@@ -750,6 +750,9 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       error: (err) => {
         console.error('Error saving product base:', err);
         this.loading = false;
+        if (err?.status === 401 || err?.status === 403 || err?.status === 0) {
+          return;
+        }
         const serverErr = err?.error?.error || err?.error?.message || err?.message;
         const detailMsg = typeof serverErr === 'string' ? serverErr : JSON.stringify(serverErr || 'No se pudo guardar la información del producto.');
         Swal.fire('Error al Guardar', detailMsg, 'error');

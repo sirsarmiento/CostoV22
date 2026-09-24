@@ -27,9 +27,10 @@ export class Product {
     perfil!: number;
     periodo?: string;
     tasaFallo?: number;
-    prepSlicing?: number;
+    tiempoSetup?: number;
     postProcesado?: number;
     margenGanancia?: number;
     piezasProducto?: PiezaProducto[];
     cantidadStock?: number;
+    imagen?: string;
 }

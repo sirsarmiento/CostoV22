@@ -448,9 +448,12 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
           this.router.navigate(['/assets']);
         });
       },
-      error: () => {
+      error: (err) => {
         this.loading = false;
-        Swal.fire('Error', 'Ha ocurrido un error al guardar el activo.', 'error');
+        if (err?.status === 401 || err?.status === 403 || err?.status === 0) {
+          return;
+        }
+        Swal.fire('Error', err?.error?.msg || 'Ha ocurrido un error al guardar el activo.', 'error');
       }
     });
   }

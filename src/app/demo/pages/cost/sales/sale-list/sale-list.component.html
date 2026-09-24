@@ -1,9 +1,9 @@
-<div class="row mb-4">
+<div class="row mb-4 align-items-center">
   <div class="col-sm-8">
     <nav aria-label="breadcrumb">
       <ol class="breadcrumb mb-0">
         <li class="breadcrumb-item"><a routerLink="/sales">Ventas</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Historial de Ventas Concretadas</li>
+        <li class="breadcrumb-item active" aria-current="page">Historial de Ventas</li>
       </ol>
     </nav>
   </div>
@@ -14,24 +14,111 @@
   </div>
 </div>
 
+<!-- Tarjetas Métricas Financieras (KPIs de Ventas) -->
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm bg-light-primary border-start border-primary border-4 h-100 mb-0">
+      <div class="card-body p-3 d-flex align-items-center justify-content-between">
+        <div>
+          <span class="text-muted text-xs text-uppercase fw-bold">Total Facturado</span>
+          <h4 class="mb-0 fw-bold text-primary mt-1">${{ totalFacturado | number:'1.2-2' }}</h4>
+          <span class="text-muted text-xs">{{ sales.length }} ventas registradas</span>
+        </div>
+        <div class="bg-primary text-white p-3 rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 48px; height: 48px;">
+          <i class="ti ti-receipt fs-3"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm bg-light-success border-start border-success border-4 h-100 mb-0">
+      <div class="card-body p-3 d-flex align-items-center justify-content-between">
+        <div>
+          <span class="text-muted text-xs text-uppercase fw-bold">Total Cobrado / Pagado</span>
+          <h4 class="mb-0 fw-bold text-success mt-1">${{ totalCobrado | number:'1.2-2' }}</h4>
+          <span class="text-success text-xs fw-medium">
+            <i class="ti ti-check me-1"></i>Ingreso real en caja
+          </span>
+        </div>
+        <div class="bg-success text-white p-3 rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 48px; height: 48px;">
+          <i class="ti ti-cash fs-3"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm bg-light-warning border-start border-warning border-4 h-100 mb-0">
+      <div class="card-body p-3 d-flex align-items-center justify-content-between">
+        <div>
+          <span class="text-muted text-xs text-uppercase fw-bold">Saldo Pendiente por Cobrar</span>
+          <h4 class="mb-0 fw-bold text-warning mt-1">${{ totalPendiente | number:'1.2-2' }}</h4>
+          <span class="text-warning text-xs fw-medium">
+            <i class="ti ti-clock me-1"></i>Cuentas por cobrar
+          </span>
+        </div>
+        <div class="bg-warning text-white p-3 rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 48px; height: 48px;">
+          <i class="ti ti-clock fs-3"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="row">
   <div class="col-12">
     <div class="card">
       <div class="card-body">
         
-        <!-- Search Bar -->
-        <div class="row mb-3 g-2">
+        <!-- Barra de Búsqueda y Pestañas de Filtro -->
+        <div class="row g-3 align-items-center mb-3">
           <div class="col-md-4">
             <input 
               type="text" 
               class="form-control" 
-              placeholder="Buscar por número, cliente o descripción..." 
+              placeholder="Buscar por nro, cliente, descripción..." 
               [(ngModel)]="searchTerm"
               (input)="onSearchChange()">
           </div>
+
+          <div class="col-md-8 d-flex justify-content-md-end gap-2 flex-wrap">
+            <button 
+              type="button" 
+              class="btn btn-sm" 
+              [class.btn-primary]="filtroEstado === 'TODOS'" 
+              [class.btn-light]="filtroEstado !== 'TODOS'"
+              (click)="onFilterStatus('TODOS')">
+              Todos
+            </button>
+            <button 
+              type="button" 
+              class="btn btn-sm" 
+              [class.btn-success]="filtroEstado === 'PAGADO'" 
+              [class.btn-light]="filtroEstado !== 'PAGADO'"
+              (click)="onFilterStatus('PAGADO')">
+              <i class="ti ti-circle-check me-1"></i> Pagados
+            </button>
+            <button 
+              type="button" 
+              class="btn btn-sm" 
+              [class.btn-warning]="filtroEstado === 'ABONADO'" 
+              [class.btn-light]="filtroEstado !== 'ABONADO'"
+              (click)="onFilterStatus('ABONADO')">
+              <i class="ti ti-coin me-1"></i> Abonados
+            </button>
+            <button 
+              type="button" 
+              class="btn btn-sm" 
+              [class.btn-danger]="filtroEstado === 'PENDIENTE'" 
+              [class.btn-light]="filtroEstado !== 'PENDIENTE'"
+              (click)="onFilterStatus('PENDIENTE')">
+              <i class="ti ti-clock me-1"></i> Pendientes
+            </button>
+          </div>
         </div>
 
-        <!-- Table -->
+        <!-- Tabla de Ventas -->
         <div class="table-responsive mb-3">
           <table class="table table-hover align-middle mb-0 table-sm">
             <thead class="table-light">
@@ -52,6 +139,9 @@
                 <th style="cursor: pointer;" class="text-end" (click)="sortData('total')">
                   Total <i class="ti fs-6" [class]="getSortClass('total')"></i>
                 </th>
+                <th class="text-center" style="min-width: 170px;">
+                  Estado de Venta
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -67,11 +157,41 @@
                   <td class="text-center">
                     <span class="badge bg-light-primary text-primary px-2 py-1">{{ row.cantidad || 1 }} unid.</span>
                   </td>
-                  <td class="text-end fw-bold text-success fs-6">${{ (row.total || 0) | number:'1.2-2' }}</td>
+                  <td class="text-end fw-bold text-dark fs-6">${{ (row.total || 0) | number:'1.2-2' }}</td>
+                  <td class="text-center" (click)="$event.stopPropagation()">
+                    @if (getEstadoVenta(row) === 'PAGADO') {
+                      <button 
+                        class="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1 rounded-pill px-3 py-1 shadow-sm"
+                        (click)="openPaymentModal(row, $event)"
+                        title="Haga clic para cambiar estado o ver detalle">
+                        <i class="ti ti-check fs-5"></i>
+                        <span class="fw-bold">PAGADO</span>
+                      </button>
+                    } @else if (getEstadoVenta(row) === 'ABONADO') {
+                      <button 
+                        class="btn btn-sm btn-outline-warning d-inline-flex align-items-center gap-1 rounded-pill px-3 py-1 shadow-sm"
+                        (click)="openPaymentModal(row, $event)"
+                        title="Haga clic para registrar más abono o liquidar">
+                        <i class="ti ti-coin fs-5"></i>
+                        <span class="fw-bold">ABONADO: ${{ (row.montoAbonado || 0) | number:'1.2-2' }}</span>
+                      </button>
+                    } @else {
+                      <button 
+                        class="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1 rounded-pill px-3 py-1 shadow-sm"
+                        (click)="openPaymentModal(row, $event)"
+                        title="Haga clic para registrar cobro">
+                        <i class="ti ti-clock fs-5"></i>
+                        <span class="fw-bold">PENDIENTE</span>
+                      </button>
+                    }
+                  </td>
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="6" class="text-center py-4 text-muted">No se encontraron ventas registradas.</td>
+                  <td colspan="7" class="text-center py-4 text-muted">
+                    <i class="ti ti-search fs-1 d-block mb-2 opacity-50"></i>
+                    No se encontraron ventas registradas con el filtro actual.
+                  </td>
                 </tr>
               }
             </tbody>
@@ -108,3 +228,143 @@
     </div>
   </div>
 </div>
+
+<!-- ========================================================================= -->
+<!-- MODAL DE GESTIÓN Y ACTUALIZACIÓN DE ESTADO DE VENTA                       -->
+<!-- ========================================================================= -->
+@if (showPaymentModal && selectedSaleForPayment) {
+  <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.55);" (click)="closePaymentModal()">
+    <div class="modal-dialog modal-dialog-centered" (click)="$event.stopPropagation()">
+      <div class="modal-content shadow-lg border-0 rounded-3">
+        
+        <!-- Header -->
+        <div class="modal-header bg-primary text-white py-3">
+          <h5 class="modal-title text-white fs-5 fw-bold d-flex align-items-center gap-2">
+            <i class="ti ti-cash fs-4"></i> Control de Estado de Venta
+          </h5>
+          <button type="button" class="btn-close btn-close-white" (click)="closePaymentModal()"></button>
+        </div>
+
+        <form (ngSubmit)="savePaymentStatus()">
+          <div class="modal-body p-4">
+            
+            <!-- Resumen de la Venta -->
+            <div class="bg-light p-3 rounded-3 mb-4 border">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted text-xs text-uppercase fw-bold">Venta</span>
+                <span class="fw-bold text-primary">{{ selectedSaleForPayment.numero || ('#VTA-' + selectedSaleForPayment.id) }}</span>
+              </div>
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted text-xs text-uppercase fw-bold">Cliente</span>
+                <span class="fw-bold text-dark">{{ getClienteNombre(selectedSaleForPayment) }}</span>
+              </div>
+              <div class="d-flex justify-content-between align-items-center border-top pt-2 mt-2">
+                <span class="text-dark fw-bold">Monto Total de la Venta:</span>
+                <span class="fs-5 fw-bold text-success">${{ (selectedSaleForPayment.total || 0) | number:'1.2-2' }}</span>
+              </div>
+            </div>
+
+            <!-- Selector de Estado de Venta -->
+            <label class="form-label fw-bold text-dark mb-2">Seleccione el Estado de Venta:</label>
+            <div class="row g-2 mb-3">
+              <div class="col-4">
+                <button 
+                  type="button" 
+                  class="btn w-100 py-2 d-flex flex-column align-items-center justify-content-center gap-1"
+                  [class.btn-success]="paymentModalData.estadoVenta === 'PAGADO'"
+                  [class.btn-outline-success]="paymentModalData.estadoVenta !== 'PAGADO'"
+                  (click)="onEstadoVentaSelect('PAGADO')">
+                  <i class="ti ti-circle-check fs-4"></i>
+                  <span class="fw-bold text-xs">PAGADO (100%)</span>
+                </button>
+              </div>
+
+              <div class="col-4">
+                <button 
+                  type="button" 
+                  class="btn w-100 py-2 d-flex flex-column align-items-center justify-content-center gap-1"
+                  [class.btn-warning]="paymentModalData.estadoVenta === 'ABONADO'"
+                  [class.btn-outline-warning]="paymentModalData.estadoVenta !== 'ABONADO'"
+                  (click)="onEstadoVentaSelect('ABONADO')">
+                  <i class="ti ti-coin fs-4"></i>
+                  <span class="fw-bold text-xs">ABONADO</span>
+                </button>
+              </div>
+
+              <div class="col-4">
+                <button 
+                  type="button" 
+                  class="btn w-100 py-2 d-flex flex-column align-items-center justify-content-center gap-1"
+                  [class.btn-danger]="paymentModalData.estadoVenta === 'PENDIENTE'"
+                  [class.btn-outline-danger]="paymentModalData.estadoVenta !== 'PENDIENTE'"
+                  (click)="onEstadoVentaSelect('PENDIENTE')">
+                  <i class="ti ti-clock fs-4"></i>
+                  <span class="fw-bold text-xs">PENDIENTE</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Campos condicionales si es ABONADO -->
+            @if (paymentModalData.estadoVenta === 'ABONADO') {
+              <div class="card bg-light-warning border-warning border-opacity-25 p-3 mb-3">
+                <div class="mb-3">
+                  <label class="form-label fw-bold text-dark text-xs mb-1">Monto Abonado ($)</label>
+                  <div class="input-group input-group-sm">
+                    <span class="input-group-text">$</span>
+                    <input 
+                      type="number" 
+                      class="form-control fw-bold" 
+                      [(ngModel)]="paymentModalData.montoAbonado" 
+                      name="montoAbonado"
+                      [max]="selectedSaleForPayment.total || 0"
+                      min="0"
+                      step="0.01">
+                  </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center text-xs">
+                  <span class="text-muted fw-bold">Saldo Restante por Cobrar:</span>
+                  <span class="fw-bold fs-6 text-danger">${{ saldoRestanteModal | number:'1.2-2' }}</span>
+                </div>
+              </div>
+            }
+
+            <!-- Método de Pago y Observaciones -->
+            <div class="row g-2 mb-2">
+              <div class="col-12 mb-2">
+                <label class="form-label text-xs fw-bold text-secondary mb-1">Método de Pago</label>
+                <select class="form-select form-select-sm" [(ngModel)]="paymentModalData.metodoPago" name="metodoPago">
+                  <option value="Efectivo">Efectivo</option>
+                  <option value="Transferencia / Pago Móvil">Transferencia / Pago Móvil</option>
+                  <option value="Zelle / Divisas">Zelle / Divisas</option>
+                  <option value="Punto de Venta / Tarjeta">Punto de Venta / Tarjeta</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label text-xs fw-bold text-secondary mb-1">Observaciones / Referencia</label>
+                <input 
+                  type="text" 
+                  class="form-control form-control-sm" 
+                  placeholder="Ej: Ref #12345 o anticipo 50%" 
+                  [(ngModel)]="paymentModalData.observacionesPago"
+                  name="observacionesPago">
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Footer -->
+          <div class="modal-footer bg-light border-top py-2 px-4">
+            <button class="btn btn-outline-secondary btn-sm" type="button" (click)="closePaymentModal()">Cancelar</button>
+            <button class="btn btn-primary btn-sm d-inline-flex align-items-center gap-1" type="submit">
+              <i class="ti ti-check fs-5"></i> Guardar Estado de Venta
+            </button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </div>
+}

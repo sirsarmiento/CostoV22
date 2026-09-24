@@ -14,10 +14,11 @@ import { ConfigService } from '../../../../../core/services/cost/config.service'
 import { ProductService } from '../../../../../core/services/cost/product.service';
 import { AssetService } from '../../../../../core/services/cost/asset.service';
 import { FixeService } from '../../../../../core/services/cost/fixe.service';
+import { Fixe } from '../../../../../core/models/Cost/fixe';
 import { ClientService } from '../../../../../core/services/cost/client.service';
 import { forkJoin } from 'rxjs';
 import Swal from 'sweetalert2';
-import { calculateBudgetTotals, getNumFromRecord } from '../../../../../core/utils/budget-calculator';
+import { calculateBudgetTotals } from '../../../../../core/utils/budget-calculator';
 import {
   AssetCatalog,
   resolvePiezasDisplay,
@@ -186,8 +187,8 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
       this.actualizarCostoMaquina();
       this.actualizarMinMargenGanancia();
 
-      const indirectos = data.fixes.filter(item => item.clasificacion === 'Indirecto');
-      this.totalFijoIndirecto = indirectos.reduce((total, item) => total + (Number(item.precio) || 0), 0);
+      const indirectos = (data.fixes || []).filter((item: Fixe) => item.clasificacion === 'Indirecto');
+      this.totalFijoIndirecto = indirectos.reduce((total: number, item: Fixe) => total + (Number(item.precio) || 0), 0);
       this.actualizarIndirectoProrrateado();
 
       this.setValues();
@@ -423,18 +424,12 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
   autoFillFromProduct(productId: number): void {
     const product = this.productosList.find(p => p.id == productId);
     if (product) {
-      const pRec = product as unknown as Record<string, unknown>;
-      const prepValue = getNumFromRecord(pRec, ['prepSlicing', 'tiempoSetup', 'prep_slicing', 'tiempo_setup'], Number(product.prepSlicing) || 0);
-      const postValue = getNumFromRecord(pRec, ['postProcesado', 'tiempoPostProcesado', 'post_procesado', 'tiempo_post_procesado'], Number(product.postProcesado) || 0);
-      const tasaValue = getNumFromRecord(pRec, ['tasaFallo', 'tasaFalloGlobal', 'tasa_fallo', 'tasa_fallo_global'], Number(product.tasaFallo) || 0);
-      const margenValue = getNumFromRecord(pRec, ['margenGanancia', 'margen_ganancia'], Number(product.margenGanancia) || this.minMargenGanancia);
-
       this.form.patchValue({
         descripcion: product.descripcion || product.nombre,
-        tasaFalloGlobal: Number(tasaValue) || 0,
-        tiempoSetup: Number(prepValue) || 0,
-        tiempoPostProcesado: Number(postValue) || 0,
-        margenGanancia: Number(margenValue) || this.minMargenGanancia
+        tasaFalloGlobal: Number(product.tasaFallo) || 0,
+        tiempoSetup: Number(product.tiempoSetup) || 0,
+        tiempoPostProcesado: Number(product.postProcesado) || 0,
+        margenGanancia: Number(product.margenGanancia) || this.minMargenGanancia
       });
 
       this.piezas = mapProductToPieces(product, this.catalog);
@@ -543,11 +538,6 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
         this.form.get('clienteNombreTexto')?.setValue(this.tempClienteData.nombre);
       }
 
-      const setupValue = getNumFromRecord(dRec, ['tiempoSetup', 'prepSlicing', 'tiempo_setup', 'prep_slicing'], 0);
-      const postValue = getNumFromRecord(dRec, ['postProcesado', 'tiempoPostProcesado', 'tiempo_post_procesado', 'post_procesado'], 0);
-      const tasaValue = getNumFromRecord(dRec, ['tasaFallo', 'tasaFalloGlobal', 'tasa_fallo_global', 'tasa_fallo'], 0);
-      const margenValue = getNumFromRecord(dRec, ['margenGanancia', 'margen_ganancia'], this.minMargenGanancia);
-
       this.form.patchValue({
         clasificacion: dRec['clasificacion'],
         productoId: parsedProductoId,
@@ -558,10 +548,10 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
         cantidadGlobal: dRec['cantidadGlobal'] || 1,
         delivery: dRec['delivery'] || 0,
         clienteId: parsedClienteId,
-        tasaFalloGlobal: tasaValue,
-        tiempoSetup: setupValue,
-        tiempoPostProcesado: postValue,
-        margenGanancia: margenValue || this.minMargenGanancia
+        tasaFalloGlobal: Number(dRec['tasaFalloGlobal'] ?? dRec['tasaFallo']) || 0,
+        tiempoSetup: Number(dRec['tiempoSetup']) || 0,
+        tiempoPostProcesado: Number(dRec['tiempoPostProcesado'] ?? dRec['postProcesado']) || 0,
+        margenGanancia: Number(dRec['margenGanancia']) || this.minMargenGanancia
       }, { emitEvent: false });
 
       this.id = Number(dRec['id']) || 0;
@@ -799,9 +789,12 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
             this.router.navigate(['/budgets']);
           });
         },
-        error: () => {
+        error: (err) => {
           this.loading = false;
-          Swal.fire('Error', 'Ha ocurrido un error al guardar el presupuesto.', 'error');
+          if (err?.status === 401 || err?.status === 403 || err?.status === 0) {
+            return;
+          }
+          Swal.fire('Error', err?.error?.msg || 'Ha ocurrido un error al guardar el presupuesto.', 'error');
         }
       });
     };

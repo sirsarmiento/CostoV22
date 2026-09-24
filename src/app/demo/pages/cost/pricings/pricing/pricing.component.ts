@@ -6,6 +6,7 @@ import { NgSelectModule } from '@ng-select/ng-select';
 import { Fixe } from '../../../../../core/models/Cost/fixe';
 import { Product } from '../../../../../core/models/Cost/product';
 import { Asset } from '../../../../../core/models/Cost/asset';
+import { Parts } from '../../../../../core/models/Cost/budge';
 import { forkJoin } from 'rxjs';
 import { ConfigService } from '../../../../../core/services/cost/config.service';
 import { ProductService } from '../../../../../core/services/cost/product.service';
@@ -140,8 +141,7 @@ export class PricingComponent implements OnInit {
     const prod = this.productos.find(p => p.id == this.idProdPrecio);
     
     if (prod) {
-      const prodRec = prod as unknown as Record<string, unknown>;
-      const piezas = (prod.piezasProducto || prodRec['piezas_producto'] || prodRec['piezas'] || []) as Record<string, unknown>[];
+      const piezas = (prod.piezasProducto || []) as Parts[];
       const prodMargin = Number(prod.margenGanancia);
       const defaultMargin = (!isNaN(prodMargin) && prodMargin > 0) ? prodMargin : this.minMargenGanancia;
       this.margenDeseado = defaultMargin < this.minMargenGanancia ? this.minMargenGanancia : defaultMargin;
@@ -153,7 +153,7 @@ export class PricingComponent implements OnInit {
 
       const res = calculateBudgetTotals({
         piezas,
-        tiempoSetup: Number(prod.prepSlicing ?? prodRec['tiempoSetup']) || 0,
+        tiempoSetup: Number(prod.tiempoSetup) || 0,
         tiempoPostProcesado: Number(prod.postProcesado) || 0,
         tasaFalloGlobal: Number(prod.tasaFallo) || 0,
         margenGanancia: this.margenDeseado,

@@ -249,6 +249,9 @@ export class AddPurchaseComponent implements OnInit, ComponentCanDeactivate {
       },
       error: (err) => {
         this.loading = false;
+        if (err?.status === 401 || err?.status === 403 || err?.status === 0) {
+          return;
+        }
         Swal.fire('Error', err?.error?.msg || 'No se pudo registrar la compra.', 'error');
       }
     });

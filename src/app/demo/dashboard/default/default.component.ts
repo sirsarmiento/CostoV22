@@ -23,6 +23,7 @@ import { FixeService } from 'src/app/core/services/cost/fixe.service';
 import { AssetService } from 'src/app/core/services/cost/asset.service';
 import { Asset } from 'src/app/core/models/Cost/asset';
 import { Product } from 'src/app/core/models/Cost/product';
+import { Parts } from 'src/app/core/models/Cost/budge';
 import { Fixe } from 'src/app/core/models/Cost/fixe';
 import { calculateBudgetTotals, depreciacionMensualMaquinas } from 'src/app/core/utils/budget-calculator';
 
@@ -82,11 +83,11 @@ export class DefaultComponent implements OnInit {
       // Cargar Costos Fijos
       this.costItems = fixes;
       this.filteredCostItems = [...this.costItems];
-      const fijosIndirectos = this.costItems.filter(item => item.clasificacion === 'Indirecto');
-      this.totalFijoIndirecto = fijosIndirectos.reduce((total, item) => total + Number(item.precio), 0);
+      const fijosIndirectos = this.costItems.filter((item: Fixe) => item.clasificacion === 'Indirecto');
+      this.totalFijoIndirecto = fijosIndirectos.reduce((total: number, item: Fixe) => total + Number(item.precio), 0);
 
       // Cargar Activos
-      const datosNormalizados = assets.map((item) => ({
+      const datosNormalizados = assets.map((item: Asset) => ({
         ...item,
         costoInicial: this.normalizarNumero(item.costoInicial),
         valorResidual: this.normalizarNumero(item.valorResidual),
@@ -211,12 +212,11 @@ export class DefaultComponent implements OnInit {
       return;
     }
 
-    const prodRec = selectedProd as unknown as Record<string, unknown>;
-    const piezas = (selectedProd.piezasProducto || prodRec['piezas_producto'] || prodRec['piezas'] || []) as Record<string, unknown>[];
+    const piezas = (selectedProd.piezasProducto || []) as Parts[];
 
     const res = calculateBudgetTotals({
       piezas,
-      tiempoSetup: Number(selectedProd.prepSlicing ?? prodRec['tiempoSetup']) || 0,
+      tiempoSetup: Number(selectedProd.tiempoSetup) || 0,
       tiempoPostProcesado: Number(selectedProd.postProcesado) || 0,
       tasaFalloGlobal: Number(selectedProd.tasaFallo) || 0,
       margenGanancia: Number(selectedProd.margenGanancia) || 0,

@@ -8,13 +8,18 @@ import { ProductService } from '../../../../../core/services/cost/product.servic
 import { ConfigService } from '../../../../../core/services/cost/config.service';
 import { AssetService } from '../../../../../core/services/cost/asset.service';
 import { FixeService } from '../../../../../core/services/cost/fixe.service';
+import { CodingService } from '../../../../../core/services/cost/coding.service';
+import { CatalogConfigService } from '../../../../../core/services/cost/catalog-config.service';
 import { Product, PiezaProducto } from '../../../../../core/models/Cost/product';
+import { Family } from '../../../../../core/models/Cost/family';
+import { MaterialCatalogo, TecnologiaCatalogo } from '../../../../../core/models/Cost/catalog-config';
+import { previsualizarCodigo } from '../../../../../core/utils/catalog-sku';
 import { Config } from '../../../../../core/models/Cost/config';
 import { Asset } from '../../../../../core/models/Cost/asset';
 import { Fixe } from '../../../../../core/models/Cost/fixe';
 import Swal from 'sweetalert2';
-import { Observable, forkJoin } from 'rxjs';
-import { tap } from 'rxjs/operators';
+import { Observable, forkJoin, of } from 'rxjs';
+import { catchError, tap } from 'rxjs/operators';
 
 import { ComponentCanDeactivate } from '../../../../../core/guards/pending-changes.guard';
 import { ImageSelectedEvent } from '../../../../../theme/shared/components/image-uploader/image-uploader.component';
@@ -31,6 +36,8 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
   private configService = inject(ConfigService);
   private assetService = inject(AssetService);
   private fixeService = inject(FixeService);
+  private codingService = inject(CodingService);
+  private catalogConfigService = inject(CatalogConfigService);
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
   private destroyRef = inject(DestroyRef);
@@ -42,6 +49,13 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
   minMargenGanancia = 0;
 
   configs: Config[] = [];
+  familias: Family[] = [];
+  tecnologias: TecnologiaCatalogo[] = [];
+  materiales: MaterialCatalogo[] = [];
+  materialesFiltrados: MaterialCatalogo[] = [];
+  previewSku = '';
+  previewCatalogo = '';
+  correlativosUsados: string[] = [];
   activeTab: 'def' | 'costos' | 'piezas' = 'def';
   costosPendientes: Fixe[] = [];
   costosEliminados: number[] = [];
@@ -82,6 +96,7 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
   ngOnInit() {
     this.loadConfigs();
     this.loadAssets();
+    this.loadCatalogo();
     this.setValues();
 
     this.form.get('medida')?.valueChanges.subscribe(value => {
@@ -104,6 +119,74 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
     if (medida !== 'Horas hombres' && medida !== 'Horas máquina') {
       this.form.get('periodo')?.setValue('');
     }
+  }
+
+  loadCatalogo() {
+    forkJoin({
+      familias: this.codingService.getFamilies().pipe(catchError(() => of([]))),
+      tecnologias: this.catalogConfigService.getTecnologias().pipe(catchError(() => of([]))),
+      materiales: this.catalogConfigService.getMateriales().pipe(catchError(() => of([]))),
+      productos: this.productService.getProducts().pipe(catchError(() => of([])))
+    }).subscribe({
+      next: (data) => {
+        this.familias = data.familias || [];
+        this.tecnologias = data.tecnologias?.length ? data.tecnologias : [
+          { id: 1, codigo: 'FDM', nombre: 'Filamento' },
+          { id: 2, codigo: 'SLA', nombre: 'Resina' }
+        ];
+        this.materiales = data.materiales?.length ? data.materiales : [
+          { id: 1, codigo: 'PLA', nombre: 'Ácido Poliláctico', tecnologias: [{ id: 1, codigo: 'FDM', nombre: 'Filamento' }] },
+          { id: 2, codigo: 'ABS', nombre: 'Acrilonitrilo Butadieno Estireno', tecnologias: [{ id: 1, codigo: 'FDM', nombre: 'Filamento' }] },
+          { id: 3, codigo: 'PET', nombre: 'Polietileno Tereftalato', tecnologias: [{ id: 1, codigo: 'FDM', nombre: 'Filamento' }] },
+          { id: 4, codigo: 'RES', nombre: 'Resina', tecnologias: [{ id: 2, codigo: 'SLA', nombre: 'Resina' }] }
+        ];
+        this.correlativosUsados = (data.productos || [])
+          .filter(p => !this.id || p.id !== this.id)
+          .map(p => p.correlativo || '')
+          .filter(Boolean);
+        this.filtrarMateriales();
+        this.actualizarPreviewCodigo();
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  filtrarMateriales() {
+    const tec = (this.form.get('tecnologia')?.value || '').toUpperCase();
+    this.materialesFiltrados = this.materiales.filter(m => {
+      const codes = (m.tecnologias || []).map(t => (t.codigo || '').toUpperCase());
+      return !tec || codes.length === 0 || codes.includes(tec);
+    });
+    const actual = this.form.get('material')?.value;
+    if (actual && !this.materialesFiltrados.some(m => m.codigo === actual)) {
+      this.form.get('material')?.setValue('');
+    }
+  }
+
+  familiaSeleccionada(): Family | undefined {
+    const id = Number(this.form.get('familiaId')?.value);
+    return this.familias.find(f => Number(f.id) === id);
+  }
+
+  esFamiliaLudico(): boolean {
+    return (this.familiaSeleccionada()?.codigo || '').toUpperCase() === 'LUD';
+  }
+
+  actualizarPreviewCodigo() {
+    const familia = this.familiaSeleccionada();
+    const preview = previsualizarCodigo({
+      nombre: this.form.get('nombre')?.value,
+      clasificacion: this.form.get('clasificacion')?.value,
+      tecnologia: this.form.get('tecnologia')?.value,
+      material: this.form.get('material')?.value,
+      familiaCodigo: familia?.codigo,
+      serie: this.form.get('serie')?.value,
+      correlativosUsados: this.correlativosUsados
+    });
+    this.previewSku = preview.sku;
+    this.previewCatalogo = preview.codigoCatalogo;
+    this.form.get('sku')?.setValue(preview.sku, { emitEvent: false });
+    this.form.get('codigoCatalogo')?.setValue(preview.codigoCatalogo, { emitEvent: false });
   }
 
   loadConfigs() {
@@ -474,7 +557,12 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
     this.form = this.formBuilder.group({
       nombre: ['', Validators.required],
       medida: ['Unidades'],
-      sku: [''],
+      sku: [{ value: '', disabled: true }],
+      codigoCatalogo: [{ value: '', disabled: true }],
+      tecnologia: ['', Validators.required],
+      material: ['', Validators.required],
+      familiaId: [null as number | null, Validators.required],
+      serie: [''],
       descripcion: ['', Validators.required],
       clasificacion: ['', Validators.required],
       perfil: [''],
@@ -519,6 +607,20 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
     this.form.get('perfil')?.valueChanges.pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(() => this.actualizarMinMargenGanancia());
+
+    ['nombre', 'clasificacion', 'tecnologia', 'material', 'familiaId', 'serie'].forEach(campo => {
+      this.form.get(campo)?.valueChanges.pipe(
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe(() => {
+        if (campo === 'tecnologia') {
+          this.filtrarMateriales();
+        }
+        if (campo === 'familiaId' && !this.esFamiliaLudico()) {
+          this.form.get('serie')?.setValue('', { emitEvent: false });
+        }
+        this.actualizarPreviewCodigo();
+      });
+    });
   }
 
   onImageSelected(event: ImageSelectedEvent) {
@@ -562,6 +664,12 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       this.form.get('nombre')?.setValue(data.nombre);
       this.form.get('medida')?.setValue(data.medida);
       this.form.get('sku')?.setValue(data.sku);
+      this.form.get('codigoCatalogo')?.setValue(data.codigoCatalogo || '');
+      this.form.get('tecnologia')?.setValue(data.tecnologia || '');
+      this.form.get('material')?.setValue(data.material || '');
+      this.form.get('serie')?.setValue(data.serie || '');
+      const familiaId = data.familiaId || (typeof data.familia === 'object' ? data.familia?.id : null);
+      this.form.get('familiaId')?.setValue(familiaId || null);
       this.form.get('clasificacion')?.setValue(data.clasificacion);
       this.form.get('descripcion')?.setValue(data.descripcion);
       
@@ -634,7 +742,7 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
     }
 
     if (this.form.invalid) {
-      if (this.form.get('nombre')?.invalid || this.form.get('clasificacion')?.invalid || this.form.get('descripcion')?.invalid) {
+      if (this.form.get('nombre')?.invalid || this.form.get('clasificacion')?.invalid || this.form.get('descripcion')?.invalid || this.form.get('tecnologia')?.invalid || this.form.get('material')?.invalid || this.form.get('familiaId')?.invalid) {
         this.activeTab = 'def';
       }
       Swal.fire('Formulario Incompleto', 'Por favor complete todos los datos obligatorios del producto.', 'warning');
@@ -703,7 +811,12 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
 
     const productPayload: Record<string, unknown> = {
       nombre: this.form.get('nombre')?.value,
-      sku: this.form.get('sku')?.value,
+      sku: this.previewSku || this.form.get('sku')?.value,
+      codigoCatalogo: this.previewCatalogo,
+      tecnologia: this.form.get('tecnologia')?.value,
+      material: this.form.get('material')?.value,
+      familiaId: Number(this.form.get('familiaId')?.value) || null,
+      serie: this.form.get('serie')?.value || '',
       descripcion: this.form.get('descripcion')?.value,
       clasificacion: this.form.get('clasificacion')?.value,
       medida: this.form.get('medida')?.value,

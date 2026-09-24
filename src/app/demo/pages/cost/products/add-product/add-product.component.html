@@ -72,7 +72,7 @@
                   </div>
 
                   <div class="col-md-5">
-                    <label class="form-label">Clasificación de Costo *</label>
+                    <label class="form-label">Tipo *</label>
                     <ng-select 
                       formControlName="clasificacion"
                       placeholder="Seleccione..."
@@ -85,8 +85,88 @@
                       <ng-option value="Productos">Producto</ng-option>
                     </ng-select>
                     @if (submitted && f['clasificacion'].errors?.['required']) {
-                      <div class="invalid-feedback d-block">Ingrese la Clasificación de Costo</div>
+                      <div class="invalid-feedback d-block">Seleccione si es producto, servicio o proyecto.</div>
                     }
+                  </div>
+
+                  <div class="col-md-4">
+                    <label class="form-label">Tecnología *</label>
+                    <ng-select
+                      formControlName="tecnologia"
+                      placeholder="Seleccione..."
+                      [clearable]="false"
+                      [searchable]="true"
+                      appendTo="body"
+                      [class.is-invalid]="submitted && f['tecnologia'].errors">
+                      @for (tec of tecnologias; track tec.id) {
+                        <ng-option [value]="tec.codigo">{{ tec.nombre }} ({{ tec.codigo }})</ng-option>
+                      }
+                    </ng-select>
+                    @if (submitted && f['tecnologia'].errors?.['required']) {
+                      <div class="invalid-feedback d-block">Seleccione la tecnología.</div>
+                    }
+                  </div>
+
+                  <div class="col-md-4">
+                    <label class="form-label">Material *</label>
+                    <ng-select
+                      formControlName="material"
+                      placeholder="Seleccione..."
+                      [clearable]="false"
+                      [searchable]="true"
+                      appendTo="body"
+                      [class.is-invalid]="submitted && f['material'].errors">
+                      @for (mat of materialesFiltrados; track mat.id) {
+                        <ng-option [value]="mat.codigo">{{ mat.nombre }} ({{ mat.codigo }})</ng-option>
+                      }
+                    </ng-select>
+                    @if (submitted && f['material'].errors?.['required']) {
+                      <div class="invalid-feedback d-block">Seleccione el material.</div>
+                    }
+                  </div>
+
+                  <div class="col-md-4">
+                    <label class="form-label">Familia *</label>
+                    <ng-select
+                      formControlName="familiaId"
+                      placeholder="Seleccione..."
+                      [clearable]="false"
+                      [searchable]="true"
+                      appendTo="body"
+                      [class.is-invalid]="submitted && f['familiaId'].errors">
+                      @for (fam of familias; track fam.id) {
+                        <ng-option [value]="fam.id">{{ fam.nombre }} ({{ fam.codigo }})</ng-option>
+                      }
+                    </ng-select>
+                    @if (submitted && f['familiaId'].errors?.['required']) {
+                      <div class="invalid-feedback d-block">Seleccione la familia.</div>
+                    }
+                  </div>
+
+                  @if (esFamiliaLudico()) {
+                    <div class="col-md-4">
+                      <label class="form-label">Serie de correlativo</label>
+                      <ng-select
+                        formControlName="serie"
+                        placeholder="Automático o elija jota eme, erre ce, efe ge"
+                        [clearable]="true"
+                        [searchable]="false"
+                        appendTo="body">
+                        <ng-option value="JM">Juegos (jota eme)</ng-option>
+                        <ng-option value="RC">Rompecabezas (erre ce)</ng-option>
+                        <ng-option value="FG">Fidgets (efe ge)</ng-option>
+                      </ng-select>
+                    </div>
+                  }
+
+                  <div class="col-md-4">
+                    <label class="form-label">Código asignado</label>
+                    <input type="text" class="form-control font-monospace fw-bold" [value]="previewSku || 'Se genera al completar los datos'" readonly>
+                  </div>
+
+                  <div class="col-md-4">
+                    <label class="form-label">Código de catálogo</label>
+                    <input type="text" class="form-control font-monospace fw-bold" [value]="previewCatalogo || 'Se genera al completar los datos'" readonly>
                   </div>
 
                   <div class="col-12">

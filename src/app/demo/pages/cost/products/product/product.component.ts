@@ -127,6 +127,9 @@ export class ProductComponent implements OnInit {
       temp = temp.filter(p => 
         (p.nombre && p.nombre.toLowerCase().includes(query)) || 
         (p.sku && p.sku.toLowerCase().includes(query)) ||
+        (p.codigoCatalogo && p.codigoCatalogo.toLowerCase().includes(query)) ||
+        (p.tecnologia && p.tecnologia.toLowerCase().includes(query)) ||
+        (p.material && p.material.toLowerCase().includes(query)) ||
         (p.clasificacion && p.clasificacion.toLowerCase().includes(query)) ||
         (p.perfilName && p.perfilName.toLowerCase().includes(query))
       );
@@ -182,6 +185,16 @@ export class ProductComponent implements OnInit {
       this.sortAscending = true;
     }
     this.applyFilterAndPagination();
+  }
+
+  familiaNombre(row: ProductWithProfile): string {
+    if (!row.familia) {
+      return '-';
+    }
+    if (typeof row.familia === 'object') {
+      return row.familia.codigo || row.familia.nombre || '-';
+    }
+    return String(row.familia);
   }
 
   getSortClass(column: string): string {

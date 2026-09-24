@@ -60,13 +60,33 @@ const routes: Routes = [
         canDeactivate: [pendingChangesGuard]
       },
       {
+        path: 'configuracion',
+        loadComponent: () => import('./demo/pages/cost/configuracion/configuracion-catalogo.component').then((c) => c.ConfiguracionCatalogoComponent)
+      },
+      {
+        path: 'configuracion/add-family',
+        loadComponent: () => import('./demo/pages/cost/codings/add-family/add-family.component').then((c) => c.AddFamilyComponent),
+        canDeactivate: [pendingChangesGuard]
+      },
+      {
+        path: 'configuracion/add-tecnologia',
+        loadComponent: () => import('./demo/pages/cost/configuracion/add-tecnologia.component').then((c) => c.AddTecnologiaComponent),
+        canDeactivate: [pendingChangesGuard]
+      },
+      {
+        path: 'configuracion/add-material',
+        loadComponent: () => import('./demo/pages/cost/configuracion/add-material.component').then((c) => c.AddMaterialComponent),
+        canDeactivate: [pendingChangesGuard]
+      },
+      {
         path: 'codings',
-        loadComponent: () => import('./demo/pages/cost/codings/coding/coding.component').then((c) => c.CodingComponent)
+        redirectTo: 'configuracion',
+        pathMatch: 'full'
       },
       {
         path: 'codings/add-coding',
-        loadComponent: () => import('./demo/pages/cost/codings/add-coding/add-coding.component').then((c) => c.AddCodingComponent),
-        canDeactivate: [pendingChangesGuard]
+        redirectTo: 'products/add-product',
+        pathMatch: 'full'
       },
       // Security Modules
       {
@@ -89,8 +109,8 @@ const routes: Routes = [
       },
       {
         path: 'codings/add-family',
-        loadComponent: () => import('./demo/pages/cost/codings/add-family/add-family.component').then((c) => c.AddFamilyComponent),
-        canDeactivate: [pendingChangesGuard]
+        redirectTo: 'configuracion/add-family',
+        pathMatch: 'full'
       },
       {
         path: 'fixes',

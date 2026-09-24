@@ -98,7 +98,7 @@ export class AddFamilyComponent implements OnInit, ComponentCanDeactivate {
   }
 
   back() {
-    this.router.navigate(['/codings']);
+    this.router.navigate(['/configuracion']);
   }
 
   onSubmit() {
@@ -128,7 +128,7 @@ export class AddFamilyComponent implements OnInit, ComponentCanDeactivate {
         this.form?.markAsPristine();
         const msg = this.id > 0 ? 'Familia actualizada correctamente.' : 'Familia registrada correctamente.';
         Swal.fire('Éxito', msg, 'success').then(() => {
-          this.router.navigate(['/codings']);
+          this.router.navigate(['/configuracion']);
         });
       },
       error: () => {

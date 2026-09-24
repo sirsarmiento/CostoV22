@@ -70,13 +70,19 @@
                   Nombre <i class="ti fs-6" [class]="getSortClass('nombre')"></i>
                 </th>
                 <th style="cursor: pointer;" (click)="sortData('sku')">
-                  SKU <i class="ti fs-6" [class]="getSortClass('sku')"></i>
+                  Código <i class="ti fs-6" [class]="getSortClass('sku')"></i>
                 </th>
                 <th style="cursor: pointer;" (click)="sortData('medida')">
                   Medida <i class="ti fs-6" [class]="getSortClass('medida')"></i>
                 </th>
-                <th style="cursor: pointer;" (click)="sortData('clasificacion')">
-                  Clasificación <i class="ti fs-6" [class]="getSortClass('clasificacion')"></i>
+                <th style="cursor: pointer;" (click)="sortData('tecnologia')">
+                  Tecnología <i class="ti fs-6" [class]="getSortClass('tecnologia')"></i>
+                </th>
+                <th style="cursor: pointer;" (click)="sortData('material')">
+                  Material <i class="ti fs-6" [class]="getSortClass('material')"></i>
+                </th>
+                <th style="cursor: pointer;" (click)="sortData('familia')">
+                  Familia <i class="ti fs-6" [class]="getSortClass('familia')"></i>
                 </th>
                 <th>Stock</th>
                 <th class="text-center">Acciones</th>
@@ -103,17 +109,16 @@
                     -->
                     <div class="cell-name-clamp" [attr.title]="row.nombre">{{ row.nombre }}</div>
                   </td>
-                  <td>{{ row.sku || 'n/a' }}</td>
-                  <td>{{ row.medida }}</td>
                   <td>
-                    <span 
-                      class="badge" 
-                      [class.bg-light-success]="row.clasificacion === 'Proyecto'"
-                      [class.bg-light-info]="row.clasificacion === 'Servicio'"
-                      [class.bg-light-primary]="row.clasificacion === 'Productos' || row.clasificacion === 'Producto'">
-                      {{ row.clasificacion }}
-                    </span>
+                    <div class="font-monospace fw-bold">{{ row.sku || 'Sin código' }}</div>
+                    @if (row.codigoCatalogo) {
+                      <small class="text-muted">{{ row.codigoCatalogo }}</small>
+                    }
                   </td>
+                  <td>{{ row.medida }}</td>
+                  <td>{{ row.tecnologia || '-' }}</td>
+                  <td>{{ row.material || '-' }}</td>
+                  <td>{{ familiaNombre(row) }}</td>
                   <td>{{ row.cantidadStock || 0 }}</td>
                   <td class="text-center" (click)="$event.stopPropagation()">
                     <button 

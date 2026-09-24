@@ -1,0 +1,135 @@
+<div class="row mb-4">
+  <div class="col-12">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a routerLink="/configuracion">Configuración</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Catálogo</li>
+      </ol>
+    </nav>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <ul class="nav nav-tabs mb-4" role="tablist">
+          <li class="nav-item">
+            <button class="nav-link" [class.active]="activeTab === 'familias'" (click)="setActiveTab('familias')" type="button">Familias</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" [class.active]="activeTab === 'tecnologias'" (click)="setActiveTab('tecnologias')" type="button">Tecnologías</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" [class.active]="activeTab === 'materiales'" (click)="setActiveTab('materiales')" type="button">Materiales</button>
+          </li>
+        </ul>
+
+        <div class="row align-items-center mb-3">
+          <div class="col-md-8">
+            <input type="text" class="form-control" placeholder="Buscar..." [(ngModel)]="search">
+          </div>
+          <div class="col-md-4 text-md-end mt-2 mt-md-0">
+            @if (activeTab === 'familias') {
+              <button class="btn btn-primary" type="button" (click)="openAddFamily()">Agregar familia</button>
+            }
+            @if (activeTab === 'tecnologias') {
+              <button class="btn btn-primary" type="button" (click)="openAddTecnologia()">Agregar tecnología</button>
+            }
+            @if (activeTab === 'materiales') {
+              <button class="btn btn-primary" type="button" (click)="openAddMaterial()">Agregar material</button>
+            }
+          </div>
+        </div>
+
+        @if (activeTab === 'familias') {
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Código</th>
+                  <th>Nombre</th>
+                  <th class="text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of familiasFiltradas; track row.id) {
+                  <tr>
+                    <td class="font-monospace fw-bold">{{ row.codigo }}</td>
+                    <td>{{ row.nombre }}</td>
+                    <td class="text-center">
+                      <button class="btn btn-icon btn-light-primary" type="button" (click)="onEditFamily(row)"><i class="ti ti-edit"></i></button>
+                      <button class="btn btn-icon btn-light-danger" type="button" (click)="onDeleteFamily(row)"><i class="ti ti-trash"></i></button>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="3" class="text-center text-muted py-4">No hay familias. Cargue las del manual: lúdico, publicidad, robótica, molde, médico, odontológico, automotriz e industrial.</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+
+        @if (activeTab === 'tecnologias') {
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Código</th>
+                  <th>Nombre</th>
+                  <th>Materiales permitidos</th>
+                  <th class="text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of tecnologiasFiltradas; track row.id) {
+                  <tr>
+                    <td class="font-monospace fw-bold">{{ row.codigo }}</td>
+                    <td>{{ row.nombre }}</td>
+                    <td>{{ materialesDeTecnologia(row) }}</td>
+                    <td class="text-center">
+                      <button class="btn btn-icon btn-light-primary" type="button" (click)="onEditTecnologia(row)"><i class="ti ti-edit"></i></button>
+                      <button class="btn btn-icon btn-light-danger" type="button" (click)="onDeleteTecnologia(row)"><i class="ti ti-trash"></i></button>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="4" class="text-center text-muted py-4">No hay tecnologías.</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+
+        @if (activeTab === 'materiales') {
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Código</th>
+                  <th>Nombre</th>
+                  <th>Tecnologías</th>
+                  <th class="text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of materialesFiltrados; track row.id) {
+                  <tr>
+                    <td class="font-monospace fw-bold">{{ row.codigo }}</td>
+                    <td>{{ row.nombre }}</td>
+                    <td>{{ tecnologiasDeMaterial(row) }}</td>
+                    <td class="text-center">
+                      <button class="btn btn-icon btn-light-primary" type="button" (click)="onEditMaterial(row)"><i class="ti ti-edit"></i></button>
+                      <button class="btn btn-icon btn-light-danger" type="button" (click)="onDeleteMaterial(row)"><i class="ti ti-trash"></i></button>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="4" class="text-center text-muted py-4">No hay materiales.</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+</div>

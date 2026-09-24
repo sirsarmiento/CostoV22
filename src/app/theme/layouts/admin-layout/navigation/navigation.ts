@@ -75,12 +75,12 @@ export const NavigationItems: NavigationItem[] = [
         breadcrumbs: false
       },
       {
-        id: 'codings',
-        title: 'Codigos',
+        id: 'configuracion',
+        title: 'Configuración',
         type: 'item',
         classes: 'nav-item',
-        url: '/codings',
-        icon: 'barcode',
+        url: '/configuracion',
+        icon: 'appstore',
         breadcrumbs: false
       }
     ]

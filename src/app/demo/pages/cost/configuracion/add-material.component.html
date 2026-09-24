@@ -1,0 +1,41 @@
+<div class="row mb-4">
+  <div class="col-12">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a routerLink="/configuracion">Configuración</a></li>
+        <li class="breadcrumb-item active">{{ id > 0 ? 'Editar material' : 'Nuevo material' }}</li>
+      </ol>
+    </nav>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <form [formGroup]="form">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label">Código (3 letras)</label>
+          <input class="form-control text-uppercase font-monospace fw-bold" formControlName="codigo" maxlength="3" [class.is-invalid]="submitted && f['codigo'].errors">
+          @if (submitted && f['codigo'].errors) {
+            <div class="invalid-feedback">Use hasta 3 letras, por ejemplo PLA o RES.</div>
+          }
+        </div>
+        <div class="col-md-8">
+          <label class="form-label">Nombre</label>
+          <input class="form-control" formControlName="nombre" placeholder="Ácido poliláctico" [class.is-invalid]="submitted && f['nombre'].errors">
+          @if (submitted && f['nombre'].errors) {
+            <div class="invalid-feedback">El nombre es obligatorio.</div>
+          }
+        </div>
+        <div class="col-12">
+          <label class="form-label">Tecnologías que lo usan</label>
+          <ng-select formControlName="tecnologias" [items]="tecnologias" bindLabel="nombre" bindValue="id" [multiple]="true" placeholder="Seleccione tecnologías..." appendTo="body"></ng-select>
+        </div>
+      </div>
+      <div class="d-flex justify-content-end gap-2 mt-4">
+        <button class="btn btn-outline-secondary" type="button" (click)="back()">Regresar</button>
+        <button class="btn btn-primary" type="button" [disabled]="loading" (click)="onSubmit()">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>

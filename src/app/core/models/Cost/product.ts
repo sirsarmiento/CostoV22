@@ -21,6 +21,13 @@ export class Product {
     id?: number;
     nombre!: string;
     sku!: string;
+    codigoCatalogo?: string;
+    tecnologia?: string;
+    material?: string;
+    familia?: string | { id?: number; codigo?: string; nombre?: string };
+    familiaId?: number | null;
+    serie?: string;
+    correlativo?: string;
     medida!: string;
     clasificacion!: string;
     descripcion!: string;

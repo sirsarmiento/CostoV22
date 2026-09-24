@@ -66,14 +66,11 @@
           <table class="table table-hover align-middle mb-0 table-sm">
             <thead class="table-light table-sm">
               <tr>
-                <th style="cursor: pointer;" (click)="sortData('nombre')">
-                  Nombre <i class="ti fs-6" [class]="getSortClass('nombre')"></i>
-                </th>
                 <th style="cursor: pointer;" (click)="sortData('sku')">
                   Código <i class="ti fs-6" [class]="getSortClass('sku')"></i>
                 </th>
-                <th style="cursor: pointer;" (click)="sortData('medida')">
-                  Medida <i class="ti fs-6" [class]="getSortClass('medida')"></i>
+                <th style="cursor: pointer;" (click)="sortData('nombre')">
+                  Nombre <i class="ti fs-6" [class]="getSortClass('nombre')"></i>
                 </th>
                 <th style="cursor: pointer;" (click)="sortData('tecnologia')">
                   Tecnología <i class="ti fs-6" [class]="getSortClass('tecnologia')"></i>
@@ -95,27 +92,14 @@
                   [class.table-primary]="selectedRow && selectedRow.id === row.id"
                   style="cursor: pointer;">
                   <td>
-                    <!--
-                    <div class="d-flex align-items-center gap-2">
-                      @if (row.imagen) {
-                        <img [src]="row.imagen" class="rounded border shadow-sm" style="width: 36px; height: 36px; min-width: 36px; object-fit: cover;" alt="Foto">
-                      } @else {
-                        <div class="rounded bg-light-primary text-primary border border-primary border-opacity-25 d-flex align-items-center justify-content-center fw-bold" style="width: 36px; height: 36px; min-width: 36px; font-size: 0.75rem;">
-                          {{ (row.nombre || 'PR').slice(0, 2).toUpperCase() }}
-                        </div>
-                      }
-                      <div class="cell-name-clamp" [attr.title]="row.nombre">{{ row.nombre }}</div>
-                    </div>
-                    -->
-                    <div class="cell-name-clamp" [attr.title]="row.nombre">{{ row.nombre }}</div>
-                  </td>
-                  <td>
                     <div class="font-monospace fw-bold">{{ row.sku || 'Sin código' }}</div>
                     @if (row.codigoCatalogo) {
                       <small class="text-muted">{{ row.codigoCatalogo }}</small>
                     }
                   </td>
-                  <td>{{ row.medida }}</td>
+                  <td>
+                    <div class="cell-name-clamp" [attr.title]="row.nombre">{{ row.nombre }}</div>
+                  </td>
                   <td>{{ row.tecnologia || '-' }}</td>
                   <td>{{ row.material || '-' }}</td>
                   <td>{{ familiaNombre(row) }}</td>
@@ -131,7 +115,7 @@
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="6" class="text-center py-4 text-muted">
+                  <td colspan="7" class="text-center py-4 text-muted">
                     No se encontraron elementos para esta categoría.
                   </td>
                 </tr>

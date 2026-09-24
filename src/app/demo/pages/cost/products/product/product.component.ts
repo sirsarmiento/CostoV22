@@ -140,11 +140,16 @@ export class ProductComponent implements OnInit {
     // Ordenamiento
     this.filteredProducts.sort((a: ProductWithProfile, b: ProductWithProfile) => {
       const prop = this.sortColumn as keyof ProductWithProfile;
-      let valA = a[prop];
-      let valB = b[prop];
+      let valA: unknown = a[prop];
+      let valB: unknown = b[prop];
       
-      if (valA && typeof valA === "string") valA = valA.toLowerCase();
-      if (valB && typeof valB === "string") valB = valB.toLowerCase();
+      if (this.sortColumn === 'familia') {
+        valA = this.familiaNombre(a);
+        valB = this.familiaNombre(b);
+      }
+
+      if (valA && typeof valA === "string") valA = (valA as string).toLowerCase();
+      if (valB && typeof valB === "string") valB = (valB as string).toLowerCase();
 
       if (valA === null || valA === undefined) return this.sortAscending ? 1 : -1;
       if (valB === null || valB === undefined) return this.sortAscending ? -1 : 1;

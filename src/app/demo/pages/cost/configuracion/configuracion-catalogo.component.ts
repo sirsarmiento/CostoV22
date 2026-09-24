@@ -89,6 +89,70 @@ export class ConfiguracionCatalogoComponent implements OnInit {
     this.router.navigate(['/configuracion/add-family']);
   }
 
+  onViewSubfamilies(row: Family) {
+    const subs = row.subFamilias || [];
+    if (subs.length === 0) {
+      Swal.fire({
+        icon: 'info',
+        title: `${row.nombre} (${row.codigo})`,
+        html: `
+          <div class="text-start p-2">
+            <p class="text-muted mb-3">Esta familia no tiene subfamilias registradas. Los productos asociados usarán correlativos numéricos estándar (01, 02...).</p>
+          </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: '<i class="ti ti-plus me-1"></i> Agregar Subfamilia',
+        cancelButtonText: 'Cerrar',
+        confirmButtonColor: '#4680ff',
+        cancelButtonColor: '#6c757d'
+      }).then(result => {
+        if (result.isConfirmed) {
+          this.onEditFamily(row);
+        }
+      });
+      return;
+    }
+
+    const rowsHtml = subs.map(s => `
+      <tr>
+        <td class="font-monospace fw-bold text-primary">${s.codigo}</td>
+        <td>${s.nombre}</td>
+      </tr>
+    `).join('');
+
+    Swal.fire({
+      title: `${row.nombre} (${row.codigo})`,
+      html: `
+        <div class="text-start mt-2">
+          <p class="text-muted small mb-2">Subfamilias registradas que definen la serie del código:</p>
+          <div class="table-responsive border rounded" style="max-height: 250px; overflow-y: auto;">
+            <table class="table table-sm table-striped table-hover mb-0 text-start align-middle">
+              <thead class="table-light sticky-top">
+                <tr>
+                  <th style="width: 100px;">Código</th>
+                  <th>Subfamilia / Serie</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: '<i class="ti ti-edit me-1"></i> Editar Familia',
+      cancelButtonText: 'Cerrar',
+      confirmButtonColor: '#4680ff',
+      cancelButtonColor: '#6c757d',
+      width: '520px'
+    }).then(result => {
+      if (result.isConfirmed) {
+        this.onEditFamily(row);
+      }
+    });
+  }
+
   onEditFamily(row: Family) {
     this.router.navigate(['/configuracion/add-family'], { state: { edit_family: row } });
   }

@@ -180,9 +180,21 @@
                 @if (f['piezaTipo'].value === 'Del Inventario') {
                   <div class="col-md-6">
                     <label class="form-label text-xs mb-1">Activo del Inventario</label>
-                    <ng-select formControlName="piezaInventario" placeholder="Seleccione activo del inventario..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
+                    <ng-select 
+                      formControlName="piezaInventario" 
+                      placeholder="Seleccione activo del inventario..." 
+                      [clearable]="true" 
+                      [searchable]="true" 
+                      appendTo="body" 
+                      dropdownPosition="bottom" 
+                      class="ng-select-sm">
+                      <ng-template ng-label-tmp let-item="item">
+                        <span [title]="formatAssetOption(item)" class="text-truncate d-inline-block mw-100">{{ formatAssetOption(item) }}</span>
+                      </ng-template>
                       @for (asset of activosCirculantes; track asset.id) {
-                        <ng-option [value]="asset.id">{{ formatAssetOption(asset) }}</ng-option>
+                        <ng-option [value]="asset.id" [attr.title]="formatAssetOption(asset)">
+                          <span [title]="formatAssetOption(asset)">{{ formatAssetOption(asset) }}</span>
+                        </ng-option>
                       }
                     </ng-select>
                   </div>
@@ -203,9 +215,21 @@
 
                   <div class="col-md-4">
                     <label class="form-label text-xs mb-1">Máquina de Fabricación</label>
-                    <ng-select formControlName="activoId" placeholder="-- Sin máquina --" [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
+                    <ng-select 
+                      formControlName="activoId" 
+                      placeholder="-- Sin máquina --" 
+                      [clearable]="true" 
+                      [searchable]="true" 
+                      appendTo="body" 
+                      dropdownPosition="bottom" 
+                      class="ng-select-sm">
+                      <ng-template ng-label-tmp let-item="item">
+                        <span [title]="item.nombre || item" class="text-truncate d-inline-block mw-100">{{ item.nombre || item }}</span>
+                      </ng-template>
                       @for (maq of maquinasList; track maq.id) {
-                        <ng-option [value]="maq.id">{{ maq.nombre }}</ng-option>
+                        <ng-option [value]="maq.id" [attr.title]="maq.nombre">
+                          <span [title]="maq.nombre">{{ maq.nombre }}</span>
+                        </ng-option>
                       }
                     </ng-select>
                   </div>
@@ -222,7 +246,7 @@
                     <label class="form-label text-xs mb-1">Categoría Material</label>
                     <ng-select formControlName="piezaMaterialCategoria" placeholder="Seleccione categoría..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
                       @for (cat of categoriasMaterial; track cat) {
-                        <ng-option [value]="cat">{{ cat }}</ng-option>
+                        <ng-option [value]="cat" [attr.title]="cat"><span [title]="cat">{{ cat }}</span></ng-option>
                       }
                     </ng-select>
                   </div>
@@ -233,7 +257,7 @@
                       <label class="form-label text-xs mb-1">Subcategoría</label>
                       <ng-select formControlName="piezaMaterialSubcategoria" placeholder="Seleccione subcategoría..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
                         @for (sub of subcategoriasMaterial; track sub) {
-                          <ng-option [value]="sub">{{ sub }}</ng-option>
+                          <ng-option [value]="sub" [attr.title]="sub"><span [title]="sub">{{ sub }}</span></ng-option>
                         }
                       </ng-select>
                     </div>
@@ -242,9 +266,21 @@
                   @if (f['piezaMaterialSubcategoria'].value || (f['piezaMaterialCategoria'].value && subcategoriasMaterial.length === 0)) {
                     <div class="col-md-4">
                       <label class="form-label text-xs mb-1">Material Insumo</label>
-                      <ng-select formControlName="piezaMaterialId" placeholder="Seleccione material..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
+                      <ng-select 
+                        formControlName="piezaMaterialId" 
+                        placeholder="Seleccione material..." 
+                        [clearable]="true" 
+                        [searchable]="true" 
+                        appendTo="body" 
+                        dropdownPosition="bottom" 
+                        class="ng-select-sm">
+                        <ng-template ng-label-tmp let-item="item">
+                          <span [title]="formatAssetOption(item)" class="text-truncate d-inline-block mw-100">{{ formatAssetOption(item) }}</span>
+                        </ng-template>
                         @for (m of materialesFiltrados; track m.id) {
-                          <ng-option [value]="m.id">{{ formatAssetOption(m) }}</ng-option>
+                          <ng-option [value]="m.id" [attr.title]="formatAssetOption(m)">
+                            <span [title]="formatAssetOption(m)">{{ formatAssetOption(m) }}</span>
+                          </ng-option>
                         }
                       </ng-select>
                     </div>

@@ -43,8 +43,11 @@ export interface SkuPreviewInput {
 
 export function categoriaDesdeClasificacion(clasificacion?: string): string {
   const valor = (clasificacion || '').toLowerCase().trim();
-  if (['producto', 'productos', 'producto final', 'producto fabricado'].includes(valor)) {
+  if (['producto', 'productos', 'producto final', 'producto fabricado', 'pf'].includes(valor)) {
     return 'PF';
+  }
+  if (['proyecto', 'proyectos', 'pr', 'py'].includes(valor)) {
+    return 'PR';
   }
   return 'SR';
 }
@@ -60,7 +63,7 @@ export function previsualizarCodigo(input: SkuPreviewInput): { sku: string; codi
   const categoria = categoriaDesdeClasificacion(input.clasificacion);
   const usados = (input.correlativosUsados || []).map(c => c.toUpperCase());
   const nombre = (input.nombre || '').toLowerCase().trim();
-  let correlativo = '';
+  let correlativo: string;
 
   if (familia === 'LUD' && CATALOGO_LUD[nombre] && !usados.includes(CATALOGO_LUD[nombre])) {
     correlativo = CATALOGO_LUD[nombre];

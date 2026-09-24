@@ -143,18 +143,18 @@
                     }
                   </div>
 
-                  @if (esFamiliaLudico()) {
+                  @if (tieneSubfamilias()) {
                     <div class="col-md-4">
-                      <label class="form-label">Serie de correlativo</label>
+                      <label class="form-label">Subfamilia / Serie</label>
                       <ng-select
                         formControlName="serie"
-                        placeholder="Automático o elija jota eme, erre ce, efe ge"
+                        placeholder="Automático o seleccione..."
                         [clearable]="true"
-                        [searchable]="false"
+                        [searchable]="true"
                         appendTo="body">
-                        <ng-option value="JM">Juegos (jota eme)</ng-option>
-                        <ng-option value="RC">Rompecabezas (erre ce)</ng-option>
-                        <ng-option value="FG">Fidgets (efe ge)</ng-option>
+                        @for (sub of subfamiliasDeFamilia(); track sub.id || sub.codigo) {
+                          <ng-option [value]="sub.codigo">{{ sub.nombre }} ({{ sub.codigo }})</ng-option>
+                        }
                       </ng-select>
                     </div>
                   }
@@ -353,9 +353,20 @@
               @if (f['piezaTipo'].value === 'Del Inventario') {
                 <div class="col-md-6">
                   <label class="form-label">Activo Circulante (Producción / Insumo)</label>
-                  <ng-select formControlName="piezaInventario" placeholder="Seleccione insumo o material de producción..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom">
+                  <ng-select 
+                    formControlName="piezaInventario" 
+                    placeholder="Seleccione insumo o material de producción..." 
+                    [clearable]="true" 
+                    [searchable]="true" 
+                    appendTo="body" 
+                    dropdownPosition="bottom">
+                    <ng-template ng-label-tmp let-item="item">
+                      <span [title]="formatAssetOption(item)" class="text-truncate d-inline-block mw-100">{{ formatAssetOption(item) }}</span>
+                    </ng-template>
                     @for (asset of activosCirculantes; track asset.id) {
-                      <ng-option [value]="asset.id">{{ formatAssetOption(asset) }}</ng-option>
+                      <ng-option [value]="asset.id" [attr.title]="formatAssetOption(asset)">
+                        <span [title]="formatAssetOption(asset)">{{ formatAssetOption(asset) }}</span>
+                      </ng-option>
                     }
                   </ng-select>
                 </div>
@@ -376,9 +387,20 @@
 
                 <div class="col-md-4">
                   <label class="form-label">Impresora / Máquina</label>
-                  <ng-select formControlName="activoId" placeholder="Seleccione máquina..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom">
+                  <ng-select 
+                    formControlName="activoId" 
+                    placeholder="Seleccione máquina..." 
+                    [clearable]="true" 
+                    [searchable]="true" 
+                    appendTo="body" 
+                    dropdownPosition="bottom">
+                    <ng-template ng-label-tmp let-item="item">
+                      <span [title]="item.nombre || item" class="text-truncate d-inline-block mw-100">{{ item.nombre || item }}</span>
+                    </ng-template>
                     @for (m of maquinasList; track m.id) {
-                      <ng-option [value]="m.id">{{ m.nombre }}</ng-option>
+                      <ng-option [value]="m.id" [attr.title]="m.nombre">
+                        <span [title]="m.nombre">{{ m.nombre }}</span>
+                      </ng-option>
                     }
                   </ng-select>
                 </div>
@@ -395,7 +417,7 @@
                   <label class="form-label">Categoría Material</label>
                   <ng-select formControlName="piezaMaterialCategoria" placeholder="Seleccione categoría..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom">
                     @for (cat of categoriasMaterial; track cat) {
-                      <ng-option [value]="cat">{{ cat }}</ng-option>
+                      <ng-option [value]="cat" [attr.title]="cat"><span [title]="cat">{{ cat }}</span></ng-option>
                     }
                   </ng-select>
                 </div>
@@ -406,7 +428,7 @@
                     <label class="form-label">Subcategoría</label>
                     <ng-select formControlName="piezaMaterialSubcategoria" placeholder="Seleccione subcategoría..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom">
                       @for (sub of subcategoriasMaterial; track sub) {
-                        <ng-option [value]="sub">{{ sub }}</ng-option>
+                        <ng-option [value]="sub" [attr.title]="sub"><span [title]="sub">{{ sub }}</span></ng-option>
                       }
                     </ng-select>
                   </div>
@@ -415,9 +437,20 @@
                 @if (f['piezaMaterialSubcategoria'].value || (f['piezaMaterialCategoria'].value && subcategoriasMaterial.length === 0)) {
                   <div class="col-md-4">
                     <label class="form-label">Material Insumo</label>
-                    <ng-select formControlName="piezaMaterialId" placeholder="Seleccione material..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom">
+                    <ng-select 
+                      formControlName="piezaMaterialId" 
+                      placeholder="Seleccione material..." 
+                      [clearable]="true" 
+                      [searchable]="true" 
+                      appendTo="body" 
+                      dropdownPosition="bottom">
+                      <ng-template ng-label-tmp let-item="item">
+                        <span [title]="formatAssetOption(item)" class="text-truncate d-inline-block mw-100">{{ formatAssetOption(item) }}</span>
+                      </ng-template>
                       @for (m of materialesFiltradosCirculantes; track m.id) {
-                        <ng-option [value]="m.id">{{ formatAssetOption(m) }}</ng-option>
+                        <ng-option [value]="m.id" [attr.title]="formatAssetOption(m)">
+                          <span [title]="formatAssetOption(m)">{{ formatAssetOption(m) }}</span>
+                        </ng-option>
                       }
                     </ng-select>
                   </div>

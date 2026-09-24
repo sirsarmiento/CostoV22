@@ -647,20 +647,31 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
     });
   }
 
-  formatAssetOption(asset: Asset): string {
+  formatAssetOption(asset: Asset | unknown): string {
     if (!asset) return '';
+    let a: Asset | undefined;
+    if (typeof asset === 'object' && asset !== null) {
+      a = asset as Asset;
+    } else {
+      const id = Number(asset);
+      a = this.activosMateriales.find(x => x.id === id) 
+        || this.materialesFiltrados.find(x => x.id === id) 
+        || this.activosCirculantes.find(x => x.id === id);
+    }
+    if (!a) return String(asset);
+
     const detalles: string[] = [];
-    const desc = asset.descripcion?.trim();
+    const desc = a.descripcion?.trim();
     if (desc && !['n/a', 'null', '-', 'N/A'].includes(desc.toLowerCase())) {
       detalles.push(desc);
     }
-    if (asset.cantidad !== undefined && asset.cantidad !== null) {
-      const unidad = asset.unidadMedida ? ` ${asset.unidadMedida}` : '';
-      detalles.push(`Cant: ${asset.cantidad}${unidad}`);
+    if (a.cantidad !== undefined && a.cantidad !== null) {
+      const unidad = a.unidadMedida ? ` ${a.unidadMedida}` : '';
+      detalles.push(`Cant: ${a.cantidad}${unidad}`);
     }
     return detalles.length > 0 
-      ? `${asset.nombre} (${detalles.join(' - ')})` 
-      : asset.nombre;
+      ? `${a.nombre} (${detalles.join(' - ')})` 
+      : (a.nombre || '');
   }
 
   filterMaterials(event: Event): void {

@@ -58,8 +58,11 @@
                     <td class="font-monospace fw-bold">{{ row.codigo }}</td>
                     <td>{{ row.nombre }}</td>
                     <td class="text-center">
-                      <button class="btn btn-icon btn-light-primary" type="button" (click)="onEditFamily(row)"><i class="ti ti-edit"></i></button>
-                      <button class="btn btn-icon btn-light-danger" type="button" (click)="onDeleteFamily(row)"><i class="ti ti-trash"></i></button>
+                      @if (row.subFamilias && row.subFamilias.length > 0) {
+                        <button class="btn btn-icon btn-light-info me-1" type="button" (click)="onViewSubfamilies(row)" [title]="'Ver ' + row.subFamilias.length + ' subfamilia(s)'"><i class="ti ti-users"></i></button>
+                      }
+                      <button class="btn btn-icon btn-light-primary me-1" type="button" (click)="onEditFamily(row)" title="Editar familia"><i class="ti ti-edit"></i></button>
+                      <button class="btn btn-icon btn-light-danger" type="button" (click)="onDeleteFamily(row)" title="Eliminar familia"><i class="ti ti-trash"></i></button>
                     </td>
                   </tr>
                 } @empty {

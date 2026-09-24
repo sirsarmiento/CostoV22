@@ -11,7 +11,7 @@ import { FixeService } from '../../../../../core/services/cost/fixe.service';
 import { CodingService } from '../../../../../core/services/cost/coding.service';
 import { CatalogConfigService } from '../../../../../core/services/cost/catalog-config.service';
 import { Product, PiezaProducto } from '../../../../../core/models/Cost/product';
-import { Family } from '../../../../../core/models/Cost/family';
+import { Family, Subfamily } from '../../../../../core/models/Cost/family';
 import { MaterialCatalogo, TecnologiaCatalogo } from '../../../../../core/models/Cost/catalog-config';
 import { previsualizarCodigo } from '../../../../../core/utils/catalog-sku';
 import { Config } from '../../../../../core/models/Cost/config';
@@ -22,7 +22,6 @@ import { Observable, forkJoin, of } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
 
 import { ComponentCanDeactivate } from '../../../../../core/guards/pending-changes.guard';
-import { ImageSelectedEvent } from '../../../../../theme/shared/components/image-uploader/image-uploader.component';
 
 @Component({
   selector: 'app-add-product',
@@ -55,6 +54,7 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
   materialesFiltrados: MaterialCatalogo[] = [];
   previewSku = '';
   previewCatalogo = '';
+  previewCorrelativo = '';
   correlativosUsados: string[] = [];
   activeTab: 'def' | 'costos' | 'piezas' = 'def';
   costosPendientes: Fixe[] = [];
@@ -168,6 +168,15 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
     return this.familias.find(f => Number(f.id) === id);
   }
 
+  subfamiliasDeFamilia(): Subfamily[] {
+    const fam = this.familiaSeleccionada();
+    return (fam?.subFamilias || []).filter(s => !!s && !!s.codigo);
+  }
+
+  tieneSubfamilias(): boolean {
+    return this.subfamiliasDeFamilia().length > 0;
+  }
+
   esFamiliaLudico(): boolean {
     return (this.familiaSeleccionada()?.codigo || '').toUpperCase() === 'LUD';
   }
@@ -185,6 +194,7 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
     });
     this.previewSku = preview.sku;
     this.previewCatalogo = preview.codigoCatalogo;
+    this.previewCorrelativo = preview.correlativo;
     this.form.get('sku')?.setValue(preview.sku, { emitEvent: false });
     this.form.get('codigoCatalogo')?.setValue(preview.codigoCatalogo, { emitEvent: false });
   }
@@ -615,17 +625,22 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
         if (campo === 'tecnologia') {
           this.filtrarMateriales();
         }
-        if (campo === 'familiaId' && !this.esFamiliaLudico()) {
-          this.form.get('serie')?.setValue('', { emitEvent: false });
+        if (campo === 'familiaId') {
+          const subs = this.subfamiliasDeFamilia();
+          const currentVal = this.form.get('serie')?.value;
+          const existe = subs.some(s => s.codigo === currentVal);
+          if (!existe) {
+            this.form.get('serie')?.setValue('', { emitEvent: false });
+          }
         }
         this.actualizarPreviewCodigo();
       });
     });
   }
 
-  onImageSelected(event: ImageSelectedEvent) {
-    this.imagenSrc = event.base64;
-    this.form.get('imagen')?.setValue(event.base64);
+  onImageSelected(event: { base64?: string; [key: string]: unknown }) {
+    this.imagenSrc = event.base64 || null;
+    this.form.get('imagen')?.setValue(event.base64 || null);
     this.form.markAsDirty();
   }
 
@@ -635,20 +650,31 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
     this.form.markAsDirty();
   }
 
-  formatAssetOption(asset: Asset): string {
+  formatAssetOption(asset: Asset | unknown): string {
     if (!asset) return '';
+    let a: Asset | undefined;
+    if (typeof asset === 'object' && asset !== null) {
+      a = asset as Asset;
+    } else {
+      const id = Number(asset);
+      a = this.allAssets.find(x => x.id === id) 
+        || this.materialesFiltradosCirculantes.find(x => x.id === id) 
+        || this.activosCirculantes.find(x => x.id === id);
+    }
+    if (!a) return String(asset);
+
     const detalles: string[] = [];
-    const desc = asset.descripcion?.trim();
+    const desc = a.descripcion?.trim();
     if (desc && !['n/a', 'null', '-', 'N/A'].includes(desc.toLowerCase())) {
       detalles.push(desc);
     }
-    if (asset.cantidad !== undefined && asset.cantidad !== null) {
-      const unidad = asset.unidadMedida ? ` ${asset.unidadMedida}` : '';
-      detalles.push(`Cant: ${asset.cantidad}${unidad}`);
+    if (a.cantidad !== undefined && a.cantidad !== null) {
+      const unidad = a.unidadMedida ? ` ${a.unidadMedida}` : '';
+      detalles.push(`Cant: ${a.cantidad}${unidad}`);
     }
     return detalles.length > 0 
-      ? `${asset.nombre} (${detalles.join(' - ')})` 
-      : asset.nombre;
+      ? `${a.nombre} (${detalles.join(' - ')})` 
+      : (a.nombre || '');
   }
 
   back() {
@@ -809,6 +835,9 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
     const tasaNum = Number(this.form.get('tasaFallo')?.value) || 0;
     const margenNum = Number(this.form.get('margenGanancia')?.value) || 0;
 
+    const rawCorr = this.previewCorrelativo || (this.previewSku ? this.previewSku.split('-').pop() : '') || '01';
+    const corrSoloNum = String(rawCorr).replace(/\D+/g, '').padStart(2, '0') || '01';
+
     const productPayload: Record<string, unknown> = {
       nombre: this.form.get('nombre')?.value,
       sku: this.previewSku || this.form.get('sku')?.value,
@@ -817,6 +846,7 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       material: this.form.get('material')?.value,
       familiaId: Number(this.form.get('familiaId')?.value) || null,
       serie: this.form.get('serie')?.value || '',
+      correlativo: corrSoloNum,
       descripcion: this.form.get('descripcion')?.value,
       clasificacion: this.form.get('clasificacion')?.value,
       medida: this.form.get('medida')?.value,

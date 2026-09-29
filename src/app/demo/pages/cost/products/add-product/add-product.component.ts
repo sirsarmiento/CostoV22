@@ -121,6 +121,8 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
     }
   }
 
+  productosExistentes: Product[] = [];
+
   loadCatalogo() {
     forkJoin({
       familias: this.codingService.getFamilies().pipe(catchError(() => of([]))),
@@ -140,10 +142,7 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
           { id: 3, codigo: 'PET', nombre: 'Polietileno Tereftalato', tecnologias: [{ id: 1, codigo: 'FDM', nombre: 'Filamento' }] },
           { id: 4, codigo: 'RES', nombre: 'Resina', tecnologias: [{ id: 2, codigo: 'SLA', nombre: 'Resina' }] }
         ];
-        this.correlativosUsados = (data.productos || [])
-          .filter(p => !this.id || p.id !== this.id)
-          .map(p => p.correlativo || '')
-          .filter(Boolean);
+        this.productosExistentes = data.productos || [];
         this.filtrarMateriales();
         this.actualizarPreviewCodigo();
         this.cdr.detectChanges();
@@ -183,6 +182,37 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
 
   actualizarPreviewCodigo() {
     const familia = this.familiaSeleccionada();
+    const famCod = (familia?.codigo || '').toUpperCase().trim();
+    const famId = familia?.id ? Number(familia.id) : null;
+
+    // Filtrar los productos existentes para considerar solo los de esta misma familia
+    const productosDeMismaFamilia = this.productosExistentes.filter(p => {
+      if (this.id && p.id === this.id) return false;
+      const pFamId = p.familiaId || (typeof p.familia === 'object' ? p.familia?.id : null);
+      const pFamCod = (typeof p.familia === 'object' ? p.familia?.codigo : (typeof p.familia === 'string' ? p.familia : '')) || '';
+
+      if (famId && pFamId && Number(pFamId) === famId) return true;
+      if (famCod && pFamCod && pFamCod.toUpperCase() === famCod) return true;
+      if (famCod && p.codigoCatalogo && p.codigoCatalogo.toUpperCase().startsWith(`${famCod}-`)) return true;
+      if (famCod && p.sku && p.sku.toUpperCase().includes(`-${famCod}-`)) return true;
+      return false;
+    });
+
+    const correlativosUsados = productosDeMismaFamilia.flatMap(p => {
+      const list: string[] = [];
+      if (p.correlativo) list.push(p.correlativo.toUpperCase());
+      if (p.serie && p.correlativo) list.push(`${p.serie}${p.correlativo}`.toUpperCase());
+      if (p.codigoCatalogo) {
+        const parts = p.codigoCatalogo.split('-');
+        if (parts.length > 1) list.push(parts[1].toUpperCase());
+      }
+      if (p.sku) {
+        const parts = p.sku.split('-');
+        if (parts.length > 0) list.push(parts[parts.length - 1].toUpperCase());
+      }
+      return list;
+    }).filter(Boolean);
+
     const preview = previsualizarCodigo({
       nombre: this.form.get('nombre')?.value,
       clasificacion: this.form.get('clasificacion')?.value,
@@ -190,7 +220,7 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       material: this.form.get('material')?.value,
       familiaCodigo: familia?.codigo,
       serie: this.form.get('serie')?.value,
-      correlativosUsados: this.correlativosUsados
+      correlativosUsados: correlativosUsados
     });
     this.previewSku = preview.sku;
     this.previewCatalogo = preview.codigoCatalogo;
@@ -706,7 +736,8 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       const prepVal = data.tiempoSetup ?? dRec['tiempoSetup'] ?? '';
       const postVal = data.postProcesado ?? 0;
       const tasaVal = data.tasaFallo ?? 0;
-      const margenVal = data.margenGanancia ?? this.minMargenGanancia;
+      const rawMargen = Number(data.margenGanancia ?? dRec['margenGanancia'] ?? dRec['margen_ganancia'] ?? 0);
+      const margenVal = rawMargen > 0 ? rawMargen : (this.minMargenGanancia || 20);
 
       this.form.get('tiempoSetup')?.setValue(prepVal);
       this.form.get('postProcesado')?.setValue(postVal);
@@ -768,10 +799,26 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
     }
 
     if (this.form.invalid) {
+      const invalidFields: string[] = [];
+      if (this.form.get('nombre')?.invalid) invalidFields.push('Nombre del producto');
+      if (this.form.get('clasificacion')?.invalid) invalidFields.push('Tipo');
+      if (this.form.get('tecnologia')?.invalid) invalidFields.push('Tecnología');
+      if (this.form.get('material')?.invalid) invalidFields.push('Material');
+      if (this.form.get('familiaId')?.invalid) invalidFields.push('Familia');
+      if (this.form.get('descripcion')?.invalid) invalidFields.push('Descripción');
+      if (this.form.get('margenGanancia')?.invalid) invalidFields.push(`Margen de Ganancia (mínimo ${this.minMargenGanancia}%)`);
+
       if (this.form.get('nombre')?.invalid || this.form.get('clasificacion')?.invalid || this.form.get('descripcion')?.invalid || this.form.get('tecnologia')?.invalid || this.form.get('material')?.invalid || this.form.get('familiaId')?.invalid) {
         this.activeTab = 'def';
+      } else if (this.form.get('margenGanancia')?.invalid) {
+        this.activeTab = 'piezas';
       }
-      Swal.fire('Formulario Incompleto', 'Por favor complete todos los datos obligatorios del producto.', 'warning');
+
+      const mensaje = invalidFields.length > 0
+        ? `Por favor revise los siguientes campos obligatorios: ${invalidFields.join(', ')}.`
+        : 'Por favor complete todos los datos obligatorios del producto.';
+
+      Swal.fire('Formulario Incompleto', mensaje, 'warning');
       return;
     }
 
@@ -835,8 +882,8 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
     const tasaNum = Number(this.form.get('tasaFallo')?.value) || 0;
     const margenNum = Number(this.form.get('margenGanancia')?.value) || 0;
 
-    const rawCorr = this.previewCorrelativo || (this.previewSku ? this.previewSku.split('-').pop() : '') || '01';
-    const corrSoloNum = String(rawCorr).replace(/\D+/g, '').padStart(2, '0') || '01';
+    const rawCorr = this.previewCorrelativo || (this.previewSku ? this.previewSku.split('-').pop() : '') || '001';
+    const corrSoloNum = String(rawCorr).replace(/\D+/g, '') || '001';
 
     const productPayload: Record<string, unknown> = {
       nombre: this.form.get('nombre')?.value,

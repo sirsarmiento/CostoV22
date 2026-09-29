@@ -62,21 +62,30 @@ export function previsualizarCodigo(input: SkuPreviewInput): { sku: string; codi
 
   const categoria = categoriaDesdeClasificacion(input.clasificacion);
   const usados = (input.correlativosUsados || []).map(c => c.toUpperCase());
-  const nombre = (input.nombre || '').toLowerCase().trim();
+  const rawNombre = (input.nombre || '').toLowerCase().trim();
+  const nombreLimpio = rawNombre.replace(/^(juegos?\s+(de\s+)?|el\s+|la\s+|los\s+|las\s+)/i, '').trim();
+  const entryLud = CATALOGO_LUD[rawNombre] || CATALOGO_LUD[nombreLimpio];
+  const isLudTaken = entryLud ? usados.some(u => u === entryLud || u.endsWith(entryLud)) : false;
+
+  const esProyecto = ['proyecto', 'proyectos'].includes((input.clasificacion || '').toLowerCase().trim());
+  const serie = (input.serie || '').toUpperCase().trim();
+
   let correlativo: string;
 
-  if (familia === 'LUD' && CATALOGO_LUD[nombre] && !usados.includes(CATALOGO_LUD[nombre])) {
-    correlativo = CATALOGO_LUD[nombre];
-  } else {
-    const esProyecto = ['proyecto', 'proyectos'].includes((input.clasificacion || '').toLowerCase().trim());
-    const serie = (input.serie || '').toUpperCase().trim();
-    if (esProyecto) {
-      correlativo = siguientePrefijo(usados, 'P', 2);
-    } else if (serie && /^[A-Z]{1,3}$/.test(serie)) {
-      correlativo = siguientePrefijo(usados, serie, 2);
+  if (esProyecto) {
+    correlativo = siguientePrefijo(usados, 'P', 2);
+  } else if (serie && /^[A-Z]{1,3}$/.test(serie)) {
+    // Si se seleccionó una Serie/Subfamilia (ej: 'RC', 'JM', 'FG')
+    if (familia === 'LUD' && entryLud && entryLud.startsWith(serie) && !isLudTaken) {
+      correlativo = entryLud;
     } else {
-      correlativo = siguienteNumerico(usados);
+      correlativo = siguientePrefijo(usados, serie, 2);
     }
+  } else if (familia === 'LUD' && entryLud && !isLudTaken) {
+    // Si no tiene serie seleccionada pero coincide con un nombre del catálogo histórico
+    correlativo = entryLud;
+  } else {
+    correlativo = siguienteNumerico(usados);
   }
 
   return {
@@ -87,7 +96,7 @@ export function previsualizarCodigo(input: SkuPreviewInput): { sku: string; codi
 }
 
 function siguientePrefijo(usados: string[], prefijo: string, digitos: number): string {
-  const patron = new RegExp(`^${prefijo}(\\d+)$`);
+  const patron = new RegExp(`(?:^|-)${prefijo}(\\d+)$`, 'i');
   let max = 0;
   usados.forEach(valor => {
     const match = valor.match(patron);
@@ -99,10 +108,12 @@ function siguientePrefijo(usados: string[], prefijo: string, digitos: number): s
 }
 
 function siguienteNumerico(usados: string[]): string {
+  const patron = /(?:^|-)(\d{1,4})$/;
   let max = 0;
   usados.forEach(valor => {
-    if (/^\d{3}$/.test(valor)) {
-      max = Math.max(max, Number(valor));
+    const match = valor.match(patron);
+    if (match) {
+      max = Math.max(max, Number(match[1]));
     }
   });
   return String(max + 1).padStart(3, '0');

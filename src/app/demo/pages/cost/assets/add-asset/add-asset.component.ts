@@ -312,7 +312,8 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
 
   get isEquipoCategory(): boolean {
     const cat = String(this.form?.get('categoria')?.value || '').toLowerCase().trim();
-    return cat === 'equipo' || cat.includes('equipo') || cat.includes('máquina') || cat.includes('maquina') || cat.includes('cnc') || cat.includes('impresora') || cat.includes('herramienta');
+    if (!cat) return false;
+    return cat === 'equipo' || cat === 'equipos' || cat.includes('equipo') || cat.includes('máquina') || cat.includes('maquina') || cat.includes('impresora') || cat.includes('cnc');
   }
 
   private actualizarValidaciones(tipo: string) {

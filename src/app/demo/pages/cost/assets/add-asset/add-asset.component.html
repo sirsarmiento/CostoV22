@@ -88,32 +88,6 @@
                     }
                   </div>
 
-                  @if (isEquipoCategory || f['categoria'].value === 'Equipo') {
-                    <div class="col-md-4">
-                      <label class="form-label">Consumo Máquina (Watts)</label>
-                      <input type="number" class="form-control" formControlName="consumoMaquina" min="0" [class.is-invalid]="submitted && f['consumoMaquina'].errors">
-                      @if (submitted && f['consumoMaquina'].errors) {
-                        <div class="invalid-feedback">Ingrese el consumo</div>
-                      }
-                    </div>
-
-                    <div class="col-md-4">
-                      <label class="form-label">Tarifa Energía ($/kWh)</label>
-                      <input type="number" step="0.01" class="form-control" formControlName="tarifa" [class.is-invalid]="submitted && f['tarifa'].errors">
-                      @if (submitted && f['tarifa'].errors) {
-                        <div class="invalid-feedback">Ingrese la tarifa</div>
-                      }
-                    </div>
-
-                    <div class="col-md-4">
-                      <label class="form-label">Costo Mantenimiento ($/h)</label>
-                      <input type="number" step="0.01" class="form-control" formControlName="costoMantenimiento" [class.is-invalid]="submitted && f['costoMantenimiento'].errors">
-                      @if (submitted && f['costoMantenimiento'].errors) {
-                        <div class="invalid-feedback">Ingrese el costo de mantenimiento</div>
-                      }
-                    </div>
-                  }
-
                   <div class="col-md-4">
                     <label class="form-label">Costo Inicial (Unitario)</label>
                     <input type="number" step="0.01" class="form-control" formControlName="costoInicial" [class.is-invalid]="submitted && f['costoInicial'].errors">
@@ -154,6 +128,32 @@
                       <div class="invalid-feedback">Seleccione la fecha de compra</div>
                     }
                   </div>
+
+                  @if (isEquipoCategory) {
+                    <div class="col-md-4">
+                      <label class="form-label">Consumo Máquina (Watts)</label>
+                      <input type="number" class="form-control" formControlName="consumoMaquina" min="0" [class.is-invalid]="submitted && f['consumoMaquina'].errors">
+                      @if (submitted && f['consumoMaquina'].errors) {
+                        <div class="invalid-feedback">Ingrese el consumo</div>
+                      }
+                    </div>
+
+                    <div class="col-md-4">
+                      <label class="form-label">Tarifa Energía ($/kWh)</label>
+                      <input type="number" step="0.01" class="form-control" formControlName="tarifa" [class.is-invalid]="submitted && f['tarifa'].errors">
+                      @if (submitted && f['tarifa'].errors) {
+                        <div class="invalid-feedback">Ingrese la tarifa</div>
+                      }
+                    </div>
+
+                    <div class="col-md-4">
+                      <label class="form-label">Costo Mantenimiento ($/h)</label>
+                      <input type="number" step="0.01" class="form-control" formControlName="costoMantenimiento" [class.is-invalid]="submitted && f['costoMantenimiento'].errors">
+                      @if (submitted && f['costoMantenimiento'].errors) {
+                        <div class="invalid-feedback">Ingrese el costo de mantenimiento</div>
+                      }
+                    </div>
+                  }
                 </div>
               </div>
             }

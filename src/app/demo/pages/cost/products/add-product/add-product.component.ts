@@ -14,6 +14,11 @@ import { Product, PiezaProducto } from '../../../../../core/models/Cost/product'
 import { Family, Subfamily } from '../../../../../core/models/Cost/family';
 import { MaterialCatalogo, TecnologiaCatalogo } from '../../../../../core/models/Cost/catalog-config';
 import { previsualizarCodigo } from '../../../../../core/utils/catalog-sku';
+import {
+  esEquiposFabricacion,
+  materialCompatibleConTecnologia,
+  tecnologiaDeActivo
+} from '../../../../../core/constants/asset-categories';
 import { Config } from '../../../../../core/models/Cost/config';
 import { Asset } from '../../../../../core/models/Cost/asset';
 import { Fixe } from '../../../../../core/models/Cost/fixe';
@@ -66,6 +71,7 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
   assetsMobiliario: Asset[] = [];
   activosCirculantes: Asset[] = [];
   maquinasList: Asset[] = [];
+  maquinasFiltradas: Asset[] = [];
   categoriasMaterial: string[] = [];
   subcategoriasMaterial: string[] = [];
   materialesPorCategoria: Asset[] = [];
@@ -290,36 +296,18 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
           // 1. Máquinas: Activos Fijos de Categoría Equipo y Subcategoría Fabricación
           this.maquinasList = assets.filter((a: Asset) => {
             const t = (a.tipo || '').toLowerCase().trim();
-            const c = (a.categoria || '').toLowerCase().trim();
-            const s = (a.subCategoria || '').toLowerCase().trim();
-            return t === 'fijo' && c === 'equipo' && (s === 'fabricación' || s === 'fabricacion' || s.includes('fabricac'));
+            return t === 'fijo' && esEquiposFabricacion(a.categoria, a.subCategoria);
           });
-
-          if (this.maquinasList.length === 0) {
-            this.maquinasList = assets.filter((a: Asset) => 
-              (a.tipo || '').toLowerCase().trim() === 'fijo' && 
-              (a.categoria || '').toLowerCase().trim() === 'equipo'
-            );
-          }
 
           this.assetsMobiliario = assets.filter((a: Asset) => 
             (a.categoria || '').toLowerCase().trim() === 'mobiliario'
           );
 
-          // 2. Activos de Inventario: Activos Circulantes de Categoría Producción
           this.activosCirculantes = assets.filter((a: Asset) => {
             const t = (a.tipo || '').toLowerCase().trim();
-            const c = (a.categoria || '').toLowerCase().trim();
-            return t === 'circulante' && (c === 'producción' || c === 'produccion');
+            return t === 'circulante';
           });
 
-          if (this.activosCirculantes.length === 0) {
-            this.activosCirculantes = assets.filter((a: Asset) => 
-              (a.tipo || '').toLowerCase().trim() === 'circulante'
-            );
-          }
-
-          // 3. Activos Tipo Material: Materiales para impresión/fabricación
           this.activosMateriales = assets.filter((a: Asset) => {
             const t = (a.tipo || '').toLowerCase().trim();
             const c = (a.categoria || '').toLowerCase().trim();
@@ -331,6 +319,7 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
           )];
           this.materialesFiltradosCirculantes = [...this.activosMateriales];
           this.form.get('piezaMaterialId')?.enable();
+          this.aplicarFiltroTecnologiaPieza();
 
           this.actualizarNombresPiezas();
           this.cdr.detectChanges();
@@ -416,6 +405,39 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
     this.form.get('piezaMaterialSubcategoria')?.setValue('');
     this.form.get('piezaMaterialId')?.setValue(null);
     this.form.get('piezaMaterialId')?.enable();
+    this.aplicarFiltroTecnologiaPieza();
+  }
+
+  aplicarFiltroTecnologiaPieza() {
+    const tec = (this.form.get('piezaTecnologia')?.value || '').toUpperCase().trim();
+    const maqCtrl = this.form.get('activoId');
+    if (tec) {
+      maqCtrl?.enable({ emitEvent: false });
+    } else {
+      maqCtrl?.disable({ emitEvent: false });
+    }
+    this.maquinasFiltradas = tec
+      ? this.maquinasList.filter(m => {
+          const deMaquina = tecnologiaDeActivo(m);
+          return !deMaquina || deMaquina === tec;
+        })
+      : [...this.maquinasList];
+
+    const materialesBase = this.materialesPorCategoria.length > 0
+      ? this.materialesPorCategoria
+      : this.activosMateriales;
+    this.materialesFiltradosCirculantes = tec
+      ? materialesBase.filter(m => materialCompatibleConTecnologia(m, tec))
+      : [...materialesBase];
+
+    const maqActual = this.form.get('activoId')?.value;
+    if (maqActual && !this.maquinasFiltradas.some(m => m.id == maqActual)) {
+      this.form.get('activoId')?.setValue(null);
+    }
+    const matActual = this.form.get('piezaMaterialId')?.value;
+    if (matActual && !this.materialesFiltradosCirculantes.some(m => m.id == matActual)) {
+      this.form.get('piezaMaterialId')?.setValue(null);
+    }
   }
 
   onPiezaSubcategoriaChange(subcategoria: string) {
@@ -427,6 +449,7 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       this.materialesFiltradosCirculantes = this.materialesPorCategoria.length > 0 ? [...this.materialesPorCategoria] : [...this.activosMateriales];
     }
     this.form.get('piezaMaterialId')?.setValue(null);
+    this.aplicarFiltroTecnologiaPieza();
   }
 
   onPiezaMaterialChange(materialId: number) {
@@ -479,6 +502,11 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       precioMaterial = Number(foundAsset?.valorUnitario) || Number(foundAsset?.costoInicial) || 0;
       materialDisplayName = nombre;
     } else {
+      const piezaTec = this.form.get('piezaTecnologia')?.value;
+      if (!piezaTec) {
+        Swal.fire('Atención', 'Seleccione el tipo de tecnología de la pieza.', 'warning');
+        return;
+      }
       nombre = this.form.get('piezaFabricada')?.value;
       gramos = Number(this.form.get('piezaGramos')?.value) || 0;
       horas = Number(this.form.get('piezaHoras')?.value);
@@ -487,7 +515,8 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       const maqVal = this.form.get('activoId')?.value;
       if (maqVal) {
         maquinaId = Number(maqVal);
-        maquinaNombre = this.maquinasList.find(m => m.id == maqVal)?.nombre;
+        maquinaNombre = this.maquinasFiltradas.find(m => m.id == maqVal)?.nombre
+          || this.maquinasList.find(m => m.id == maqVal)?.nombre;
       }
 
       const matId = this.form.get('piezaMaterialId')?.value;
@@ -498,7 +527,8 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       assetId = Number(matId);
       precioMaterial = Number(this.form.get('piezaPrecioMaterial')?.value) || 0;
       
-      const assetCirc = this.activosCirculantes.find(a => a.id == matId);
+      const assetCirc = this.activosMateriales.find(a => a.id == matId)
+        || this.activosCirculantes.find(a => a.id == matId);
       if (assetCirc) {
         materialDisplayName = assetCirc.nombre;
       }
@@ -527,13 +557,15 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
     }
 
     this.piezasPendientes.push({ 
-      tipo, nombre, cantidad, assetId, gramos, horas, minutos, precioMaterial, materialDisplayName, maquinaId, maquinaNombre
+      tipo, nombre, cantidad, assetId, gramos, horas, minutos, precioMaterial, materialDisplayName, maquinaId, maquinaNombre,
+      tecnologia: tipo === 'Fabricada' ? this.form.get('piezaTecnologia')?.value : ''
     });
     this.piezasPendientes = [...this.piezasPendientes];
 
     this.form.patchValue({
       piezaInventario: '',
       piezaFabricada: '',
+      piezaTecnologia: this.form.get('tecnologia')?.value || '',
       piezaCantidad: 1,
       piezaGramos: '',
       piezaHoras: '',
@@ -620,6 +652,7 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       piezaTipo: ['Del Inventario'],
       piezaInventario: [''],
       piezaFabricada: [''],
+      piezaTecnologia: [''],
       piezaCantidad: [1],
       piezaGramos: [''],
       piezaHoras: [''],
@@ -643,6 +676,18 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
     this.form.get('piezaMaterialId')?.valueChanges.pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(val => this.onPiezaMaterialChange(val));
+
+    this.form.get('piezaTecnologia')?.valueChanges.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(() => this.aplicarFiltroTecnologiaPieza());
+
+    this.form.get('piezaTipo')?.valueChanges.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(tipo => {
+      if (tipo === 'Fabricada' && !this.form.get('piezaTecnologia')?.value) {
+        this.form.get('piezaTecnologia')?.setValue(this.form.get('tecnologia')?.value || '');
+      }
+    });
 
     this.form.get('perfil')?.valueChanges.pipe(
       takeUntilDestroyed(this.destroyRef)

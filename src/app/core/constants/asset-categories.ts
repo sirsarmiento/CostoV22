@@ -1,0 +1,114 @@
+export const CATEGORIA_FABRICACION = 'Equipos de fabricación';
+export const CATEGORIA_POSTPROCESO = 'Equipos de postproceso';
+export const CATEGORIA_COMPUTO = 'Equipos de cómputo';
+
+export const CATEGORIAS_ACTIVO_FIJO: string[] = [
+  CATEGORIA_FABRICACION,
+  CATEGORIA_POSTPROCESO,
+  CATEGORIA_COMPUTO,
+  'Equipos de medición',
+  'Herramientas',
+  'Mobiliario',
+  'Instalaciones de planta',
+  'Equipos de seguridad'
+];
+
+export function esEquiposFabricacion(categoria?: string, subCategoria?: string): boolean {
+  const c = (categoria || '').toLowerCase().trim();
+  const s = (subCategoria || '').toLowerCase().trim();
+  if (c === 'equipos de fabricación' || c === 'equipos de fabricacion') {
+    return true;
+  }
+  if (s.includes('comput') || s.includes('laptop') || c.includes('cómputo') || c.includes('computo')) {
+    return false;
+  }
+  if (c === 'equipo' || c === 'equipos') {
+    return s.includes('fabricac') || s.includes('impresora') || s.includes('cnc') || s.includes('3d') || !s;
+  }
+  return c.includes('impresora') || c.includes('máquina') || c.includes('maquina');
+}
+
+export function esEquiposComputo(categoria?: string, subCategoria?: string): boolean {
+  const c = (categoria || '').toLowerCase().trim();
+  const s = (subCategoria || '').toLowerCase().trim();
+  if (c.includes('cómputo') || c.includes('computo')) {
+    return true;
+  }
+  return (c === 'equipo' || c === 'equipos') && (s.includes('comput') || s.includes('laptop') || s.includes('oficina'));
+}
+
+export function mapearCategoriaFijo(categoria?: string, subCategoria?: string): string {
+  if (esEquiposComputo(categoria, subCategoria)) {
+    return CATEGORIA_COMPUTO;
+  }
+  if (esEquiposFabricacion(categoria, subCategoria)) {
+    return CATEGORIA_FABRICACION;
+  }
+  const actual = (categoria || '').trim();
+  const oficial = CATEGORIAS_ACTIVO_FIJO.find(x => x.toLowerCase() === actual.toLowerCase());
+  return oficial || actual;
+}
+
+export function inferirTecnologia(nombre?: string, categoria?: string, subCategoria?: string): string {
+  const blob = `${nombre || ''} ${categoria || ''} ${subCategoria || ''}`.toLowerCase();
+  if (
+    blob.includes('sla') ||
+    blob.includes('resina') ||
+    blob.includes('resin') ||
+    blob.includes('lcd') ||
+    blob.includes('dlp') ||
+    blob.includes('photon') ||
+    blob.includes('formlabs') ||
+    blob.includes('elegoo')
+  ) {
+    return 'SLA';
+  }
+  if (
+    blob.includes('fdm') ||
+    blob.includes('fff') ||
+    blob.includes('filamento') ||
+    blob.includes('ender') ||
+    blob.includes('prusa') ||
+    blob.includes('bambu') ||
+    blob.includes('creality') ||
+    blob.includes('pla')
+  ) {
+    return 'FDM';
+  }
+  return '';
+}
+
+export function tecnologiaDeActivo(asset: {
+  nombre?: string;
+  categoria?: string;
+  subCategoria?: string;
+  tecnologia?: string;
+}): string {
+  const directa = (asset.tecnologia || '').toUpperCase().trim();
+  if (directa) {
+    return directa;
+  }
+  return inferirTecnologia(asset.nombre, asset.categoria, asset.subCategoria);
+}
+
+export function materialCompatibleConTecnologia(
+  asset: { nombre?: string; categoria?: string; subCategoria?: string; tecnologia?: string },
+  tecnologia: string
+): boolean {
+  const t = (tecnologia || '').toUpperCase().trim();
+  if (!t) {
+    return true;
+  }
+  const propia = tecnologiaDeActivo(asset);
+  if (propia) {
+    return propia === t;
+  }
+  const blob = `${asset.nombre || ''} ${asset.categoria || ''} ${asset.subCategoria || ''}`.toLowerCase();
+  if (t === 'FDM') {
+    return blob.includes('filamento') || blob.includes('pla') || blob.includes('abs') || blob.includes('pet') || blob.includes('fdm');
+  }
+  if (t === 'SLA') {
+    return blob.includes('resina') || blob.includes('sla') || blob.includes('lcd');
+  }
+  return true;
+}

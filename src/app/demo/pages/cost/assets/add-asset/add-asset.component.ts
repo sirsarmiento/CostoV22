@@ -6,7 +6,14 @@ import { Router, RouterModule } from '@angular/router';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { Asset } from '../../../../../core/models/Cost/asset';
 import { AssetService } from '../../../../../core/services/cost/asset.service';
+import { CatalogConfigService } from '../../../../../core/services/cost/catalog-config.service';
+import { TecnologiaCatalogo } from '../../../../../core/models/Cost/catalog-config';
 import { CATALOGO_MATERIALES } from '../../../../../core/constants/material-catalog';
+import {
+  CATEGORIAS_ACTIVO_FIJO,
+  mapearCategoriaFijo,
+  esEquiposFabricacion
+} from '../../../../../core/constants/asset-categories';
 import { ComponentCanDeactivate } from '../../../../../core/guards/pending-changes.guard';
 import Swal from 'sweetalert2';
 
@@ -20,6 +27,7 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
   private formBuilder = inject(FormBuilder);
   private router = inject(Router);
   private assetService = inject(AssetService);
+  private catalogConfigService = inject(CatalogConfigService);
   private destroyRef = inject(DestroyRef);
   form!: FormGroup;
   id: number = 0;
@@ -29,8 +37,8 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
   allFijoSubcategoriasMap = new Map<string, Set<string>>();
   allCirculanteSubcategoriasMap = new Map<string, Set<string>>();
 
-  categoriasFijoList: string[] = [];
-  subcategoriasFijoList: string[] = [];
+  categoriasFijoList: string[] = [...CATEGORIAS_ACTIVO_FIJO];
+  tecnologias: TecnologiaCatalogo[] = [];
 
   categoriasCirculanteList: string[] = [];
   subcategoriasCirculanteList: string[] = [];
@@ -47,6 +55,20 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
     this.setValues();
     this.setupLogicCalcularTotal();
     this.cargarListasSugerencias();
+    this.catalogConfigService.getTecnologias().subscribe({
+      next: (data) => {
+        this.tecnologias = data?.length ? data : [
+          { id: 1, codigo: 'FDM', nombre: 'Filamento' },
+          { id: 2, codigo: 'SLA', nombre: 'Resina' }
+        ];
+      },
+      error: () => {
+        this.tecnologias = [
+          { id: 1, codigo: 'FDM', nombre: 'Filamento' },
+          { id: 2, codigo: 'SLA', nombre: 'Resina' }
+        ];
+      }
+    });
   }
 
   cargarListasSugerencias() {
@@ -91,15 +113,15 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
           }
         });
 
-        this.categoriasFijoList = Array.from(catFijoMap.values()).sort();
+        this.categoriasFijoList = Array.from(new Set([
+          ...CATEGORIAS_ACTIVO_FIJO,
+          ...Array.from(catFijoMap.values()).map(c => mapearCategoriaFijo(c))
+        ].filter(Boolean)));
         this.categoriasCirculanteList = Array.from(catCircMap.values()).sort();
 
         // Filtrar subcategorías según la categoría seleccionada actualmente
-        const catActual = this.form.get('categoria')?.value;
         const tipoActual = this.form.get('tipo')?.value;
-        if (tipoActual === 'Fijo') {
-          this.filtrarSubcategoriasFijo(catActual);
-        } else if (tipoActual === 'Circulante') {
+        if (tipoActual === 'Circulante') {
           this.filtrarSubcategoriasCirculante(catActual);
         }
       }
@@ -212,7 +234,9 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
         const tipoLimpio = rawTipo ? (rawTipo.charAt(0).toUpperCase() + rawTipo.slice(1).toLowerCase()) : 'Fijo';
         
         const rawCat = (data.categoria || '').toString().trim();
-        const catLimpia = rawCat;
+        const catLimpia = tipoLimpio === 'Fijo'
+          ? mapearCategoriaFijo(rawCat, data.subCategoria || '')
+          : rawCat;
 
         this.form.patchValue({
           nombre: data.nombre,
@@ -228,7 +252,8 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
           ubicacion: data.ubicacion,
           valorUnitario: data.valorUnitario || data.costoInicial || 0,
           categoria: catLimpia,
-          subcategoria: data.subCategoria || ((data as unknown as Record<string, unknown>)['subcategoria'] as string) || ((data as unknown as Record<string, unknown>)['Subcategoria'] as string) || '',
+          subcategoria: tipoLimpio === 'Fijo' ? '' : (data.subCategoria || ((data as unknown as Record<string, unknown>)['subcategoria'] as string) || ((data as unknown as Record<string, unknown>)['Subcategoria'] as string) || ''),
+          tecnologia: data.tecnologia || '',
           consumoMaquina: data.consumoMaquina,
           tarifa: data.tarifa,
           costoMantenimiento: data.costoMantenimiento
@@ -262,6 +287,7 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
       tipo: ['Fijo', Validators.required],
       categoria: [''],
       subcategoria: [''],
+      tecnologia: [''],
       // Campos de Fijos
       valorResidual: [''],
       vidaUtil: [''],
@@ -286,9 +312,7 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
         this.form.get('categoria')?.setValue('Filamento');
       }
       const cat = this.form.get('categoria')?.value;
-      if (tipo === 'Fijo') {
-        this.filtrarSubcategoriasFijo(cat);
-      } else if (tipo === 'Circulante') {
+      if (tipo === 'Circulante') {
         this.filtrarSubcategoriasCirculante(cat);
       }
       this.actualizarValidaciones(tipo);
@@ -301,19 +325,22 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
       const tipo = this.form.get('tipo')?.value;
       if (tipo === 'Material') {
         this.actualizarSubcategoriasMaterial(cat);
-      } else if (tipo === 'Fijo') {
-        this.filtrarSubcategoriasFijo(cat);
       } else if (tipo === 'Circulante') {
         this.filtrarSubcategoriasCirculante(cat);
+      }
+      if (tipo === 'Fijo' && !this.isFabricacionCategory) {
+        this.form.get('tecnologia')?.setValue('', { emitEvent: false });
       }
       this.actualizarValidaciones(tipo);
     });
   }
 
+  get isFabricacionCategory(): boolean {
+    return esEquiposFabricacion(this.form?.get('categoria')?.value);
+  }
+
   get isEquipoCategory(): boolean {
-    const cat = String(this.form?.get('categoria')?.value || '').toLowerCase().trim();
-    if (!cat) return false;
-    return cat === 'equipo' || cat === 'equipos' || cat.includes('equipo') || cat.includes('máquina') || cat.includes('maquina') || cat.includes('impresora') || cat.includes('cnc');
+    return this.isFabricacionCategory;
   }
 
   private actualizarValidaciones(tipo: string) {
@@ -326,16 +353,17 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
 
     if (tipo === 'Fijo') {
       this.setValidators(camposFijos, [Validators.required]);
-
-      if (this.isEquipoCategory) {
-        this.setValidators(camposEquipo, []);
+      this.setValidators(['categoria'], [Validators.required]);
+      if (this.isFabricacionCategory) {
+        this.setValidators(['tecnologia'], [Validators.required]);
       } else {
-        this.setValidators(camposEquipo, []);
+        this.setValidators(['tecnologia'], []);
       }
     } else {
       this.setValidators(camposFijos, []);
       this.setValidators(camposCirculantes, [Validators.required]);
       this.setValidators(camposEquipo, []);
+      this.setValidators(['tecnologia'], []);
     }
   }
 
@@ -403,8 +431,11 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
     this.loading = true;
     const formValues = this.form.getRawValue();
 
-    const cleanCat = this.formatTitleCase(formValues.categoria);
-    const cleanSub = this.formatTitleCase(formValues.subcategoria);
+    const cleanCat = formValues.tipo === 'Fijo'
+      ? mapearCategoriaFijo(formValues.categoria)
+      : this.formatTitleCase(formValues.categoria);
+    const cleanSub = formValues.tipo === 'Fijo' ? '' : this.formatTitleCase(formValues.subcategoria);
+    const esFabricacion = formValues.tipo === 'Fijo' && esEquiposFabricacion(cleanCat);
 
     const activo: Asset = {
       id: this.id > 0 ? this.id : 0,
@@ -413,14 +444,15 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
       costoInicial: Number(formValues.costoInicial) || 0,
       categoria: cleanCat,
       subCategoria: cleanSub,
+      tecnologia: esFabricacion ? (formValues.tecnologia || '') : '',
       
       valorResidual: formValues.tipo === 'Fijo' ? (Number(formValues.valorResidual) || 0) : 0,
       vidaUtil: formValues.tipo === 'Fijo' ? (Number(formValues.vidaUtil) || 0) : 0,
       fechaCompra: formValues.tipo === 'Fijo' ? new Date(formValues.fechaCompra) : new Date(),
 
-      consumoMaquina: (formValues.tipo === 'Fijo' && formValues.categoria === 'Equipo') ? (Number(formValues.consumoMaquina) || 0) : 0,
-      tarifa: (formValues.tipo === 'Fijo' && formValues.categoria === 'Equipo') ? (Number(formValues.tarifa) || 0) : 0,
-      costoMantenimiento: (formValues.tipo === 'Fijo' && formValues.categoria === 'Equipo') ? (Number(formValues.costoMantenimiento) || 0) : 0,
+      consumoMaquina: esFabricacion ? (Number(formValues.consumoMaquina) || 0) : 0,
+      tarifa: esFabricacion ? (Number(formValues.tarifa) || 0) : 0,
+      costoMantenimiento: esFabricacion ? (Number(formValues.costoMantenimiento) || 0) : 0,
 
       cantidad: Number(formValues.cantidad) || 1,
       valorUnitario: formValues.tipo === 'Circulante' ? (Number(formValues.costoInicial) || Number(formValues.valorUnitario) || 0) : 0,

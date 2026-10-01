@@ -16,14 +16,12 @@ export const CATEGORIAS_ACTIVO_FIJO: string[] = [
 export function esEquiposFabricacion(categoria?: string, subCategoria?: string): boolean {
   const c = (categoria || '').toLowerCase().trim();
   const s = (subCategoria || '').toLowerCase().trim();
+
   if (c === 'equipos de fabricación' || c === 'equipos de fabricacion') {
     return true;
   }
-  if (s.includes('comput') || s.includes('laptop') || c.includes('cómputo') || c.includes('computo')) {
-    return false;
-  }
   if (c === 'equipo' || c === 'equipos') {
-    return s.includes('fabricac') || s.includes('impresora') || s.includes('cnc') || s.includes('3d') || !s;
+    return s.includes('fabricac') || s.includes('impresora') || s.includes('3d') || !s;
   }
   return c.includes('impresora') || c.includes('máquina') || c.includes('maquina');
 }
@@ -49,35 +47,6 @@ export function mapearCategoriaFijo(categoria?: string, subCategoria?: string): 
   return oficial || actual;
 }
 
-export function inferirTecnologia(nombre?: string, categoria?: string, subCategoria?: string): string {
-  const blob = `${nombre || ''} ${categoria || ''} ${subCategoria || ''}`.toLowerCase();
-  if (
-    blob.includes('sla') ||
-    blob.includes('resina') ||
-    blob.includes('resin') ||
-    blob.includes('lcd') ||
-    blob.includes('dlp') ||
-    blob.includes('photon') ||
-    blob.includes('formlabs') ||
-    blob.includes('elegoo')
-  ) {
-    return 'SLA';
-  }
-  if (
-    blob.includes('fdm') ||
-    blob.includes('fff') ||
-    blob.includes('filamento') ||
-    blob.includes('ender') ||
-    blob.includes('prusa') ||
-    blob.includes('bambu') ||
-    blob.includes('creality') ||
-    blob.includes('pla')
-  ) {
-    return 'FDM';
-  }
-  return '';
-}
-
 export function tecnologiaDeActivo(asset: {
   nombre?: string;
   categoria?: string;
@@ -85,10 +54,12 @@ export function tecnologiaDeActivo(asset: {
   tecnologia?: string;
 }): string {
   const directa = (asset.tecnologia || '').toUpperCase().trim();
-  if (directa) {
-    return directa;
+  if (!directa) {
+    return '';
   }
-  return inferirTecnologia(asset.nombre, asset.categoria, asset.subCategoria);
+  if (directa === 'FILAMENTO' || directa.includes('FDM') || directa.includes('FILAM')) return 'FDM';
+  if (directa === 'RESINA' || directa.includes('SLA') || directa.includes('RESIN')) return 'SLA';
+  return directa;
 }
 
 export function materialCompatibleConTecnologia(
@@ -103,12 +74,12 @@ export function materialCompatibleConTecnologia(
   if (propia) {
     return propia === t;
   }
-  const blob = `${asset.nombre || ''} ${asset.categoria || ''} ${asset.subCategoria || ''}`.toLowerCase();
+  const c = (asset.categoria || '').toLowerCase().trim();
   if (t === 'FDM') {
-    return blob.includes('filamento') || blob.includes('pla') || blob.includes('abs') || blob.includes('pet') || blob.includes('fdm');
+    return c === 'filamento' || c === 'filamentos' || c.includes('filam');
   }
   if (t === 'SLA') {
-    return blob.includes('resina') || blob.includes('sla') || blob.includes('lcd');
+    return c === 'resina' || c === 'resinas' || c.includes('resin');
   }
   return true;
 }

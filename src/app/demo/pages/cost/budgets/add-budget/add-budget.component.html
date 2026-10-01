@@ -179,10 +179,10 @@
 
                 @if (f['piezaTipo'].value === 'Del Inventario') {
                   <div class="col-md-6">
-                    <label class="form-label text-xs mb-1">Activo del Inventario</label>
+                    <label class="form-label text-xs mb-1">Activo circulante</label>
                     <ng-select 
                       formControlName="piezaInventario" 
-                      placeholder="Seleccione activo del inventario..." 
+                      placeholder="Seleccione tornillos, herrajes u otro circulante..." 
                       [clearable]="true" 
                       [searchable]="true" 
                       appendTo="body" 
@@ -208,25 +208,42 @@
                     </button>
                   </div>
                 } @else {
-                  <div class="col-md-4">
+                  <div class="col-md-3">
                     <label class="form-label text-xs mb-1">Nombre Pieza Fabricada</label>
                     <input type="text" class="form-control form-control-sm" formControlName="piezaFabricada" placeholder="Ej: Pieza 1">
                   </div>
 
+                  <div class="col-md-3">
+                    <label class="form-label text-xs mb-1">Tipo de tecnología</label>
+                    <ng-select
+                      formControlName="piezaTecnologia"
+                      placeholder="Filamento o resina"
+                      [clearable]="false"
+                      [searchable]="false"
+                      appendTo="body"
+                      dropdownPosition="bottom"
+                      class="ng-select-sm">
+                      @for (tec of tecnologias; track tec.id) {
+                        <ng-option [value]="tec.codigo">{{ tec.nombre }} ({{ tec.codigo }})</ng-option>
+                      }
+                    </ng-select>
+                  </div>
+
                   <div class="col-md-4">
-                    <label class="form-label text-xs mb-1">Máquina de Fabricación</label>
+                    <label class="form-label text-xs mb-1">Impresora / Máquina</label>
                     <ng-select 
                       formControlName="activoId" 
-                      placeholder="-- Sin máquina --" 
+                      placeholder="{{ f['piezaTecnologia']?.value ? 'Seleccione máquina...' : 'Elija primero la tecnología' }}" 
                       [clearable]="true" 
                       [searchable]="true" 
+                      [disabled]="!f['piezaTecnologia']?.value"
                       appendTo="body" 
                       dropdownPosition="bottom" 
                       class="ng-select-sm">
                       <ng-template ng-label-tmp let-item="item">
                         <span [title]="item.nombre || item" class="text-truncate d-inline-block mw-100">{{ item.nombre || item }}</span>
                       </ng-template>
-                      @for (maq of maquinasList; track maq.id) {
+                      @for (maq of maquinasFiltradas; track maq.id) {
                         <ng-option [value]="maq.id" [attr.title]="maq.nombre">
                           <span [title]="maq.nombre">{{ maq.nombre }}</span>
                         </ng-option>
@@ -277,7 +294,7 @@
                         <ng-template ng-label-tmp let-item="item">
                           <span [title]="formatAssetOption(item)" class="text-truncate d-inline-block mw-100">{{ formatAssetOption(item) }}</span>
                         </ng-template>
-                        @for (m of materialesFiltrados; track m.id) {
+                        @for (m of materialesFiltradosCirculantes; track m.id) {
                           <ng-option [value]="m.id" [attr.title]="formatAssetOption(m)">
                             <span [title]="formatAssetOption(m)">{{ formatAssetOption(m) }}</span>
                           </ng-option>

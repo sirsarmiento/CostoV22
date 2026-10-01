@@ -84,11 +84,11 @@
                     <div class="btn-group btn-group-sm">
                       <button 
                         class="btn btn-icon" 
-                        [class.btn-light-primary]="row.cliente || row.clienteId"
-                        [class.btn-light-secondary]="!row.cliente && !row.clienteId"
+                        [class.btn-light-primary]="row.cliente"
+                        [class.btn-light-secondary]="!row.cliente"
                         (click)="onOpenClientModal(row)" 
-                        [title]="(row.cliente || row.clienteId) ? 'Ver Ficha de Cliente' : 'Ver datos del cliente (Sin registrar en catálogo)'">
-                        <i class="ti fs-5" [class.ti-user-check]="row.cliente || row.clienteId" [class.ti-user-plus]="!row.cliente && !row.clienteId" [class.text-primary]="row.cliente || row.clienteId" [class.text-muted]="!row.cliente && !row.clienteId"></i>
+                        [title]="row.cliente ? 'Ver Ficha de Cliente' : 'Ver datos del cliente (Sin registrar en catálogo)'">
+                        <i class="ti fs-5" [class.ti-user-check]="row.cliente" [class.ti-user-plus]="!row.cliente" [class.text-primary]="row.cliente" [class.text-muted]="!row.cliente"></i>
                       </button>
                       <button 
                         class="btn btn-icon btn-light-info" 

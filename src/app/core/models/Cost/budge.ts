@@ -16,7 +16,6 @@ export class Budget { // Presupuesto
     cantidadGlobal?: number;
     delivery?: number;
     cliente?: number;
-    clienteId?: number;
     clienteNombre?: string;
     clienteDetalle?: Record<string, unknown>;
     activo?: number;
@@ -40,6 +39,7 @@ export class Parts { // Piezas
     tiempoPostProcesado?: number;
     producto?: number;
     activo?: number;
+    activoNombre?: string;
     maquina?: number;
     maquinaNombre?: string;
 }

@@ -34,7 +34,6 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
   loading = false;
   submitted = false;
 
-  allFijoSubcategoriasMap = new Map<string, Set<string>>();
   allCirculanteSubcategoriasMap = new Map<string, Set<string>>();
 
   categoriasFijoList: string[] = [...CATEGORIAS_ACTIVO_FIJO];
@@ -75,11 +74,9 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
     this.assetService.getAssets().subscribe({
       next: (assets) => {
         const catFijoMap = new Map<string, string>();
-        const subFijoMap = new Map<string, string>();
         const catCircMap = new Map<string, string>();
         const subCircMap = new Map<string, string>();
 
-        this.allFijoSubcategoriasMap.clear();
         this.allCirculanteSubcategoriasMap.clear();
 
         assets.forEach(a => {
@@ -91,14 +88,7 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
           if (tipo === 'fijo' || (!tipo && a.vidaUtil && a.vidaUtil > 0)) {
             if (cat) {
               catFijoMap.set(cat.toLowerCase(), cat);
-              if (!this.allFijoSubcategoriasMap.has(cat.toLowerCase())) {
-                this.allFijoSubcategoriasMap.set(cat.toLowerCase(), new Set<string>());
-              }
-              if (sub) {
-                this.allFijoSubcategoriasMap.get(cat.toLowerCase())!.add(sub);
-              }
             }
-            if (sub) subFijoMap.set(sub.toLowerCase(), sub);
           } else if (tipo === 'circulante' || (!tipo && (!a.vidaUtil || a.vidaUtil === 0))) {
             if (cat) {
               catCircMap.set(cat.toLowerCase(), cat);
@@ -121,27 +111,12 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
 
         // Filtrar subcategorías según la categoría seleccionada actualmente
         const tipoActual = this.form.get('tipo')?.value;
+        const catActual = this.form.get('categoria')?.value;
         if (tipoActual === 'Circulante') {
           this.filtrarSubcategoriasCirculante(catActual);
         }
       }
     });
-  }
-
-  filtrarSubcategoriasFijo(categoria?: string) {
-    if (!categoria) {
-      this.subcategoriasFijoList = [];
-      return;
-    }
-    const catClean = categoria.toLowerCase().trim();
-    const setSub = this.allFijoSubcategoriasMap.get(catClean);
-    if (setSub && setSub.size > 0) {
-      this.subcategoriasFijoList = Array.from(setSub)
-        .filter(s => s.toLowerCase().trim() !== catClean && s.toLowerCase().trim() !== catClean + 's')
-        .sort();
-      return;
-    }
-    this.subcategoriasFijoList = [];
   }
 
   filtrarSubcategoriasCirculante(categoria?: string) {
@@ -164,21 +139,6 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
     const formatted = this.formatTitleCase(term);
     if (formatted && !this.categoriasFijoList.some(c => c.toLowerCase() === formatted.toLowerCase())) {
       this.categoriasFijoList = [...this.categoriasFijoList, formatted].sort();
-    }
-    return formatted;
-  };
-
-  agregarSubcategoriaFijo = (term: string): string => {
-    const formatted = this.formatTitleCase(term);
-    if (formatted && !this.subcategoriasFijoList.some(c => c.toLowerCase() === formatted.toLowerCase())) {
-      this.subcategoriasFijoList = [...this.subcategoriasFijoList, formatted].sort();
-      const catActual = this.form.get('categoria')?.value;
-      if (catActual) {
-        if (!this.allFijoSubcategoriasMap.has(catActual.toLowerCase())) {
-          this.allFijoSubcategoriasMap.set(catActual.toLowerCase(), new Set<string>());
-        }
-        this.allFijoSubcategoriasMap.get(catActual.toLowerCase())!.add(formatted);
-      }
     }
     return formatted;
   };

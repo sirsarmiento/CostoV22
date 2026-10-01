@@ -14,18 +14,27 @@ import { Product, PiezaProducto } from '../../../../../core/models/Cost/product'
 import { Family, Subfamily } from '../../../../../core/models/Cost/family';
 import { MaterialCatalogo, TecnologiaCatalogo } from '../../../../../core/models/Cost/catalog-config';
 import { previsualizarCodigo } from '../../../../../core/utils/catalog-sku';
+import { esEquiposFabricacion, materialCompatibleConTecnologia } from '../../../../../core/constants/asset-categories';
 import {
-  esEquiposFabricacion,
-  materialCompatibleConTecnologia,
-  tecnologiaDeActivo
-} from '../../../../../core/constants/asset-categories';
+  calcularPrecioPorGramo,
+  formatAssetOption,
+  resolverNombreMaquina,
+  resolverNombreMaterial,
+  filtrarMaquinasPorTecnologia,
+  obtenerCategoriasMaterialPorTecnologia,
+  filtrarMaterialesPorCategoria
+} from '../../../../../core/utils/piece-builder.helper';
+import {
+  extractCorrelativosUsadosDeFamilia,
+  mapDbPiezasToView,
+  mapPiezasToPayload
+} from '../../../../../core/utils/product-form.helper';
 import { Config } from '../../../../../core/models/Cost/config';
 import { Asset } from '../../../../../core/models/Cost/asset';
 import { Fixe } from '../../../../../core/models/Cost/fixe';
 import Swal from 'sweetalert2';
 import { Observable, forkJoin, of } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
-
 import { ComponentCanDeactivate } from '../../../../../core/guards/pending-changes.guard';
 
 @Component({
@@ -57,10 +66,11 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
   tecnologias: TecnologiaCatalogo[] = [];
   materiales: MaterialCatalogo[] = [];
   materialesFiltrados: MaterialCatalogo[] = [];
+  productosExistentes: Product[] = [];
+
   previewSku = '';
   previewCatalogo = '';
   previewCorrelativo = '';
-  correlativosUsados: string[] = [];
   activeTab: 'def' | 'costos' | 'piezas' = 'def';
   costosPendientes: Fixe[] = [];
   costosEliminados: number[] = [];
@@ -68,8 +78,10 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
 
   // Parámetros de Presupuesto y Piezas
   piezasPendientes: Record<string, unknown>[] = [];
+  allAssets: Asset[] = [];
   assetsMobiliario: Asset[] = [];
   activosCirculantes: Asset[] = [];
+  activosMateriales: Asset[] = [];
   maquinasList: Asset[] = [];
   maquinasFiltradas: Asset[] = [];
   categoriasMaterial: string[] = [];
@@ -77,7 +89,7 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
   materialesPorCategoria: Asset[] = [];
   materialesFiltradosCirculantes: Asset[] = [];
 
-  opcionesConceptos: Record<string, string[]> = {
+  readonly opcionesConceptos: Record<string, string[]> = {
     'Fijo': [
       'Alquiler', 'Salarios base', 'Seguros', 
       'Suscripciones y licencias', 'Impuestos', 
@@ -126,8 +138,6 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       this.form.get('periodo')?.setValue('');
     }
   }
-
-  productosExistentes: Product[] = [];
 
   loadCatalogo() {
     forkJoin({
@@ -191,33 +201,12 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
     const famCod = (familia?.codigo || '').toUpperCase().trim();
     const famId = familia?.id ? Number(familia.id) : null;
 
-    // Filtrar los productos existentes para considerar solo los de esta misma familia
-    const productosDeMismaFamilia = this.productosExistentes.filter(p => {
-      if (this.id && p.id === this.id) return false;
-      const pFamId = p.familiaId || (typeof p.familia === 'object' ? p.familia?.id : null);
-      const pFamCod = (typeof p.familia === 'object' ? p.familia?.codigo : (typeof p.familia === 'string' ? p.familia : '')) || '';
-
-      if (famId && pFamId && Number(pFamId) === famId) return true;
-      if (famCod && pFamCod && pFamCod.toUpperCase() === famCod) return true;
-      if (famCod && p.codigoCatalogo && p.codigoCatalogo.toUpperCase().startsWith(`${famCod}-`)) return true;
-      if (famCod && p.sku && p.sku.toUpperCase().includes(`-${famCod}-`)) return true;
-      return false;
-    });
-
-    const correlativosUsados = productosDeMismaFamilia.flatMap(p => {
-      const list: string[] = [];
-      if (p.correlativo) list.push(p.correlativo.toUpperCase());
-      if (p.serie && p.correlativo) list.push(`${p.serie}${p.correlativo}`.toUpperCase());
-      if (p.codigoCatalogo) {
-        const parts = p.codigoCatalogo.split('-');
-        if (parts.length > 1) list.push(parts[1].toUpperCase());
-      }
-      if (p.sku) {
-        const parts = p.sku.split('-');
-        if (parts.length > 0) list.push(parts[parts.length - 1].toUpperCase());
-      }
-      return list;
-    }).filter(Boolean);
+    const correlativosUsados = extractCorrelativosUsadosDeFamilia(
+      this.productosExistentes,
+      famId,
+      famCod,
+      this.id
+    );
 
     const preview = previsualizarCodigo({
       nombre: this.form.get('nombre')?.value,
@@ -228,6 +217,7 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       serie: this.form.get('serie')?.value,
       correlativosUsados: correlativosUsados
     });
+
     this.previewSku = preview.sku;
     this.previewCatalogo = preview.codigoCatalogo;
     this.previewCorrelativo = preview.correlativo;
@@ -285,15 +275,11 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
     }
   }
 
-  allAssets: Asset[] = [];
-  activosMateriales: Asset[] = [];
-
   loadAssets() {
     this.assetService.getAssets().subscribe({
       next: (assets) => {
         if (assets) {
           this.allAssets = assets;
-          // 1. Máquinas: Activos Fijos de Categoría Equipo y Subcategoría Fabricación
           this.maquinasList = assets.filter((a: Asset) => {
             const t = (a.tipo || '').toLowerCase().trim();
             return t === 'fijo' && esEquiposFabricacion(a.categoria, a.subCategoria);
@@ -305,7 +291,8 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
 
           this.activosCirculantes = assets.filter((a: Asset) => {
             const t = (a.tipo || '').toLowerCase().trim();
-            return t === 'circulante';
+            const c = (a.categoria || '').toLowerCase().trim();
+            return t === 'circulante' && (c === 'producción' || c === 'produccion');
           });
 
           this.activosMateriales = assets.filter((a: Asset) => {
@@ -330,82 +317,43 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
 
   actualizarNombresPiezas() {
     if (!this.piezasPendientes || this.piezasPendientes.length === 0) return;
-    this.piezasPendientes = this.piezasPendientes.map(p => {
-      const pObj = p as Record<string, unknown>;
-      const maqName = this.getNombreMaquina(pObj);
-      const matName = this.getNombreMaterial(pObj);
-
-      const rawMaq = pObj['maquina'] ?? pObj['maquinaId'] ?? pObj['maquina_id'];
-      const maqId = typeof rawMaq === 'object' && rawMaq !== null ? Number((rawMaq as Record<string, unknown>)['id']) : (Number(rawMaq) || undefined);
-
-      const rawAct = pObj['activo'] ?? pObj['assetId'] ?? pObj['activo_id'];
-      const actId = typeof rawAct === 'object' && rawAct !== null ? Number((rawAct as Record<string, unknown>)['id']) : (Number(rawAct) || undefined);
-
-      return {
-        ...pObj,
-        maquinaId: maqId,
-        maquinaNombre: maqName !== '-' ? maqName : (pObj['maquinaNombre'] || undefined),
-        assetId: actId,
-        materialDisplayName: matName !== '-' ? matName : (pObj['materialDisplayName'] || undefined)
-      };
-    });
+    this.piezasPendientes = mapDbPiezasToView(
+      this.piezasPendientes,
+      this.maquinasList,
+      this.activosMateriales,
+      this.activosCirculantes,
+      this.allAssets
+    );
   }
 
   getNombreMaquina(p: Record<string, unknown> | PiezaProducto | unknown): string {
-    if (!p) return '-';
-    const pObj = p as Record<string, unknown>;
-    if (pObj['maquinaNombre'] && pObj['maquinaNombre'] !== '-') return String(pObj['maquinaNombre']);
-    
-    const rawMaq = pObj['maquina'] ?? pObj['maquinaId'] ?? pObj['maquina_id'];
-    if (typeof rawMaq === 'object' && rawMaq !== null) {
-      const nom = (rawMaq as Record<string, unknown>)['nombre'];
-      if (nom) return String(nom);
-    }
-    const maqId = typeof rawMaq === 'object' && rawMaq !== null ? Number((rawMaq as Record<string, unknown>)['id']) : Number(rawMaq);
-    if (maqId && !isNaN(maqId)) {
-      const found = this.maquinasList.find(m => m.id == maqId) || this.allAssets.find(a => a.id == maqId);
-      if (found?.nombre) return found.nombre;
-    }
-    return '-';
+    return resolverNombreMaquina(p as Record<string, unknown>, this.maquinasList, this.allAssets);
   }
 
   getNombreMaterial(p: Record<string, unknown> | PiezaProducto | unknown): string {
-    if (!p) return '-';
-    const pObj = p as Record<string, unknown>;
-    if (pObj['materialDisplayName'] && pObj['materialDisplayName'] !== '-') return String(pObj['materialDisplayName']);
-    if (pObj['materialTipo'] && pObj['materialTipo'] !== 'Sin material') return String(pObj['materialTipo']);
-    
-    const rawAct = pObj['activo'] ?? pObj['assetId'] ?? pObj['activo_id'];
-    if (typeof rawAct === 'object' && rawAct !== null) {
-      const nom = (rawAct as Record<string, unknown>)['nombre'];
-      if (nom) return String(nom);
-    }
-    const actId = typeof rawAct === 'object' && rawAct !== null ? Number((rawAct as Record<string, unknown>)['id']) : Number(rawAct);
-    if (actId && !isNaN(actId)) {
-      const found = this.activosMateriales.find(a => a.id == actId) 
-        || this.activosCirculantes.find(a => a.id == actId) 
-        || this.allAssets.find(a => a.id == actId);
-      if (found?.nombre) return found.nombre;
-    }
-    return '-';
+    return resolverNombreMaterial(p as Record<string, unknown>, this.activosMateriales, this.activosCirculantes, this.allAssets);
   }
 
   onPiezaCategoriaChange(categoria: string) {
     if (categoria) {
-      this.materialesPorCategoria = this.activosMateriales.filter(a => a.categoria === categoria);
+      this.materialesPorCategoria = filtrarMaterialesPorCategoria(this.activosMateriales, categoria);
       this.subcategoriasMaterial = [...new Set(
         this.materialesPorCategoria.map(a => a.subCategoria || ((a as unknown as Record<string, string>)['subcategoria'])).filter((s): s is string => !!s)
-      )];
+      )].sort();
       this.materialesFiltradosCirculantes = [...this.materialesPorCategoria];
     } else {
       this.materialesPorCategoria = [];
       this.subcategoriasMaterial = [];
       this.materialesFiltradosCirculantes = [...this.activosMateriales];
     }
-    this.form.get('piezaMaterialSubcategoria')?.setValue('');
-    this.form.get('piezaMaterialId')?.setValue(null);
-    this.form.get('piezaMaterialId')?.enable();
-    this.aplicarFiltroTecnologiaPieza();
+    const subActual = this.form.get('piezaMaterialSubcategoria')?.value;
+    if (subActual && !this.subcategoriasMaterial.includes(subActual)) {
+      this.form.get('piezaMaterialSubcategoria')?.setValue('');
+    }
+    const matActual = this.form.get('piezaMaterialId')?.value;
+    if (matActual && !this.materialesFiltradosCirculantes.some(m => m.id == matActual)) {
+      this.form.get('piezaMaterialId')?.setValue(null);
+    }
   }
 
   aplicarFiltroTecnologiaPieza() {
@@ -416,19 +364,33 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
     } else {
       maqCtrl?.disable({ emitEvent: false });
     }
-    this.maquinasFiltradas = tec
-      ? this.maquinasList.filter(m => {
-          const deMaquina = tecnologiaDeActivo(m);
-          return !deMaquina || deMaquina === tec;
-        })
-      : [...this.maquinasList];
 
-    const materialesBase = this.materialesPorCategoria.length > 0
-      ? this.materialesPorCategoria
-      : this.activosMateriales;
-    this.materialesFiltradosCirculantes = tec
-      ? materialesBase.filter(m => materialCompatibleConTecnologia(m, tec))
-      : [...materialesBase];
+    this.maquinasFiltradas = filtrarMaquinasPorTecnologia(this.maquinasList, tec);
+    this.categoriasMaterial = obtenerCategoriasMaterialPorTecnologia(this.activosMateriales, tec);
+
+    if (tec === 'FDM') {
+      const curCat = (this.form.get('piezaMaterialCategoria')?.value || '').toLowerCase();
+      if (!curCat || curCat.includes('resina')) {
+        this.form.get('piezaMaterialCategoria')?.setValue('Filamento', { emitEvent: false });
+      }
+    } else if (tec === 'SLA') {
+      const curCat = (this.form.get('piezaMaterialCategoria')?.value || '').toLowerCase();
+      if (!curCat || curCat.includes('filam')) {
+        this.form.get('piezaMaterialCategoria')?.setValue('Resina', { emitEvent: false });
+      }
+    }
+
+    const catActual = this.form.get('piezaMaterialCategoria')?.value;
+    if (catActual) {
+      this.onPiezaCategoriaChange(catActual);
+    } else {
+      const materialesBase = this.materialesPorCategoria.length > 0
+        ? this.materialesPorCategoria
+        : this.activosMateriales;
+      this.materialesFiltradosCirculantes = tec
+        ? materialesBase.filter(m => materialCompatibleConTecnologia(m, tec))
+        : [...materialesBase];
+    }
 
     const maqActual = this.form.get('activoId')?.value;
     if (maqActual && !this.maquinasFiltradas.some(m => m.id == maqActual)) {
@@ -448,28 +410,22 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
     } else {
       this.materialesFiltradosCirculantes = this.materialesPorCategoria.length > 0 ? [...this.materialesPorCategoria] : [...this.activosMateriales];
     }
-    this.form.get('piezaMaterialId')?.setValue(null);
-    this.aplicarFiltroTecnologiaPieza();
+    const matActual = this.form.get('piezaMaterialId')?.value;
+    if (matActual && !this.materialesFiltradosCirculantes.some(m => m.id == matActual)) {
+      this.form.get('piezaMaterialId')?.setValue(null);
+    }
   }
 
   onPiezaMaterialChange(materialId: number) {
     if (materialId) {
       const asset = this.activosMateriales.find(a => a.id == materialId) || this.activosCirculantes.find(a => a.id == materialId);
       if (asset) {
-        const uMedida = (asset.unidadMedida || '').toLowerCase().trim();
-        const valUnit = Number(asset.valorUnitario) || Number(asset.costoInicial) || 0;
-        let precioPorGramo: number;
-        if (uMedida === 'gramos' || uMedida === 'gramo') {
-          precioPorGramo = valUnit;
-        } else {
-          precioPorGramo = valUnit > 0 ? (valUnit / 1000) : 0;
-        }
-        const rounded = Math.round(precioPorGramo * 10000) / 10000;
+        const rounded = calcularPrecioPorGramo(asset);
         this.form.get('piezaPrecioMaterial')?.setValue(rounded);
+        return;
       }
-    } else {
-      this.form.get('piezaPrecioMaterial')?.setValue('');
     }
+    this.form.get('piezaPrecioMaterial')?.setValue('');
   }
 
   agregarPieza() {
@@ -726,30 +682,7 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
   }
 
   formatAssetOption(asset: Asset | unknown): string {
-    if (!asset) return '';
-    let a: Asset | undefined;
-    if (typeof asset === 'object' && asset !== null) {
-      a = asset as Asset;
-    } else {
-      const id = Number(asset);
-      a = this.allAssets.find(x => x.id === id) 
-        || this.materialesFiltradosCirculantes.find(x => x.id === id) 
-        || this.activosCirculantes.find(x => x.id === id);
-    }
-    if (!a) return String(asset);
-
-    const detalles: string[] = [];
-    const desc = a.descripcion?.trim();
-    if (desc && !['n/a', 'null', '-', 'N/A'].includes(desc.toLowerCase())) {
-      detalles.push(desc);
-    }
-    if (a.cantidad !== undefined && a.cantidad !== null) {
-      const unidad = a.unidadMedida ? ` ${a.unidadMedida}` : '';
-      detalles.push(`Cant: ${a.cantidad}${unidad}`);
-    }
-    return detalles.length > 0 
-      ? `${a.nombre} (${detalles.join(' - ')})` 
-      : (a.nombre || '');
+    return formatAssetOption(asset, this.allAssets);
   }
 
   back() {
@@ -790,32 +723,13 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       this.form.get('margenGanancia')?.setValue(margenVal);
       
       const rawPiezas = dRec['piezasProducto'] ?? dRec['piezas_producto'] ?? dRec['piezas'] ?? data.piezasProducto ?? [];
-      const piezasArray = Array.isArray(rawPiezas) ? rawPiezas : [];
-      this.piezasPendientes = piezasArray.map(p => {
-        const pObj = p as unknown as Record<string, unknown>;
-        const maqId = Number(pObj['maquina'] ?? pObj['maquinaId'] ?? pObj['maquina_id']) || undefined;
-        let maqName = pObj['maquinaNombre'] as string | undefined;
-        if (maqId && !maqName) {
-          const found = this.maquinasList.find(m => m.id == maqId) || this.allAssets.find(a => a.id == maqId);
-          if (found) maqName = found.nombre;
-        }
-        const actId = Number(pObj['activo'] ?? pObj['assetId'] ?? pObj['activo_id']) || undefined;
-        let matName = pObj['materialDisplayName'] as string | undefined;
-        if (actId && !matName) {
-          const foundMat = this.activosMateriales.find(a => a.id == actId) 
-            || this.activosCirculantes.find(a => a.id == actId) 
-            || this.allAssets.find(a => a.id == actId);
-          if (foundMat) matName = foundMat.nombre;
-        }
-        return {
-          ...pObj,
-          fromDb: true,
-          maquinaId: maqId,
-          maquinaNombre: maqName,
-          assetId: actId,
-          materialDisplayName: matName
-        };
-      });
+      this.piezasPendientes = mapDbPiezasToView(
+        Array.isArray(rawPiezas) ? rawPiezas : [],
+        this.maquinasList,
+        this.activosMateriales,
+        this.activosCirculantes,
+        this.allAssets
+      );
       this.id = data.id;
 
       this.loadCostosAsociados(data.id);
@@ -835,7 +749,6 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
     this.submitted = true;
     this.form.markAllAsTouched();
 
-    // Auto-agregar pieza si el usuario llenó los campos superiores pero olvidó hacer clic en [+]
     const tipoPieza = this.form.get('piezaTipo')?.value;
     if (tipoPieza === 'Del Inventario' && this.form.get('piezaInventario')?.value) {
       this.agregarPieza();
@@ -869,58 +782,11 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
 
     this.loading = true;
 
-    const mappedPiezas = this.piezasPendientes.map((p, idx) => {
-      const pObj = p as Record<string, unknown>;
-      const actId = pObj['activo'] ?? pObj['assetId'] ?? pObj['activo_id'];
-      const maqId = pObj['maquina'] ?? pObj['maquinaId'] ?? pObj['maquina_id'];
-      const numAct = (actId !== null && actId !== undefined && actId !== '') ? Number(actId) : null;
-      const numMaq = (maqId !== null && maqId !== undefined && maqId !== '') ? Number(maqId) : null;
-      
-      let nom = String(pObj['nombre'] || '').trim();
-      if (!nom || nom === 'null' || nom === 'undefined') {
-        if (numAct) {
-          const foundMob = this.assetsMobiliario.find(a => a.id == numAct);
-          const foundCirc = this.activosCirculantes.find(a => a.id == numAct);
-          nom = (foundMob || foundCirc)?.nombre || `PIEZA ${idx + 1}`;
-        } else {
-          nom = `PIEZA ${idx + 1}`;
-        }
-      }
-
-      let tip = String(pObj['tipo'] || '').trim();
-      if (!tip || tip === 'null' || tip === 'undefined') {
-        tip = numAct && !numMaq ? 'Del Inventario' : 'Producción';
-      }
-
-      const gVal = Number(pObj['gramos']) || 0;
-      const mVal = Number(pObj['metros'] ?? pObj['metro']) || 0;
-      const hVal = Number(pObj['horas']) || 0;
-      const minVal = Number(pObj['minutos']) || 0;
-      const matPrice = Number(pObj['precioMaterial'] ?? pObj['precio_material']) || 0;
-      const cant = Number(pObj['cantidad']) || 1;
-
-      const piece: Record<string, unknown> = {
-        nombre: nom,
-        gramos: gVal,
-        metros: mVal,
-        horas: hVal,
-        minutos: minVal,
-        precioMaterial: matPrice,
-        precio_material: matPrice,
-        tipo: tip,
-        cantidad: cant,
-        activo: numAct,
-        activo_id: numAct,
-        maquina: numMaq,
-        maquina_id: numMaq
-      };
-
-      if (pObj['fromDb'] && pObj['id'] && Number(pObj['id']) > 0) {
-        piece['id'] = Number(pObj['id']);
-      }
-
-      return piece;
-    });
+    const mappedPiezas = mapPiezasToPayload(
+      this.piezasPendientes,
+      this.assetsMobiliario,
+      this.activosCirculantes
+    );
 
     const prepNum = Number(this.form.get('tiempoSetup')?.value) || 0;
     const postNum = Number(this.form.get('postProcesado')?.value) || 0;
@@ -958,10 +824,7 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       productPayload['periodo'] = this.form.get('periodo')?.value;
     }
 
-    console.log('>>> PAYLOAD DE PRODUCTO A ENVIAR AL SERVIDOR:', JSON.stringify(productPayload, null, 2));
-
     const product = productPayload as unknown as Product;
-
     let productReq$: Observable<Product>;
 
     if (this.id === 0) {

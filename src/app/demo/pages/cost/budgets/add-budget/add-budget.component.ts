@@ -27,6 +27,16 @@ import {
   mapProductToPieces,
   buildBudgetPayload
 } from '../../../../../core/utils/budget-mapper';
+import { CatalogConfigService } from '../../../../../core/services/cost/catalog-config.service';
+import { TecnologiaCatalogo } from '../../../../../core/models/Cost/catalog-config';
+import { esEquiposFabricacion, materialCompatibleConTecnologia } from '../../../../../core/constants/asset-categories';
+import {
+  calcularPrecioPorGramo,
+  formatAssetOption,
+  filtrarMaquinasPorTecnologia,
+  obtenerCategoriasMaterialPorTecnologia,
+  filtrarMaterialesPorCategoria
+} from '../../../../../core/utils/piece-builder.helper';
 import { ComponentCanDeactivate } from '../../../../../core/guards/pending-changes.guard';
 import { QuickClientModalComponent, QuickClientData } from '../../../../../theme/shared/components/quick-client-modal/quick-client-modal.component';
 
@@ -41,6 +51,7 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
   private router = inject(Router);
   private budgetService = inject(BudgetService);
   private configService = inject(ConfigService);
+  private catalogConfigService = inject(CatalogConfigService);
   private productService = inject(ProductService);
   private assetService = inject(AssetService);
   private fixeService = inject(FixeService);
@@ -62,7 +73,9 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
   tasaCIF = 0;
   tasaDepreciacionMaquina = 0;
 
+  allAssets: Asset[] = [];
   maquinasList: Asset[] = [];
+  maquinasFiltradas: Asset[] = [];
   activosCirculantes: Asset[] = [];
   activosMateriales: Asset[] = [];
   assetsMobiliario: Asset[] = [];
@@ -70,7 +83,8 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
   filteredItemsList: Product[] = [];
   clientesList: { id: number; nombre: string }[] = [];
   materialesPorCategoria: Asset[] = [];
-  materialesFiltrados: Asset[] = [];
+  materialesFiltradosCirculantes: Asset[] = [];
+  tecnologias: TecnologiaCatalogo[] = [];
 
   categoriasMaterial: string[] = [];
   subcategoriasMaterial: string[] = [];
@@ -111,7 +125,8 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
       products: this.productService.getProducts(),
       assets: this.assetService.getAssets(),
       fixes: this.fixeService.getFixes(),
-      clients: this.clientService.getClients()
+      clients: this.clientService.getClients(),
+      tecnologias: this.catalogConfigService.getTecnologias()
     }).subscribe(data => {
       if (data.clients?.length) {
         this.clientesList = data.clients.map(c => ({
@@ -119,6 +134,11 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
           nombre: `${c.nombre} ${c.apellido || ''}`.trim()
         }));
       }
+
+      this.tecnologias = data.tecnologias?.length ? data.tecnologias : [
+        { id: 1, codigo: 'FDM', nombre: 'Filamento' },
+        { id: 2, codigo: 'SLA', nombre: 'Resina' }
+      ];
 
       if (data.configs?.length) {
         const configObj = data.configs[0];
@@ -148,41 +168,31 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
       this.actualizarItemsFiltrados();
 
       // Clasificación de Activos
-      this.maquinasList = data.assets.filter(a => {
+      this.allAssets = data.assets || [];
+      this.maquinasList = (data.assets || []).filter((a: Asset) => {
         const t = (a.tipo || '').toLowerCase().trim();
-        const c = (a.categoria || '').toLowerCase().trim();
-        const s = (a.subCategoria || '').toLowerCase().trim();
-        return t === 'fijo' && c === 'equipo' && (s === 'fabricación' || s === 'fabricacion');
+        return t === 'fijo' && esEquiposFabricacion(a.categoria, a.subCategoria);
       });
 
-      if (this.maquinasList.length === 0) {
-        this.maquinasList = data.assets.filter(a =>
-          (a.tipo || '').toLowerCase().trim() === 'fijo' && (a.categoria || '').toLowerCase().trim() === 'equipo'
-        );
-      }
+      this.assetsMobiliario = (data.assets || []).filter((a: Asset) => (a.categoria || '').toLowerCase().trim() === 'mobiliario');
 
-      this.assetsMobiliario = data.assets.filter(a => (a.categoria || '').toLowerCase().trim() === 'mobiliario');
-
-      this.activosCirculantes = data.assets.filter(a => {
+      this.activosCirculantes = (data.assets || []).filter((a: Asset) => {
         const t = (a.tipo || '').toLowerCase().trim();
         const c = (a.categoria || '').toLowerCase().trim();
         return t === 'circulante' && (c === 'producción' || c === 'produccion');
       });
 
-      if (this.activosCirculantes.length === 0) {
-        this.activosCirculantes = data.assets.filter(a => (a.tipo || '').toLowerCase().trim() === 'circulante');
-      }
-
-      this.activosMateriales = data.assets.filter(a => {
+      this.activosMateriales = (data.assets || []).filter((a: Asset) => {
         const t = (a.tipo || '').toLowerCase().trim();
         const c = (a.categoria || '').toLowerCase().trim();
-        return t === 'material' || c === 'filamento' || c === 'resina' || c === 'filamentos' || c === 'resinas';
+        return t === 'material' || c === 'filamento' || c === 'resina' || c === 'filamentos' || c === 'resinas' || c.includes('filamento') || c.includes('resina');
       });
 
-      this.materialesFiltrados = [...this.activosMateriales];
       this.categoriasMaterial = [...new Set(
         this.activosMateriales.map(a => a.categoria).filter((c): c is string => !!c)
       )].sort();
+      this.materialesFiltradosCirculantes = [...this.activosMateriales];
+      this.aplicarFiltroTecnologiaPieza();
 
       this.actualizarCostoMaquina();
       this.actualizarMinMargenGanancia();
@@ -347,11 +357,17 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
         Swal.fire('Por Favor', 'Debe seleccionar un activo del inventario', 'info');
         return;
       }
-      const foundAsset = this.activosCirculantes.find(a => a.id == asset) || this.assetsMobiliario.find(a => a.id == asset);
+      const foundAsset = this.activosCirculantes.find(a => a.id == asset) || this.assetsMobiliario.find(a => a.id == asset) || this.allAssets.find(a => a.id == asset);
       nombre = foundAsset?.nombre || 'Activo';
       activoId = Number(asset);
       precioMaterial = Number(foundAsset?.costoInicial || foundAsset?.valorUnitario) || 0;
+      materialDisplayName = nombre;
     } else {
+      const piezaTec = this.form.get('piezaTecnologia')?.value;
+      if (!piezaTec) {
+        Swal.fire('Atención', 'Seleccione el tipo de tecnología de la pieza.', 'warning');
+        return;
+      }
       nombre = this.form.get('piezaFabricada')?.value;
       gramos = Number(this.form.get('piezaGramos')?.value) || 0;
       horas = Number(this.form.get('piezaHoras')?.value) || 0;
@@ -360,7 +376,8 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
       const maqVal = this.form.get('activoId')?.value;
       if (maqVal) {
         maquinaId = Number(maqVal);
-        maquinaNombre = this.maquinasList.find(m => m.id == maqVal)?.nombre;
+        maquinaNombre = this.maquinasFiltradas.find(m => m.id == maqVal)?.nombre
+          || this.maquinasList.find(m => m.id == maqVal)?.nombre;
       }
 
       const matId = this.form.get('piezaMaterialId')?.value;
@@ -371,7 +388,7 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
       activoId = Number(matId);
       precioMaterial = Number(this.form.get('piezaPrecioMaterial')?.value) || 0;
 
-      const assetCirc = this.activosCirculantes.find(a => a.id == matId);
+      const assetCirc = this.activosMateriales.find(a => a.id == matId) || this.activosCirculantes.find(a => a.id == matId);
       if (assetCirc) {
         materialDisplayName = assetCirc.nombre;
       }
@@ -410,8 +427,25 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
 
     this.piezaCounter++;
     this.piezas.push(newParts);
-    this.clearForm();
+    this.clearPieceForm();
     this.cdr.detectChanges();
+  }
+
+  clearPieceForm(): void {
+    this.form.patchValue({
+      piezaInventario: '',
+      piezaFabricada: '',
+      piezaCantidad: 1,
+      piezaGramos: '',
+      piezaHoras: '',
+      piezaMinutos: '',
+      piezaMaterialCategoria: '',
+      piezaMaterialSubcategoria: '',
+      piezaMaterialId: null,
+      piezaPrecioMaterial: '',
+      activoId: null
+    }, { emitEvent: false });
+    this.form.get('nombre')?.setValue(`PIEZA ${this.piezas.length + 1}`);
   }
 
   onProductSelect(item: { id: number } | number | null): void {
@@ -582,6 +616,7 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
       piezaTipo: ['Del Inventario'],
       piezaInventario: [''],
       piezaFabricada: [''],
+      piezaTecnologia: [''],
       piezaCantidad: [1],
       materialTipo: [''],
       subcategoria: [''],
@@ -631,106 +666,130 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
     this.form.get('piezaMaterialCategoria')?.valueChanges.pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(categoria => {
-      this.onCategoriaChange(categoria);
+      this.onPiezaCategoriaChange(categoria);
     });
 
     this.form.get('piezaMaterialSubcategoria')?.valueChanges.pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(subcategoria => {
-      this.onSubcategoriaChange(subcategoria);
+      this.onPiezaSubcategoriaChange(subcategoria);
     });
 
     this.form.get('piezaMaterialId')?.valueChanges.pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(materialId => {
-      this.onMaterialChange(materialId);
+      this.onPiezaMaterialChange(materialId);
+    });
+
+    this.form.get('piezaTecnologia')?.valueChanges.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(() => this.aplicarFiltroTecnologiaPieza());
+
+    this.form.get('piezaTipo')?.valueChanges.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(tipo => {
+      if (tipo === 'Fabricada' && !this.form.get('piezaTecnologia')?.value) {
+        this.form.get('piezaTecnologia')?.setValue('FDM');
+      }
     });
   }
 
   formatAssetOption(asset: Asset | unknown): string {
-    if (!asset) return '';
-    let a: Asset | undefined;
-    if (typeof asset === 'object' && asset !== null) {
-      a = asset as Asset;
-    } else {
-      const id = Number(asset);
-      a = this.activosMateriales.find(x => x.id === id) 
-        || this.materialesFiltrados.find(x => x.id === id) 
-        || this.activosCirculantes.find(x => x.id === id);
-    }
-    if (!a) return String(asset);
-
-    const detalles: string[] = [];
-    const desc = a.descripcion?.trim();
-    if (desc && !['n/a', 'null', '-', 'N/A'].includes(desc.toLowerCase())) {
-      detalles.push(desc);
-    }
-    if (a.cantidad !== undefined && a.cantidad !== null) {
-      const unidad = a.unidadMedida ? ` ${a.unidadMedida}` : '';
-      detalles.push(`Cant: ${a.cantidad}${unidad}`);
-    }
-    return detalles.length > 0 
-      ? `${a.nombre} (${detalles.join(' - ')})` 
-      : (a.nombre || '');
+    return formatAssetOption(asset, this.allAssets);
   }
 
-  filterMaterials(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const query = input.value.toLowerCase().trim();
-
-    if (!query) {
-      this.materialesFiltrados = [...this.materialesPorCategoria];
-      return;
-    }
-
-    this.materialesFiltrados = this.materialesPorCategoria.filter(m =>
-      m.nombre?.toLowerCase().includes(query)
-    );
-  }
-
-  onCategoriaChange(categoria: string): void {
+  onPiezaCategoriaChange(categoria: string) {
     if (categoria) {
-      this.materialesPorCategoria = this.activosMateriales.filter(a => a.categoria === categoria);
-      this.materialesFiltrados = [...this.materialesPorCategoria];
+      this.materialesPorCategoria = filtrarMaterialesPorCategoria(this.activosMateriales, categoria);
       this.subcategoriasMaterial = [...new Set(
-        this.materialesPorCategoria.map(a => a.subCategoria).filter(Boolean)
-      )] as string[];
-      this.form.get('piezaMaterialId')?.enable();
+        this.materialesPorCategoria.map(a => a.subCategoria || ((a as unknown as Record<string, string>)['subcategoria'])).filter((s): s is string => !!s)
+      )].sort();
+      this.materialesFiltradosCirculantes = [...this.materialesPorCategoria];
     } else {
       this.materialesPorCategoria = [];
-      this.materialesFiltrados = [];
       this.subcategoriasMaterial = [];
-      this.form.get('piezaMaterialId')?.disable();
+      this.materialesFiltradosCirculantes = [...this.activosMateriales];
     }
-    this.form.get('piezaMaterialId')?.setValue(null, { emitEvent: false });
-    this.form.get('piezaPrecioMaterial')?.setValue('');
-    this.form.get('piezaMaterialSubcategoria')?.setValue('', { emitEvent: false });
+    const subActual = this.form.get('piezaMaterialSubcategoria')?.value;
+    if (subActual && !this.subcategoriasMaterial.includes(subActual)) {
+      this.form.get('piezaMaterialSubcategoria')?.setValue('');
+    }
+    const matActual = this.form.get('piezaMaterialId')?.value;
+    if (matActual && !this.materialesFiltradosCirculantes.some(m => m.id == matActual)) {
+      this.form.get('piezaMaterialId')?.setValue(null);
+    }
   }
 
-  onSubcategoriaChange(subcategoria: string): void {
-    if (subcategoria) {
-      const subLower = subcategoria.toLowerCase().trim();
-      this.materialesFiltrados = this.materialesPorCategoria.filter(a => (a.subCategoria || '').toLowerCase().trim() === subLower);
+  aplicarFiltroTecnologiaPieza() {
+    const tec = (this.form.get('piezaTecnologia')?.value || '').toUpperCase().trim();
+    const maqCtrl = this.form.get('activoId');
+    if (tec) {
+      maqCtrl?.enable({ emitEvent: false });
     } else {
-      this.materialesFiltrados = [...this.materialesPorCategoria];
+      maqCtrl?.disable({ emitEvent: false });
     }
-    this.form.get('piezaMaterialId')?.setValue(null, { emitEvent: false });
-    this.form.get('piezaPrecioMaterial')?.setValue('');
+
+    this.maquinasFiltradas = filtrarMaquinasPorTecnologia(this.maquinasList, tec);
+    this.categoriasMaterial = obtenerCategoriasMaterialPorTecnologia(this.activosMateriales, tec);
+
+    if (tec === 'FDM') {
+      const curCat = (this.form.get('piezaMaterialCategoria')?.value || '').toLowerCase();
+      if (!curCat || curCat.includes('resina')) {
+        this.form.get('piezaMaterialCategoria')?.setValue('Filamento', { emitEvent: false });
+      }
+    } else if (tec === 'SLA') {
+      const curCat = (this.form.get('piezaMaterialCategoria')?.value || '').toLowerCase();
+      if (!curCat || curCat.includes('filam')) {
+        this.form.get('piezaMaterialCategoria')?.setValue('Resina', { emitEvent: false });
+      }
+    }
+
+    const catActual = this.form.get('piezaMaterialCategoria')?.value;
+    if (catActual) {
+      this.onPiezaCategoriaChange(catActual);
+    } else {
+      const materialesBase = this.materialesPorCategoria.length > 0
+        ? this.materialesPorCategoria
+        : this.activosMateriales;
+      this.materialesFiltradosCirculantes = tec
+        ? materialesBase.filter(m => materialCompatibleConTecnologia(m, tec))
+        : [...materialesBase];
+    }
+
+    const maqActual = this.form.get('activoId')?.value;
+    if (maqActual && !this.maquinasFiltradas.some(m => m.id == maqActual)) {
+      this.form.get('activoId')?.setValue(null);
+    }
+    const matActual = this.form.get('piezaMaterialId')?.value;
+    if (matActual && !this.materialesFiltradosCirculantes.some(m => m.id == matActual)) {
+      this.form.get('piezaMaterialId')?.setValue(null);
+    }
   }
 
-  onMaterialChange(materialId: number): void {
+  onPiezaSubcategoriaChange(subcategoria: string) {
+    if (subcategoria) {
+      this.materialesFiltradosCirculantes = this.materialesPorCategoria.filter(a => 
+        (a.subCategoria || ((a as unknown as Record<string, string>)['subcategoria'])) === subcategoria
+      );
+    } else {
+      this.materialesFiltradosCirculantes = this.materialesPorCategoria.length > 0 ? [...this.materialesPorCategoria] : [...this.activosMateriales];
+    }
+    const matActual = this.form.get('piezaMaterialId')?.value;
+    if (matActual && !this.materialesFiltradosCirculantes.some(m => m.id == matActual)) {
+      this.form.get('piezaMaterialId')?.setValue(null);
+    }
+  }
+
+  onPiezaMaterialChange(materialId: number): void {
     if (materialId) {
       const selectedAsset = this.activosMateriales.find(a => a.id == materialId) || this.activosCirculantes.find(a => a.id == materialId);
       if (selectedAsset) {
-        const valUnit = Number(selectedAsset.valorUnitario) || Number(selectedAsset.costoInicial) || 0;
-        const uMedida = (selectedAsset.unidadMedida || '').toLowerCase().trim();
-        const precioPorGramo = (uMedida === 'gramos' || uMedida === 'gramo') ? valUnit : (valUnit > 0 ? valUnit / 1000 : 0);
-        const rounded = Math.round(precioPorGramo * 10000) / 10000;
+        const rounded = calcularPrecioPorGramo(selectedAsset);
         this.form.get('piezaPrecioMaterial')?.setValue(rounded);
+        return;
       }
-    } else {
-      this.form.get('piezaPrecioMaterial')?.setValue('');
     }
+    this.form.get('piezaPrecioMaterial')?.setValue('');
   }
 
   onSubmit(): void {

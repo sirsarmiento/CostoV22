@@ -200,7 +200,7 @@ export class StockListComponent implements OnInit {
 
     piezasList.forEach(pz => {
       const rawPz = pz as unknown as Record<string, unknown>;
-      const actId = pz.activoId || pz.activo || (rawPz['activo_id'] as number) || (rawPz['assetId'] as number);
+      const actId = pz.activo || (rawPz['activo_id'] as number) || (rawPz['assetId'] as number);
       if (actId) {
         piezasActivosIds.push(Number(actId));
       }
@@ -276,7 +276,7 @@ export class StockListComponent implements OnInit {
 
     piezasList.forEach(pz => {
       const rawPz = pz as unknown as Record<string, unknown>;
-      const actId = Number(pz.activoId || pz.activo || rawPz['activo_id'] || rawPz['assetId'] || rawPz['materialId']);
+      const actId = Number(pz.activo || rawPz['activo_id'] || rawPz['assetId'] || rawPz['materialId']);
       
       const asset = this.allAssets.find(a => 
         (actId && a.id == actId) || 

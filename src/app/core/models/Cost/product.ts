@@ -10,10 +10,8 @@ export interface PiezaProducto {
     tipo?: string;
     cantidad?: number;
     activo?: number;
-    maquina?: number;
-    activoId?: number;
     activoNombre?: string;
-    maquinaId?: number;
+    maquina?: number;
     maquinaNombre?: string;
 }
 

@@ -345,9 +345,10 @@
                   bindValue="id" 
                   bindLabel="nombre" 
                   [placeholder]="!decoupleForm.get('producto')?.value ? 'Seleccione primero un producto...' : (productoSinPiezas || insumosFiltrados.length === 0 ? 'Sin piezas registradas' : 'Seleccione insumo o material...')" 
+                  notFoundText="Sin piezas registradas"
                   appendTo="body"
                   [searchable]="true"
-                  [clearable]="false">
+                  [clearable]="true">
                 </ng-select>
               </div>
               <div class="col-md-2">

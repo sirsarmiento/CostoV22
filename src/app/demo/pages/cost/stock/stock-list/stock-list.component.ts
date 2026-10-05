@@ -11,7 +11,15 @@ import { AssetService } from '../../../../../core/services/cost/asset.service';
 import { ProductService } from '../../../../../core/services/cost/product.service';
 import { Decouple, InventoryMovement, StockItem } from '../../../../../core/models/Cost/inventory';
 import { Asset } from '../../../../../core/models/Cost/asset';
-import { Product, PiezaProducto } from '../../../../../core/models/Cost/product';
+import { Product } from '../../../../../core/models/Cost/product';
+import {
+  calcularDesgloseDesacople,
+  filtrarInsumosParaProducto,
+  clasificarTipoMovimiento,
+  obtenerBadgeClassMovimiento,
+  formatFechaLocal,
+  LineaDesacopleCalculada
+} from '../../../../../core/utils/stock-decouple.helper';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -58,18 +66,19 @@ export class StockListComponent implements OnInit {
   // Formulario y estado de Desacople
   decoupleForm!: FormGroup;
   decoupleSubmitting = false;
+  decoupleSubmitted = false;
   tempTipoInsumo: 'Circulante' | 'Material' = 'Circulante';
   tempMaterialId: number | null = null;
   tempRecuperado: number | null = null;
   tempMerma: number | null = null;
-  materialesDesacople: { activoId: number; nombre: string; tipo?: string; recuperado: number; merma: number; unidadMedida?: string }[] = [];
+  materialesDesacople: LineaDesacopleCalculada[] = [];
   insumosFiltrados: Asset[] = [];
   productoSinPiezas = false;
   selectedProductPiecesCount = 0;
 
   // Filtros avanzados Movimientos
   movTipoFiltro = 'TODOS';
-  tiposMovimientoList = [
+  readonly tiposMovimientoList = [
     { value: 'TODOS', label: 'Todos los tipos' },
     { value: 'PRODUCCIÓN', label: 'Producción' },
     { value: 'VENTA', label: 'Venta' },
@@ -84,8 +93,8 @@ export class StockListComponent implements OnInit {
   fromDate: NgbDate | null = null;
   toDate: NgbDate | null = null;
   rangoFechasTexto = '';
-  minDate = new NgbDate(2026, 1, 1);
-  maxDate = new NgbDate(2036, 12, 31);
+  readonly minDate = new NgbDate(2026, 1, 1);
+  readonly maxDate = new NgbDate(2036, 12, 31);
 
   ngOnInit(): void {
     this.decoupleForm = this.fb.group({
@@ -153,12 +162,10 @@ export class StockListComponent implements OnInit {
         this.allAssets = assets || [];
         this.stock = stock || [];
         this.filteredStock = [...this.stock];
-        this.movements = (movements || []).map(m => {
-          return {
-            ...m,
-            tipo: this.getTipoMovimiento(m)
-          };
-        });
+        this.movements = (movements || []).map(m => ({
+          ...m,
+          tipo: clasificarTipoMovimiento(m)
+        }));
         this.filteredMovements = [...this.movements];
         this.circulantes = (assets || []).filter(a => {
           const t = (a.tipo || '').toLowerCase();
@@ -177,154 +184,29 @@ export class StockListComponent implements OnInit {
   }
 
   onTipoInsumoChange() {
+    this.tempMaterialId = null;
     this.actualizarInsumosFiltrados();
   }
 
   actualizarInsumosFiltrados() {
     const selectedProdId = this.decoupleForm.get('producto')?.value;
-    if (!selectedProdId) {
-      this.insumosFiltrados = [];
-      this.productoSinPiezas = false;
-      this.selectedProductPiecesCount = 0;
-      this.cdr.detectChanges();
-      return;
-    }
-
-    const currentProd = this.products.find(p => p.id == selectedProdId);
-    const piezasList = (currentProd?.piezasProducto || []) as PiezaProducto[];
-
-    this.selectedProductPiecesCount = piezasList.length;
-
-    const piezasActivosIds: number[] = [];
-    const piezasNombres: string[] = [];
-
-    piezasList.forEach(pz => {
-      const rawPz = pz as unknown as Record<string, unknown>;
-      const actId = pz.activo || (rawPz['activo_id'] as number) || (rawPz['assetId'] as number);
-      if (actId) {
-        piezasActivosIds.push(Number(actId));
-      }
-      if (pz.activoNombre) {
-        piezasNombres.push(pz.activoNombre.trim().toLowerCase());
-      }
-      if (pz.nombre) {
-        piezasNombres.push(pz.nombre.trim().toLowerCase());
-      }
-    });
-
-    if (piezasList.length === 0) {
-      this.productoSinPiezas = true;
-      this.selectedProductPiecesCount = 0;
-    }
-
-    const activosPorTipo = this.allAssets.filter(a => {
-      const tipo = (a.tipo || '').toLowerCase().trim();
-      const cat = (a.categoria || '').toLowerCase().trim();
-
-      if (this.tempTipoInsumo === 'Circulante') {
-        return tipo === 'circulante' && (cat === 'producción' || cat === 'produccion');
-      } else if (this.tempTipoInsumo === 'Material') {
-        return tipo === 'material';
-      }
-      return true;
-    });
-
-    if (piezasActivosIds.length > 0 || piezasNombres.length > 0) {
-      this.productoSinPiezas = false;
-      const matched = activosPorTipo.filter(a => {
-        const matchId = piezasActivosIds.includes(Number(a.id));
-        const matchNom = piezasNombres.includes((a.nombre || '').trim().toLowerCase());
-        return matchId || matchNom;
-      });
-
-      this.insumosFiltrados = matched;
-    } else {
-      this.productoSinPiezas = true;
-      this.insumosFiltrados = [];
-    }
-
+    const currentProd = selectedProdId ? this.products.find(p => p.id == selectedProdId) : null;
+    
+    const resultado = filtrarInsumosParaProducto(currentProd, this.tempTipoInsumo, this.allAssets);
+    this.insumosFiltrados = resultado.insumosFiltrados;
+    this.productoSinPiezas = resultado.productoSinPiezas;
+    this.selectedProductPiecesCount = resultado.selectedProductPiecesCount;
     this.cdr.detectChanges();
   }
 
   calcularDesgloseAutomatico() {
     const selectedProdId = this.decoupleForm.get('producto')?.value;
     const cantProd = Number(this.decoupleForm.get('cantidadProducto')?.value) || 1;
-    if (!selectedProdId || cantProd <= 0) {
-      this.materialesDesacople = [];
-      this.cdr.detectChanges();
-      return;
-    }
+    const currentProd = selectedProdId ? this.products.find(p => p.id == selectedProdId) : null;
 
-    const currentProd = this.products.find(p => p.id == selectedProdId);
-    if (!currentProd) return;
-
-    const piezasList = (currentProd.piezasProducto || []) as PiezaProducto[];
-    if (piezasList.length === 0) {
-      this.materialesDesacople = [];
-      this.cdr.detectChanges();
-      return;
-    }
-
-    const lineasCalculadas: {
-      activoId: number;
-      nombre: string;
-      tipo: string;
-      recuperado: number;
-      merma: number;
-      unidadMedida: string;
-    }[] = [];
-
-    piezasList.forEach(pz => {
-      const rawPz = pz as unknown as Record<string, unknown>;
-      const actId = Number(pz.activo || rawPz['activo_id'] || rawPz['assetId'] || rawPz['materialId']);
-      
-      const asset = this.allAssets.find(a => 
-        (actId && a.id == actId) || 
-        (a.nombre && pz.activoNombre && a.nombre.trim().toLowerCase() === pz.activoNombre.trim().toLowerCase()) || 
-        (a.nombre && pz.nombre && a.nombre.trim().toLowerCase() === pz.nombre.trim().toLowerCase())
-      );
-
-      const realActivoId = asset?.id || actId || 0;
-      const nombreActivo = asset?.nombre || pz.activoNombre || pz.nombre || `Insumo #${actId}`;
-      const tipoActivo = (asset?.tipo || pz.tipo || '').toLowerCase();
-      const catActivo = (asset?.categoria || '').toLowerCase();
-
-      // Es material de impresión 3D / resina / filamento (Merma Irrecuperable):
-      const esMaterial = tipoActivo === 'material' || catActivo === 'filamento' || catActivo === 'resina' || pz.tipo === 'Fabricada' || (pz.gramos && Number(pz.gramos) > 0);
-
-      if (esMaterial) {
-        const gramosUnitario = Number(pz.gramos) || Number(pz.cantidad) || 1;
-        const totalMerma = Math.round(gramosUnitario * cantProd * 100) / 100;
-        
-        lineasCalculadas.push({
-          activoId: realActivoId,
-          nombre: nombreActivo,
-          tipo: 'Material (Merma)',
-          recuperado: 0,
-          merma: totalMerma,
-          unidadMedida: asset?.unidadMedida || 'Gramos'
-        });
-      } else {
-        // Es insumo circulante / accesorio del inventario (Recuperable):
-        const cantUnitaria = Number(pz.cantidad) || 1;
-        const totalRecuperable = Math.round(cantUnitaria * cantProd * 100) / 100;
-        
-        lineasCalculadas.push({
-          activoId: realActivoId,
-          nombre: nombreActivo,
-          tipo: 'Del Inventario (Recuperable)',
-          recuperado: totalRecuperable,
-          merma: 0,
-          unidadMedida: asset?.unidadMedida || 'Unidades'
-        });
-      }
-    });
-
-    this.materialesDesacople = lineasCalculadas;
+    this.materialesDesacople = calcularDesgloseDesacople(currentProd, cantProd, this.allAssets);
     this.cdr.detectChanges();
   }
-
-  decoupleSubmitted = false;
 
   onSearch() {
     this.currentPage = 1;
@@ -333,96 +215,11 @@ export class StockListComponent implements OnInit {
   }
 
   getTipoMovimiento(m: InventoryMovement): string {
-    const rawM = m as unknown as Record<string, unknown>;
-    const rawTipo = String(m.tipo || rawM['tipo_movimiento'] || rawM['tipoMovimiento'] || rawM['type'] || '').toUpperCase().trim();
-    const obs = String(m.observacion || '').toLowerCase();
-    const isProductoTerminado = !!(m.producto || rawM['producto_id'] || rawM['productoId'] || (obs.includes('producto') && !obs.includes('insumo') && !obs.includes('material')));
-
-    // 1. Pérdida o Merma específica
-    if (obs.includes('pérdida') || obs.includes('perdida') || obs.includes('merma') || rawTipo === 'PERDIDA' || rawTipo === 'MERMA' || rawTipo === 'PÉRDIDA / MERMA') {
-      return 'PÉRDIDA / MERMA';
-    }
-
-    // 2. Recuperación de Insumos / Desacople de Insumos
-    if (obs.includes('material recuperado') || obs.includes('recuperad') || rawTipo === 'RECUPERADO' || rawTipo === 'RECUPERACION' || rawTipo === 'RECUPERACIÓN') {
-      return 'RECUPERACIÓN';
-    }
-
-    // 3. Desacople de Producto Terminado
-    if (obs.includes('desacople de producto') || (obs.includes('desacople') && isProductoTerminado) || rawTipo === 'DESACOPLE (PT)' || rawTipo === 'DESACOPLE') {
-      return isProductoTerminado ? 'DESACOPLE' : 'RECUPERACIÓN';
-    }
-
-    // 4. Desacoples generales
-    if (obs.includes('desacople') || obs.includes('desarm') || rawTipo === 'DESACOPLE' || rawTipo === 'DESACOPLED') {
-      return isProductoTerminado ? 'DESACOPLE' : 'RECUPERACIÓN';
-    }
-
-    // 5. Coincidencias exactas predefinidas
-    if (
-      rawTipo === 'PRODUCCIÓN' ||
-      rawTipo === 'PRODUCCION' ||
-      rawTipo === 'PRODUCCIÓN (PT)' ||
-      rawTipo === 'PRODUCCION (PT)'
-    ) {
-      return 'PRODUCCIÓN';
-    }
-
-    if (rawTipo === 'VENTA' || rawTipo === 'VENTA (PT)') {
-      return 'VENTA';
-    }
-
-    if (rawTipo === 'COMPRA INSUMO' || rawTipo === 'CONSUMO INSUMO' || rawTipo === 'RECUPERACIÓN' || rawTipo === 'PÉRDIDA / MERMA' || rawTipo === 'DESACOPLE') {
-      return rawTipo;
-    }
-
-    // 6. Producción de PT
-    if (rawTipo === 'ENTRADA_PT' || (isProductoTerminado && (obs.includes('ingreso a stock') || obs.includes('fabricaci') || obs.includes('producci')))) {
-      return 'PRODUCCIÓN';
-    }
-
-    // 7. Venta de PT
-    if (rawTipo === 'SALIDA_PT' || (isProductoTerminado && (obs.includes('salida de producto') || obs.includes('venta')))) {
-      return 'VENTA';
-    }
-
-    // 8. Compras de Insumo
-    if (obs.includes('compra') || obs.includes('proveedor')) {
-      return 'COMPRA INSUMO';
-    }
-
-    // 9. Consumo de Insumo
-    if (obs.includes('consumo')) {
-      return 'CONSUMO INSUMO';
-    }
-
-    // 10. Movimientos genéricos
-    if (rawTipo === 'SALIDA') {
-      return isProductoTerminado ? 'VENTA' : 'CONSUMO INSUMO';
-    }
-
-    if (rawTipo === 'ENTRADA' || rawTipo === 'INGRESO') {
-      return isProductoTerminado ? 'PRODUCCIÓN' : 'COMPRA INSUMO';
-    }
-
-    return rawTipo && rawTipo !== 'UNDEFINED' && rawTipo !== 'NULL' ? rawTipo : 'MOVIMIENTO';
+    return clasificarTipoMovimiento(m);
   }
 
   getTipoBadgeClass(tipo: string): string {
-    const t = (tipo || '').toUpperCase();
-    if (t.includes('PRODUCCIÓN') || t.includes('PRODUCCION') || t.includes('COMPRA') || t.includes('RECUPERAC') || t === 'ENTRADA' || t === 'INGRESO') {
-      return 'bg-light-success text-success';
-    }
-    if (t.includes('VENTA') || t.includes('CONSUMO') || t.includes('SALIDA')) {
-      return 'bg-light-danger text-danger';
-    }
-    if (t.includes('DESACOPLE')) {
-      return 'bg-light-warning text-warning';
-    }
-    if (t.includes('PÉRDIDA') || t.includes('PERDIDA') || t.includes('MERMA')) {
-      return 'bg-light-secondary text-secondary';
-    }
-    return 'bg-light-primary text-primary';
+    return obtenerBadgeClassMovimiento(tipo);
   }
 
   onMovFilterChange() {
@@ -528,20 +325,7 @@ export class StockListComponent implements OnInit {
   }
 
   formatFechaLocal(dateStr?: string): string {
-    if (!dateStr) return '-';
-    const normalized = dateStr.includes('T') ? dateStr : dateStr.replace(' ', 'T') + (dateStr.endsWith('Z') ? '' : 'Z');
-    const d = new Date(normalized);
-    if (isNaN(d.getTime())) {
-      return dateStr;
-    }
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    const year = d.getFullYear();
-    const month = pad(d.getMonth() + 1);
-    const day = pad(d.getDate());
-    const hours = pad(d.getHours());
-    const minutes = pad(d.getMinutes());
-    const seconds = pad(d.getSeconds());
-    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    return formatFechaLocal(dateStr);
   }
 
   applyFilter() {
@@ -557,7 +341,6 @@ export class StockListComponent implements OnInit {
 
     // Filtrado de Movimientos
     this.filteredMovements = this.movements.filter(m => {
-      // 1. Buscador de texto
       if (q) {
         const matchText = (m.tipo || '').toLowerCase().includes(q) ||
           (m.observacion || '').toLowerCase().includes(q) ||
@@ -566,16 +349,14 @@ export class StockListComponent implements OnInit {
         if (!matchText) return false;
       }
 
-      // 2. Filtro de Tipo
       if (this.movTipoFiltro && this.movTipoFiltro !== 'TODOS') {
         if ((m.tipo || '').toUpperCase() !== this.movTipoFiltro.toUpperCase()) {
           return false;
         }
       }
 
-      // 3. Filtro de Rango de Fechas (en hora local)
       if (m.createAt && (this.fromDate || this.toDate)) {
-        const localFormatted = this.formatFechaLocal(m.createAt);
+        const localFormatted = formatFechaLocal(m.createAt);
         const [yStr, mStr, dStr] = localFormatted.split(' ')[0].split('-');
         const movDate = new NgbDate(Number(yStr), Number(mStr), Number(dStr));
 

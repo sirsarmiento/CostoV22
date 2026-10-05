@@ -14,6 +14,12 @@ import {
   mapearCategoriaFijo,
   esEquiposFabricacion
 } from '../../../../../core/constants/asset-categories';
+import {
+  formatTitleCase,
+  extractAssetSuggestions,
+  getSubcategoriasMaterial,
+  buildAssetPayload
+} from '../../../../../core/utils/asset-form.helper';
 import { ComponentCanDeactivate } from '../../../../../core/guards/pending-changes.guard';
 import Swal from 'sweetalert2';
 
@@ -29,30 +35,29 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
   private assetService = inject(AssetService);
   private catalogConfigService = inject(CatalogConfigService);
   private destroyRef = inject(DestroyRef);
+
   form!: FormGroup;
-  id: number = 0;
+  id = 0;
   loading = false;
   submitted = false;
+  isSwitchingType = false;
 
   allCirculanteSubcategoriasMap = new Map<string, Set<string>>();
-
   categoriasFijoList: string[] = [...CATEGORIAS_ACTIVO_FIJO];
   tecnologias: TecnologiaCatalogo[] = [];
-
   categoriasCirculanteList: string[] = [];
   subcategoriasCirculanteList: string[] = [];
-
   categoriasMaterialList: string[] = Object.keys(CATALOGO_MATERIALES);
   subcategoriasMaterialList: string[] = [];
 
   constructor() {
     this.myFormValues();
   }
+
   get f() { return this.form.controls; }
 
   ngOnInit() {
     this.setValues();
-    this.setupLogicCalcularTotal();
     this.cargarListasSugerencias();
     this.catalogConfigService.getTecnologias().subscribe({
       next: (data) => {
@@ -73,43 +78,11 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
   cargarListasSugerencias() {
     this.assetService.getAssets().subscribe({
       next: (assets) => {
-        const catFijoMap = new Map<string, string>();
-        const catCircMap = new Map<string, string>();
-        const subCircMap = new Map<string, string>();
+        const sugerencias = extractAssetSuggestions(assets || []);
+        this.allCirculanteSubcategoriasMap = sugerencias.subcategoriasMap;
+        this.categoriasFijoList = sugerencias.categoriasFijo;
+        this.categoriasCirculanteList = sugerencias.categoriasCirculante;
 
-        this.allCirculanteSubcategoriasMap.clear();
-
-        assets.forEach(a => {
-          const rawRec = a as unknown as Record<string, unknown>;
-          const tipo = String(a.tipo || rawRec['tipo'] || '').toLowerCase().trim();
-          const cat = this.formatTitleCase(String(a.categoria || rawRec['Categoria'] || '').trim());
-          const sub = this.formatTitleCase(String(a.subCategoria || '').trim());
-
-          if (tipo === 'fijo' || (!tipo && a.vidaUtil && a.vidaUtil > 0)) {
-            if (cat) {
-              catFijoMap.set(cat.toLowerCase(), cat);
-            }
-          } else if (tipo === 'circulante' || (!tipo && (!a.vidaUtil || a.vidaUtil === 0))) {
-            if (cat) {
-              catCircMap.set(cat.toLowerCase(), cat);
-              if (!this.allCirculanteSubcategoriasMap.has(cat.toLowerCase())) {
-                this.allCirculanteSubcategoriasMap.set(cat.toLowerCase(), new Set<string>());
-              }
-              if (sub) {
-                this.allCirculanteSubcategoriasMap.get(cat.toLowerCase())!.add(sub);
-              }
-            }
-            if (sub) subCircMap.set(sub.toLowerCase(), sub);
-          }
-        });
-
-        this.categoriasFijoList = Array.from(new Set([
-          ...CATEGORIAS_ACTIVO_FIJO,
-          ...Array.from(catFijoMap.values()).map(c => mapearCategoriaFijo(c))
-        ].filter(Boolean)));
-        this.categoriasCirculanteList = Array.from(catCircMap.values()).sort();
-
-        // Filtrar subcategorías según la categoría seleccionada actualmente
         const tipoActual = this.form.get('tipo')?.value;
         const catActual = this.form.get('categoria')?.value;
         if (tipoActual === 'Circulante') {
@@ -136,7 +109,7 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
   }
 
   agregarCategoriaFijo = (term: string): string => {
-    const formatted = this.formatTitleCase(term);
+    const formatted = formatTitleCase(term);
     if (formatted && !this.categoriasFijoList.some(c => c.toLowerCase() === formatted.toLowerCase())) {
       this.categoriasFijoList = [...this.categoriasFijoList, formatted].sort();
     }
@@ -144,7 +117,7 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
   };
 
   agregarCategoriaCirculante = (term: string): string => {
-    const formatted = this.formatTitleCase(term);
+    const formatted = formatTitleCase(term);
     if (formatted && !this.categoriasCirculanteList.some(c => c.toLowerCase() === formatted.toLowerCase())) {
       this.categoriasCirculanteList = [...this.categoriasCirculanteList, formatted].sort();
     }
@@ -152,7 +125,7 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
   };
 
   agregarSubcategoriaCirculante = (term: string): string => {
-    const formatted = this.formatTitleCase(term);
+    const formatted = formatTitleCase(term);
     if (formatted && !this.subcategoriasCirculanteList.some(c => c.toLowerCase() === formatted.toLowerCase())) {
       this.subcategoriasCirculanteList = [...this.subcategoriasCirculanteList, formatted].sort();
       const catActual = this.form.get('categoria')?.value;
@@ -167,9 +140,7 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
   };
 
   formatTitleCase(text: string): string {
-    if (!text) return '';
-    const clean = text.trim().replace(/\s+/g, ' ');
-    return clean.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+    return formatTitleCase(text);
   }
 
   back() {
@@ -177,67 +148,53 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
   }
 
   setValues() {
-    // Recuperar datos desde el historial de navegación (Router State)
     const data: Asset | undefined = history.state.edit_asset;
-    
     if (data && data.id && data.id > 0) {
-        let dateVal = '';
-        if (data.fechaCompra) {
-          const rawDate = new Date(data.fechaCompra);
-          if (!isNaN(rawDate.getTime())) {
-            dateVal = rawDate.toISOString().substring(0, 10);
-          }
+      let dateVal = '';
+      if (data.fechaCompra) {
+        const rawDate = new Date(data.fechaCompra);
+        if (!isNaN(rawDate.getTime())) {
+          dateVal = rawDate.toISOString().substring(0, 10);
         }
-
-        // Limpiar tipo y categoría para que coincidan con los selectores estrictos
-        const rawTipo = (data.tipo || '').toString().trim();
-        const tipoLimpio = rawTipo ? (rawTipo.charAt(0).toUpperCase() + rawTipo.slice(1).toLowerCase()) : 'Fijo';
-        
-        const rawCat = (data.categoria || '').toString().trim();
-        const catLimpia = tipoLimpio === 'Fijo'
-          ? mapearCategoriaFijo(rawCat, data.subCategoria || '')
-          : rawCat;
-
-        this.form.patchValue({
-          nombre: data.nombre,
-          costoInicial: data.costoInicial || data.valorUnitario || 0,
-          valorResidual: data.valorResidual,
-          vidaUtil: data.vidaUtil,
-          fechaCompra: dateVal,
-          tipo: tipoLimpio,
-          cantidad: data.cantidad,
-          unidadMedida: data.unidadMedida,
-          presentacion: data.presentacion,
-          descripcion: data.descripcion,
-          ubicacion: data.ubicacion,
-          valorUnitario: data.valorUnitario || data.costoInicial || 0,
-          categoria: catLimpia,
-          subcategoria: tipoLimpio === 'Fijo' ? '' : (data.subCategoria || ((data as unknown as Record<string, unknown>)['subcategoria'] as string) || ((data as unknown as Record<string, unknown>)['Subcategoria'] as string) || ''),
-          tecnologia: data.tecnologia || '',
-          consumoMaquina: data.consumoMaquina,
-          tarifa: data.tarifa,
-          costoMantenimiento: data.costoMantenimiento
-        });
-
-        this.actualizarSubcategoriasMaterial(catLimpia);
-        this.id = data.id;
-        this.actualizarValidaciones(tipoLimpio);
       }
+
+      const rawTipo = (data.tipo || '').toString().trim();
+      const tipoLimpio = rawTipo ? (rawTipo.charAt(0).toUpperCase() + rawTipo.slice(1).toLowerCase()) : 'Fijo';
+      
+      const rawCat = (data.categoria || '').toString().trim();
+      const catLimpia = tipoLimpio === 'Fijo'
+        ? mapearCategoriaFijo(rawCat, data.subCategoria || '')
+        : rawCat;
+
+      this.form.patchValue({
+        nombre: data.nombre,
+        costoInicial: data.costoInicial || data.valorUnitario || 0,
+        valorResidual: data.valorResidual,
+        vidaUtil: data.vidaUtil,
+        fechaCompra: dateVal,
+        tipo: tipoLimpio,
+        cantidad: data.cantidad,
+        unidadMedida: data.unidadMedida,
+        presentacion: data.presentacion,
+        descripcion: data.descripcion,
+        ubicacion: data.ubicacion,
+        valorUnitario: data.valorUnitario || data.costoInicial || 0,
+        categoria: catLimpia,
+        subcategoria: tipoLimpio === 'Fijo' ? '' : (data.subCategoria || ((data as unknown as Record<string, unknown>)['subcategoria'] as string) || ((data as unknown as Record<string, unknown>)['Subcategoria'] as string) || ''),
+        tecnologia: data.tecnologia || '',
+        consumoMaquina: data.consumoMaquina,
+        tarifa: data.tarifa,
+        costoMantenimiento: data.costoMantenimiento
+      });
+
+      this.actualizarSubcategoriasMaterial(catLimpia);
+      this.id = data.id;
+      this.actualizarValidaciones(tipoLimpio);
+    }
   }
 
-  isSwitchingType = false;
-
   actualizarSubcategoriasMaterial(categoria: string) {
-    if (!categoria) {
-      this.subcategoriasMaterialList = [];
-      return;
-    }
-    const catKey = Object.keys(CATALOGO_MATERIALES).find(k => k.toLowerCase() === categoria.toLowerCase().trim());
-    if (catKey) {
-      this.subcategoriasMaterialList = CATALOGO_MATERIALES[catKey];
-    } else {
-      this.subcategoriasMaterialList = [];
-    }
+    this.subcategoriasMaterialList = getSubcategoriasMaterial(categoria);
   }
 
   myFormValues() {
@@ -308,7 +265,6 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
     const camposCirculantes = ['cantidad', 'costoInicial'];
     const camposEquipo = ['consumoMaquina', 'tarifa', 'costoMantenimiento'];
 
-    // Asegurarnos de que ubicación nunca sea requerida
     this.setValidators(['ubicacion'], []);
 
     if (tipo === 'Fijo') {
@@ -337,48 +293,6 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
     });
   }
 
-  private originalCostoInicial: number | null = null;
-
-  setupLogicCalcularTotal() {
-    // Inicializar bolsillo con el valor actual si es Fijo
-    if (this.form.get('tipo')?.value === 'Fijo') {
-      this.originalCostoInicial = this.form.get('costoInicial')?.value;
-    }
-
-    const calcular = () => {
-    };
-
-    this.form.get('cantidad')?.valueChanges.pipe(
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe(calcular);
-
-    this.form.get('valorUnitario')?.valueChanges.pipe(
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe(calcular);
-    
-    // El bolsillo siempre guarda lo último que se escribió manualmente en Fijo, ignorando falsos positivos
-    this.form.get('costoInicial')?.valueChanges.pipe(
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe(val => {
-      if (this.form.get('tipo')?.value === 'Fijo' && !this.isSwitchingType) {
-        this.originalCostoInicial = val;
-      }
-    });
-    
-    this.form.get('tipo')?.valueChanges.pipe(
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe((tipo) => {
-      if (tipo === 'Circulante') {
-        calcular();
-      } else if (tipo === 'Fijo') {
-        // Devolver el valor del bolsillo a la vista
-        if (this.originalCostoInicial !== null && this.originalCostoInicial !== undefined) {
-          this.form.get('costoInicial')?.setValue(this.originalCostoInicial, { emitEvent: false });
-        }
-      }
-    });
-  }
-
   onSubmit() {
     this.submitted = true;
     this.form.markAllAsTouched();
@@ -390,37 +304,7 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
     
     this.loading = true;
     const formValues = this.form.getRawValue();
-
-    const cleanCat = formValues.tipo === 'Fijo'
-      ? mapearCategoriaFijo(formValues.categoria)
-      : this.formatTitleCase(formValues.categoria);
-    const cleanSub = formValues.tipo === 'Fijo' ? '' : this.formatTitleCase(formValues.subcategoria);
-    const esFabricacion = formValues.tipo === 'Fijo' && esEquiposFabricacion(cleanCat);
-
-    const activo: Asset = {
-      id: this.id > 0 ? this.id : 0,
-      nombre: formValues.nombre,
-      tipo: formValues.tipo,
-      costoInicial: Number(formValues.costoInicial) || 0,
-      categoria: cleanCat,
-      subCategoria: cleanSub,
-      tecnologia: esFabricacion ? (formValues.tecnologia || '') : '',
-      
-      valorResidual: formValues.tipo === 'Fijo' ? (Number(formValues.valorResidual) || 0) : 0,
-      vidaUtil: formValues.tipo === 'Fijo' ? (Number(formValues.vidaUtil) || 0) : 0,
-      fechaCompra: formValues.tipo === 'Fijo' ? new Date(formValues.fechaCompra) : new Date(),
-
-      consumoMaquina: esFabricacion ? (Number(formValues.consumoMaquina) || 0) : 0,
-      tarifa: esFabricacion ? (Number(formValues.tarifa) || 0) : 0,
-      costoMantenimiento: esFabricacion ? (Number(formValues.costoMantenimiento) || 0) : 0,
-
-      cantidad: Number(formValues.cantidad) || 1,
-      valorUnitario: formValues.tipo === 'Circulante' ? (Number(formValues.costoInicial) || Number(formValues.valorUnitario) || 0) : 0,
-      unidadMedida: formValues.tipo === 'Circulante' ? formValues.unidadMedida : '',
-      presentacion: formValues.tipo === 'Circulante' ? formValues.presentacion : '',
-      descripcion: formValues.tipo === 'Circulante' ? formValues.descripcion : '',
-      ubicacion: formValues.tipo === 'Circulante' ? formValues.ubicacion : ''
-    };
+    const activo = buildAssetPayload(formValues, this.id);
 
     const request = this.id === 0 
       ? this.assetService.createAsset(activo)

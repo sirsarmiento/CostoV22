@@ -144,6 +144,14 @@
               </ng-select>
             </div>
             <div class="col-md-3">
+              <label class="form-label text-sm mb-1 fw-bold text-secondary">Horas de impresión</label>
+              <input type="number" class="form-control form-control-sm" formControlName="horasImpresion" min="0">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label text-sm mb-1 fw-bold text-secondary">Minutos de impresión</label>
+              <input type="number" class="form-control form-control-sm" formControlName="minutosImpresion" min="0" max="59">
+            </div>
+            <div class="col-md-3">
               <label class="form-label text-sm mb-1 fw-bold text-secondary">Prep/Slicing (min)</label>
               <input type="number" class="form-control form-control-sm" formControlName="tiempoSetup" min="0" [class.is-invalid]="submitted && f['tiempoSetup'].errors">
             </div>
@@ -257,65 +265,57 @@
                   </div>
 
                   <!-- Fila 2 para Pieza Fabricada -->
-                  <div [class.col-md-2]="f['piezaMaterialSubcategoria'].value || (f['piezaMaterialCategoria'].value && subcategoriasMaterial.length === 0)"
-                       [class.col-md-3]="f['piezaMaterialCategoria'].value && subcategoriasMaterial.length > 0 && !f['piezaMaterialSubcategoria'].value"
-                       [class.col-md-6]="!f['piezaMaterialCategoria'].value">
-                    <label class="form-label text-xs mb-1">Categoría Material</label>
-                    <ng-select formControlName="piezaMaterialCategoria" placeholder="Seleccione categoría..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
-                      @for (cat of categoriasMaterial; track cat) {
-                        <ng-option [value]="cat" [attr.title]="cat"><span [title]="cat">{{ cat }}</span></ng-option>
+                  <div class="col-md-3">
+                    <label class="form-label text-xs mb-1">Tipo de polímero</label>
+                    <ng-select formControlName="piezaPolimero" placeholder="PLA, ABS, PETG..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
+                      @for (pol of polimerosPieza; track pol) {
+                        <ng-option [value]="pol">{{ pol }}</ng-option>
                       }
                     </ng-select>
                   </div>
 
-                  @if (f['piezaMaterialCategoria'].value && subcategoriasMaterial.length > 0) {
-                    <div [class.col-md-2]="f['piezaMaterialSubcategoria'].value"
-                         [class.col-md-3]="!f['piezaMaterialSubcategoria'].value">
-                      <label class="form-label text-xs mb-1">Subcategoría</label>
-                      <ng-select formControlName="piezaMaterialSubcategoria" placeholder="Seleccione subcategoría..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
-                        @for (sub of subcategoriasMaterial; track sub) {
-                          <ng-option [value]="sub" [attr.title]="sub"><span [title]="sub">{{ sub }}</span></ng-option>
-                        }
-                      </ng-select>
-                    </div>
-                  }
+                  <div class="col-md-2">
+                    <label class="form-label text-xs mb-1">Marca</label>
+                    <ng-select formControlName="piezaMarca" placeholder="Marca..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
+                      @for (marca of marcasPieza; track marca) {
+                        <ng-option [value]="marca">{{ marca }}</ng-option>
+                      }
+                    </ng-select>
+                  </div>
 
-                  @if (f['piezaMaterialSubcategoria'].value || (f['piezaMaterialCategoria'].value && subcategoriasMaterial.length === 0)) {
-                    <div class="col-md-4">
-                      <label class="form-label text-xs mb-1">Material Insumo</label>
-                      <ng-select 
-                        formControlName="piezaMaterialId" 
-                        placeholder="Seleccione material..." 
-                        [clearable]="true" 
-                        [searchable]="true" 
-                        appendTo="body" 
-                        dropdownPosition="bottom" 
-                        class="ng-select-sm">
-                        <ng-template ng-label-tmp let-item="item">
-                          <span [title]="formatAssetOption(item)" class="text-truncate d-inline-block mw-100">{{ formatAssetOption(item) }}</span>
-                        </ng-template>
-                        @for (m of materialesFiltradosCirculantes; track m.id) {
-                          <ng-option [value]="m.id" [attr.title]="formatAssetOption(m)">
-                            <span [title]="formatAssetOption(m)">{{ formatAssetOption(m) }}</span>
-                          </ng-option>
-                        }
-                      </ng-select>
-                    </div>
-                  }
+                  <div class="col-md-2">
+                    <label class="form-label text-xs mb-1">Color</label>
+                    <ng-select formControlName="piezaColor" placeholder="Color..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
+                      @for (col of coloresPieza; track col) {
+                        <ng-option [value]="col">{{ col }}</ng-option>
+                      }
+                    </ng-select>
+                  </div>
+
+                  <div class="col-md-3">
+                    <label class="form-label text-xs mb-1">Material</label>
+                    <ng-select 
+                      formControlName="piezaMaterialId" 
+                      placeholder="Seleccione material..." 
+                      [clearable]="true" 
+                      [searchable]="true" 
+                      appendTo="body" 
+                      dropdownPosition="bottom" 
+                      class="ng-select-sm">
+                      <ng-template ng-label-tmp let-item="item">
+                        <span [title]="formatAssetOption(item)" class="text-truncate d-inline-block mw-100">{{ formatAssetOption(item) }}</span>
+                      </ng-template>
+                      @for (m of materialesFiltradosCirculantes; track m.id) {
+                        <ng-option [value]="m.id" [attr.title]="formatAssetOption(m)">
+                          <span [title]="formatAssetOption(m)">{{ formatAssetOption(m) }}</span>
+                        </ng-option>
+                      }
+                    </ng-select>
+                  </div>
 
                   <div class="col-md-1">
                     <label class="form-label text-xs mb-1">Gramos</label>
                     <input type="number" class="form-control form-control-sm px-1" formControlName="piezaGramos">
-                  </div>
-
-                  <div class="col-md-1">
-                    <label class="form-label text-xs mb-1">Horas</label>
-                    <input type="number" class="form-control form-control-sm px-1" formControlName="piezaHoras">
-                  </div>
-
-                  <div class="col-md-1">
-                    <label class="form-label text-xs mb-1">Minutos</label>
-                    <input type="number" class="form-control form-control-sm px-1" formControlName="piezaMinutos">
                   </div>
 
                   <div class="col-auto d-flex align-items-end">
@@ -341,7 +341,6 @@
                     <th>Material / Detalle</th>
                     <th>Costo Mat. / Insumo</th>
                     <th>Gramos</th>
-                    <th>Tiempo</th>
                     <th class="text-end">Acción</th>
                   </tr>
                 </thead>
@@ -365,7 +364,6 @@
                       <td>{{ getNombreMaterial(row) }}</td>
                       <td>{{ row.precioMaterial ? (row.precioMaterial | currency:'USD') : '-' }}</td>
                       <td>{{ row.gramos ? (row.gramos | number:'1.1-2') + ' g' : '-' }}</td>
-                      <td>{{ row.horas || 0 }}h : {{ row.minutos || 0 }}m</td>
                       <td class="text-end">
                         <button class="btn btn-sm btn-icon btn-light-danger" type="button" (click)="onDelete(row)" title="Eliminar Pieza">
                           <i class="ti ti-trash"></i>

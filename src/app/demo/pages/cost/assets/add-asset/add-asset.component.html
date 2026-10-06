@@ -164,34 +164,66 @@
                 <h6 class="mb-3 text-muted">Detalles del {{ f['tipo'].value === 'Material' ? 'Material (Circulante)' : 'Activo Circulante' }}</h6>
                 <div class="row g-3">
                   @if (f['tipo'].value === 'Material') {
-                    <div class="col-md-6">
-                      <label class="form-label">Categoría Material</label>
-                      <ng-select 
-                        formControlName="categoria" 
-                        placeholder="Seleccione categoría..."
+                    <div class="col-md-3">
+                      <label class="form-label">Tecnología *</label>
+                      <ng-select
+                        formControlName="categoria"
+                        placeholder="Filamento o resina"
                         [clearable]="false"
-                        [searchable]="true"
-                        [items]="categoriasMaterialList"
+                        [searchable]="false"
+                        appendTo="body"
                         [class.is-invalid]="submitted && f['categoria'].errors">
+                        @for (tec of tecnologias; track tec.id) {
+                          <ng-option [value]="tec.codigo">{{ tec.nombre }} ({{ tec.codigo }})</ng-option>
+                        }
                       </ng-select>
                       @if (submitted && f['categoria'].errors) {
-                        <div class="invalid-feedback d-block">Seleccione la categoría de material</div>
+                        <div class="invalid-feedback d-block">Seleccione la tecnología</div>
                       }
                     </div>
 
-                    <div class="col-md-6">
-                      <label class="form-label">Subcategoría Material</label>
-                      <ng-select 
-                        formControlName="subcategoria" 
-                        placeholder="Seleccione subcategoría..."
+                    <div class="col-md-3">
+                      <label class="form-label">Tipo de polímero *</label>
+                      <ng-select
+                        formControlName="subcategoria"
+                        placeholder="PLA, ABS, PETG..."
                         [clearable]="true"
                         [searchable]="true"
                         [items]="subcategoriasMaterialList"
+                        appendTo="body"
                         [class.is-invalid]="submitted && f['subcategoria'].errors">
                       </ng-select>
                       @if (submitted && f['subcategoria'].errors) {
-                        <div class="invalid-feedback d-block">Seleccione la subcategoría</div>
+                        <div class="invalid-feedback d-block">Seleccione el tipo de polímero</div>
                       }
+                    </div>
+
+                    <div class="col-md-3">
+                      <label class="form-label">Marca</label>
+                      <ng-select
+                        formControlName="marca"
+                        placeholder="Overtour, Politra..."
+                        [clearable]="true"
+                        [searchable]="true"
+                        [items]="marcas"
+                        bindLabel="nombre"
+                        bindValue="nombre"
+                        appendTo="body">
+                      </ng-select>
+                    </div>
+
+                    <div class="col-md-3">
+                      <label class="form-label">Color</label>
+                      <ng-select
+                        formControlName="color"
+                        placeholder="Negro, Blanco..."
+                        [clearable]="true"
+                        [searchable]="true"
+                        [items]="colores"
+                        bindLabel="nombre"
+                        bindValue="nombre"
+                        appendTo="body">
+                      </ng-select>
                     </div>
                   } @else {
                     <div class="col-md-6">

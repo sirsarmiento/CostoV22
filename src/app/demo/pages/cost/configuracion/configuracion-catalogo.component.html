@@ -18,10 +18,16 @@
             <button class="nav-link" [class.active]="activeTab === 'familias'" (click)="setActiveTab('familias')" type="button">Familias</button>
           </li>
           <li class="nav-item">
-            <button class="nav-link" [class.active]="activeTab === 'materiales'" (click)="setActiveTab('materiales')" type="button">Materiales</button>
+            <button class="nav-link" [class.active]="activeTab === 'materiales'" (click)="setActiveTab('materiales')" type="button">Polímeros</button>
           </li>
           <li class="nav-item">
             <button class="nav-link" [class.active]="activeTab === 'tecnologias'" (click)="setActiveTab('tecnologias')" type="button">Tecnologías</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" [class.active]="activeTab === 'marcas'" (click)="setActiveTab('marcas')" type="button">Marcas</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" [class.active]="activeTab === 'colores'" (click)="setActiveTab('colores')" type="button">Colores</button>
           </li>
         </ul>
 
@@ -34,10 +40,16 @@
               <button class="btn btn-primary" type="button" (click)="openAddFamily()">Agregar familia</button>
             }
             @if (activeTab === 'materiales') {
-              <button class="btn btn-primary" type="button" (click)="openAddMaterial()">Agregar material</button>
+              <button class="btn btn-primary" type="button" (click)="openAddMaterial()">Agregar polímero</button>
             }
             @if (activeTab === 'tecnologias') {
               <button class="btn btn-primary" type="button" (click)="openAddTecnologia()">Agregar tecnología</button>
+            }
+            @if (activeTab === 'marcas') {
+              <button class="btn btn-primary" type="button" (click)="openAddMarca()">Agregar marca</button>
+            }
+            @if (activeTab === 'colores') {
+              <button class="btn btn-primary" type="button" (click)="openAddColor()">Agregar color</button>
             }
           </div>
         </div>
@@ -126,7 +138,59 @@
                     </td>
                   </tr>
                 } @empty {
-                  <tr><td colspan="4" class="text-center text-muted py-4">No hay materiales.</td></tr>
+                  <tr><td colspan="4" class="text-center text-muted py-4">No hay polímeros.</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+
+        @if (activeTab === 'marcas') {
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Nombre</th>
+                  <th class="text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of marcasFiltradas; track row.id) {
+                  <tr>
+                    <td>{{ row.nombre }}</td>
+                    <td class="text-center">
+                      <button class="btn btn-icon btn-light-primary" type="button" (click)="onEditMarca(row)"><i class="ti ti-edit"></i></button>
+                      <button class="btn btn-icon btn-light-danger" type="button" (click)="onDeleteMarca(row)"><i class="ti ti-trash"></i></button>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="2" class="text-center text-muted py-4">No hay marcas. Cargue las que usan en planta, por ejemplo Overtour, Politra, Guimodor, Rebel o Creimatx.</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+
+        @if (activeTab === 'colores') {
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Nombre</th>
+                  <th class="text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of coloresFiltrados; track row.id) {
+                  <tr>
+                    <td>{{ row.nombre }}</td>
+                    <td class="text-center">
+                      <button class="btn btn-icon btn-light-primary" type="button" (click)="onEditColor(row)"><i class="ti ti-edit"></i></button>
+                      <button class="btn btn-icon btn-light-danger" type="button" (click)="onDeleteColor(row)"><i class="ti ti-trash"></i></button>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="2" class="text-center text-muted py-4">No hay colores.</td></tr>
                 }
               </tbody>
             </table>

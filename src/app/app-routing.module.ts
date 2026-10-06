@@ -79,6 +79,16 @@ const routes: Routes = [
         canDeactivate: [pendingChangesGuard]
       },
       {
+        path: 'configuracion/add-marca',
+        loadComponent: () => import('./demo/pages/cost/configuracion/add-catalogo-simple.component').then((c) => c.AddCatalogoSimpleComponent),
+        canDeactivate: [pendingChangesGuard]
+      },
+      {
+        path: 'configuracion/add-color',
+        loadComponent: () => import('./demo/pages/cost/configuracion/add-catalogo-simple.component').then((c) => c.AddCatalogoSimpleComponent),
+        canDeactivate: [pendingChangesGuard]
+      },
+      {
         path: 'codings',
         redirectTo: 'configuracion',
         pathMatch: 'full'

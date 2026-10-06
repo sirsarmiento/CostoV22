@@ -1,5 +1,6 @@
 import { Asset } from '../models/Cost/asset';
-import { tecnologiaDeActivo } from '../constants/asset-categories';
+import { MaterialCatalogo } from '../models/Cost/catalog-config';
+import { materialCompatibleConTecnologia, tecnologiaDeActivo } from '../constants/asset-categories';
 
 /*Calcula el precio unitario por gramo de un material de inventario.*/
 export function calcularPrecioPorGramo(asset?: Asset | null): number {
@@ -28,6 +29,15 @@ export function formatAssetOption(asset: Asset | unknown, fallbackAssets: Asset[
   const desc = a.descripcion?.trim();
   if (desc && !['n/a', 'null', '-', 'N/A'].includes(desc.toLowerCase())) {
     detalles.push(desc);
+  }
+  if (a.marca) {
+    detalles.push(a.marca);
+  }
+  if (a.color) {
+    detalles.push(a.color);
+  }
+  if (a.subCategoria) {
+    detalles.push(a.subCategoria);
   }
   if (a.cantidad !== undefined && a.cantidad !== null) {
     const unidad = a.unidadMedida ? ` ${a.unidadMedida}` : '';
@@ -120,8 +130,61 @@ export function filtrarMaterialesPorCategoria(activosMateriales: Asset[], catego
   const catLower = categoria.toLowerCase().trim();
   return activosMateriales.filter(a => {
     const c = (a.categoria || '').toLowerCase().trim();
+    const tec = tecnologiaDeActivo(a).toLowerCase();
     return c === catLower
-      || (catLower === 'filamento' && (c.includes('filam') || c === 'material'))
-      || (catLower === 'resina' && c.includes('resin'));
+      || tec === catLower
+      || (catLower === 'filamento' && (c.includes('filam') || c === 'material' || tec === 'fdm'))
+      || (catLower === 'resina' && (c.includes('resin') || tec === 'sla'))
+      || (catLower === 'fdm' && (tec === 'fdm' || c.includes('filam')))
+      || (catLower === 'sla' && (tec === 'sla' || c.includes('resin')));
   });
+}
+
+export function coincidenciaTexto(valor: string | undefined, esperado: string): boolean {
+  const a = (valor || '').toLowerCase().trim();
+  const b = (esperado || '').toLowerCase().trim();
+  if (!b) return true;
+  return a === b;
+}
+
+export function filtrarMaterialesImpresion(
+  activosMateriales: Asset[],
+  filtros: { tecnologia?: string; polimero?: string; marca?: string; color?: string }
+): Asset[] {
+  return activosMateriales.filter(a => {
+    if (filtros.tecnologia && !materialCompatibleConTecnologia(a, filtros.tecnologia)) {
+      return false;
+    }
+    if (filtros.polimero && !coincidenciaTexto(a.subCategoria, filtros.polimero)) {
+      return false;
+    }
+    if (filtros.marca && !coincidenciaTexto(a.marca, filtros.marca)) {
+      return false;
+    }
+    if (filtros.color && !coincidenciaTexto(a.color, filtros.color)) {
+      return false;
+    }
+    return true;
+  });
+}
+
+export function listarPolimeros(
+  materialesCatalogo: MaterialCatalogo[],
+  activosMateriales: Asset[],
+  tecnologia: string
+): string[] {
+  const tec = (tecnologia || '').toUpperCase().trim();
+  const delCatalogo = (materialesCatalogo || [])
+    .filter(m => !tec || (m.tecnologias || []).some(t => (t.codigo || '').toUpperCase() === tec))
+    .map(m => m.codigo || m.nombre)
+    .filter(Boolean);
+  const deActivos = filtrarMaterialesImpresion(activosMateriales, { tecnologia: tec })
+    .map(a => a.subCategoria)
+    .filter((s): s is string => !!s);
+  return [...new Set([...delCatalogo, ...deActivos])].sort();
+}
+
+export function listarValoresUnicos(activos: Asset[], campo: 'marca' | 'color', extra: string[] = []): string[] {
+  const deActivos = activos.map(a => a[campo]).filter((s): s is string => !!s);
+  return [...new Set([...extra, ...deActivos])].sort();
 }

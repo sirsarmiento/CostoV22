@@ -11,6 +11,8 @@ export class Budget { // Presupuesto
     costoMaquina?: number;
     tasaFalloGlobal?: number;
     tiempoSetup?: number;
+    horasImpresion?: number;
+    minutosImpresion?: number;
     margenGanancia?: number;
     tiempoPostProcesado?: number;
     cantidadGlobal?: number;

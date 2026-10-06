@@ -11,3 +11,8 @@ export interface MaterialCatalogo {
   nombre: string;
   tecnologias?: TecnologiaCatalogo[];
 }
+
+export interface CatalogoSimple {
+  id?: number;
+  nombre: string;
+}

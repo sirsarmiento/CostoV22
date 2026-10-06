@@ -76,10 +76,10 @@ export function materialCompatibleConTecnologia(
   }
   const c = (asset.categoria || '').toLowerCase().trim();
   if (t === 'FDM') {
-    return c === 'filamento' || c === 'filamentos' || c.includes('filam');
+    return c === 'fdm' || c === 'filamento' || c === 'filamentos' || c.includes('filam');
   }
   if (t === 'SLA') {
-    return c === 'resina' || c === 'resinas' || c.includes('resin');
+    return c === 'sla' || c === 'resina' || c === 'resinas' || c.includes('resin');
   }
   return true;
 }

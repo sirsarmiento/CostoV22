@@ -311,6 +311,14 @@
           @if (activeTab === 'piezas') {
             <div class="row g-3">
               <div class="col-md-3">
+                <label class="form-label">Horas de impresión</label>
+                <input type="number" min="0" class="form-control" formControlName="horasImpresion" placeholder="0">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">Minutos de impresión</label>
+                <input type="number" min="0" max="59" class="form-control" formControlName="minutosImpresion" placeholder="0">
+              </div>
+              <div class="col-md-3">
                 <label class="form-label">Prep. Slicing (min)</label>
                 <input type="number" class="form-control" formControlName="tiempoSetup" placeholder="0">
               </div>
@@ -427,64 +435,56 @@
                 </div>
 
                 <!-- Fila 2 para Pieza Fabricada -->
-                <div [class.col-md-2]="f['piezaMaterialSubcategoria'].value || (f['piezaMaterialCategoria'].value && subcategoriasMaterial.length === 0)"
-                     [class.col-md-3]="f['piezaMaterialCategoria'].value && subcategoriasMaterial.length > 0 && !f['piezaMaterialSubcategoria'].value"
-                     [class.col-md-6]="!f['piezaMaterialCategoria'].value">
-                  <label class="form-label">Categoría Material</label>
-                  <ng-select formControlName="piezaMaterialCategoria" placeholder="Seleccione categoría..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom">
-                    @for (cat of categoriasMaterial; track cat) {
-                      <ng-option [value]="cat" [attr.title]="cat"><span [title]="cat">{{ cat }}</span></ng-option>
+                <div class="col-md-3">
+                  <label class="form-label">Tipo de polímero</label>
+                  <ng-select formControlName="piezaPolimero" placeholder="PLA, ABS, PETG..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom">
+                    @for (pol of polimerosPieza; track pol) {
+                      <ng-option [value]="pol">{{ pol }}</ng-option>
                     }
                   </ng-select>
                 </div>
 
-                @if (f['piezaMaterialCategoria'].value && subcategoriasMaterial.length > 0) {
-                  <div [class.col-md-2]="f['piezaMaterialSubcategoria'].value"
-                       [class.col-md-3]="!f['piezaMaterialSubcategoria'].value">
-                    <label class="form-label">Subcategoría</label>
-                    <ng-select formControlName="piezaMaterialSubcategoria" placeholder="Seleccione subcategoría..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom">
-                      @for (sub of subcategoriasMaterial; track sub) {
-                        <ng-option [value]="sub" [attr.title]="sub"><span [title]="sub">{{ sub }}</span></ng-option>
-                      }
-                    </ng-select>
-                  </div>
-                }
+                <div class="col-md-2">
+                  <label class="form-label">Marca</label>
+                  <ng-select formControlName="piezaMarca" placeholder="Marca..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom">
+                    @for (marca of marcasPieza; track marca) {
+                      <ng-option [value]="marca">{{ marca }}</ng-option>
+                    }
+                  </ng-select>
+                </div>
 
-                @if (f['piezaMaterialSubcategoria'].value || (f['piezaMaterialCategoria'].value && subcategoriasMaterial.length === 0)) {
-                  <div class="col-md-4">
-                    <label class="form-label">Material Insumo</label>
-                    <ng-select 
-                      formControlName="piezaMaterialId" 
-                      placeholder="Seleccione material..." 
-                      [clearable]="true" 
-                      [searchable]="true" 
-                      appendTo="body" 
-                      dropdownPosition="bottom">
-                      <ng-template ng-label-tmp let-item="item">
-                        <span [title]="formatAssetOption(item)" class="text-truncate d-inline-block mw-100">{{ formatAssetOption(item) }}</span>
-                      </ng-template>
-                      @for (m of materialesFiltradosCirculantes; track m.id) {
-                        <ng-option [value]="m.id" [attr.title]="formatAssetOption(m)">
-                          <span [title]="formatAssetOption(m)">{{ formatAssetOption(m) }}</span>
-                        </ng-option>
-                      }
-                    </ng-select>
-                  </div>
-                }
+                <div class="col-md-2">
+                  <label class="form-label">Color</label>
+                  <ng-select formControlName="piezaColor" placeholder="Color..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom">
+                    @for (col of coloresPieza; track col) {
+                      <ng-option [value]="col">{{ col }}</ng-option>
+                    }
+                  </ng-select>
+                </div>
+
+                <div class="col-md-3">
+                  <label class="form-label">Material</label>
+                  <ng-select 
+                    formControlName="piezaMaterialId" 
+                    placeholder="Seleccione material..." 
+                    [clearable]="true" 
+                    [searchable]="true" 
+                    appendTo="body" 
+                    dropdownPosition="bottom">
+                    <ng-template ng-label-tmp let-item="item">
+                      <span [title]="formatAssetOption(item)" class="text-truncate d-inline-block mw-100">{{ formatAssetOption(item) }}</span>
+                    </ng-template>
+                    @for (m of materialesFiltradosCirculantes; track m.id) {
+                      <ng-option [value]="m.id" [attr.title]="formatAssetOption(m)">
+                        <span [title]="formatAssetOption(m)">{{ formatAssetOption(m) }}</span>
+                      </ng-option>
+                    }
+                  </ng-select>
+                </div>
 
                 <div class="col-md-1">
                   <label class="form-label">Gramos</label>
                   <input type="number" class="form-control px-2" formControlName="piezaGramos" placeholder="0">
-                </div>
-
-                <div class="col-md-1">
-                  <label class="form-label">Horas</label>
-                  <input type="number" class="form-control px-2" formControlName="piezaHoras" placeholder="0">
-                </div>
-
-                <div class="col-md-1">
-                  <label class="form-label">Minutos</label>
-                  <input type="number" class="form-control px-2" formControlName="piezaMinutos" placeholder="0">
                 </div>
 
                 <div class="col-auto d-flex align-items-end">
@@ -506,7 +506,6 @@
                         <th>Máquina</th>
                         <th>Material / Detalle</th>
                         <th>Gramos</th>
-                        <th>Tiempo (Hs : Min)</th>
                         <th class="text-center" style="width: 100px;">Acciones</th>
                       </tr>
                     </thead>
@@ -529,7 +528,6 @@
                           </td>
                           <td>{{ getNombreMaterial(p) }}</td>
                           <td>{{ p['gramos'] ? p['gramos'] + ' g' : '-' }}</td>
-                          <td>{{ p['horas'] || 0 }}h : {{ p['minutos'] || 0 }}m</td>
                           <td class="text-center">
                             <button type="button" class="btn btn-sm btn-icon btn-light-danger" (click)="removerPieza($index)" title="Eliminar Pieza">
                               <i class="ti ti-trash fs-5"></i>

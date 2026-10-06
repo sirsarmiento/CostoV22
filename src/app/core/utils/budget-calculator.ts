@@ -131,6 +131,13 @@ export function calculateBudgetTotals(
     }
   });
 
+  const headerHoras = Number((budget as Budget).horasImpresion) || 0;
+  const headerMinutos = Number((budget as Budget).minutosImpresion) || 0;
+  const tiempoCabecera = headerHoras + (headerMinutos / 60);
+  if (tiempoCabecera > 0) {
+    totalTiempoHorasPiezas = tiempoCabecera;
+  }
+
   const tasaFalloGlobal = budget.tasaFalloGlobal || 0;
   const totalCostoMaterial = rawMaterialCost * (1 + (tasaFalloGlobal / 100));
 

@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { Family } from '../../../../core/models/Cost/family';
-import { MaterialCatalogo, TecnologiaCatalogo } from '../../../../core/models/Cost/catalog-config';
+import { MaterialCatalogo, TecnologiaCatalogo, CatalogoSimple } from '../../../../core/models/Cost/catalog-config';
 import { CodingService } from '../../../../core/services/cost/coding.service';
 import { CatalogConfigService } from '../../../../core/services/cost/catalog-config.service';
 import Swal from 'sweetalert2';
@@ -21,18 +21,20 @@ export class ConfiguracionCatalogoComponent implements OnInit {
   private cdr = inject(ChangeDetectorRef);
 
   loading = true;
-  activeTab: 'familias' | 'tecnologias' | 'materiales' = 'familias';
+  activeTab: 'familias' | 'tecnologias' | 'materiales' | 'marcas' | 'colores' = 'familias';
 
   familias: Family[] = [];
   tecnologias: TecnologiaCatalogo[] = [];
   materiales: MaterialCatalogo[] = [];
+  marcas: CatalogoSimple[] = [];
+  colores: CatalogoSimple[] = [];
   search = '';
 
   ngOnInit(): void {
     this.cargar();
   }
 
-  setActiveTab(tab: 'familias' | 'tecnologias' | 'materiales') {
+  setActiveTab(tab: 'familias' | 'tecnologias' | 'materiales' | 'marcas' | 'colores') {
     this.activeTab = tab;
     this.search = '';
   }
@@ -56,6 +58,18 @@ export class ConfiguracionCatalogoComponent implements OnInit {
     this.catalogConfigService.getMateriales().subscribe({
       next: (data) => {
         this.materiales = data || [];
+        this.cdr.detectChanges();
+      }
+    });
+    this.catalogConfigService.getMarcas().subscribe({
+      next: (data) => {
+        this.marcas = data || [];
+        this.cdr.detectChanges();
+      }
+    });
+    this.catalogConfigService.getColores().subscribe({
+      next: (data) => {
+        this.colores = data || [];
         this.cdr.detectChanges();
       }
     });
@@ -83,6 +97,18 @@ export class ConfiguracionCatalogoComponent implements OnInit {
     return this.materiales.filter(m =>
       (m.codigo || '').toLowerCase().includes(q) || (m.nombre || '').toLowerCase().includes(q)
     );
+  }
+
+  get marcasFiltradas(): CatalogoSimple[] {
+    const q = this.search.toLowerCase().trim();
+    if (!q) return this.marcas;
+    return this.marcas.filter(m => (m.nombre || '').toLowerCase().includes(q));
+  }
+
+  get coloresFiltrados(): CatalogoSimple[] {
+    const q = this.search.toLowerCase().trim();
+    if (!q) return this.colores;
+    return this.colores.filter(c => (c.nombre || '').toLowerCase().includes(q));
   }
 
   openAddFamily() {
@@ -215,6 +241,54 @@ export class ConfiguracionCatalogoComponent implements OnInit {
     }).then(result => {
       if (result.isConfirmed) {
         this.catalogConfigService.deleteMaterial(row.id!).subscribe({
+          next: () => this.cargar()
+        });
+      }
+    });
+  }
+
+  openAddMarca() {
+    this.router.navigate(['/configuracion/add-marca']);
+  }
+
+  onEditMarca(row: CatalogoSimple) {
+    this.router.navigate(['/configuracion/add-marca'], { state: { edit_marca: row } });
+  }
+
+  onDeleteMarca(row: CatalogoSimple) {
+    if (!row.id) return;
+    Swal.fire({
+      title: `¿Eliminar la marca ${row.nombre}?`,
+      showDenyButton: true,
+      confirmButtonText: 'Eliminar',
+      denyButtonText: 'Cancelar'
+    }).then(result => {
+      if (result.isConfirmed) {
+        this.catalogConfigService.deleteMarca(row.id!).subscribe({
+          next: () => this.cargar()
+        });
+      }
+    });
+  }
+
+  openAddColor() {
+    this.router.navigate(['/configuracion/add-color']);
+  }
+
+  onEditColor(row: CatalogoSimple) {
+    this.router.navigate(['/configuracion/add-color'], { state: { edit_color: row } });
+  }
+
+  onDeleteColor(row: CatalogoSimple) {
+    if (!row.id) return;
+    Swal.fire({
+      title: `¿Eliminar el color ${row.nombre}?`,
+      showDenyButton: true,
+      confirmButtonText: 'Eliminar',
+      denyButtonText: 'Cancelar'
+    }).then(result => {
+      if (result.isConfirmed) {
+        this.catalogConfigService.deleteColor(row.id!).subscribe({
           next: () => this.cargar()
         });
       }

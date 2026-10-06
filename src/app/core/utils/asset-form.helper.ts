@@ -59,7 +59,11 @@ export function extractAssetSuggestions(assets: Asset[]): {
 /* Obtiene las subcategorías de un material según el catálogo. */
 export function getSubcategoriasMaterial(categoria: string): string[] {
   if (!categoria) return [];
-  const catKey = Object.keys(CATALOGO_MATERIALES).find(k => k.toLowerCase() === categoria.toLowerCase().trim());
+  const raw = categoria.toLowerCase().trim();
+  const mapped = raw === 'fdm' || raw.includes('filam')
+    ? 'Filamento'
+    : (raw === 'sla' || raw.includes('resin') ? 'Resina' : categoria);
+  const catKey = Object.keys(CATALOGO_MATERIALES).find(k => k.toLowerCase() === mapped.toLowerCase().trim());
   return catKey ? CATALOGO_MATERIALES[catKey] : [];
 }
 
@@ -67,11 +71,19 @@ export function getSubcategoriasMaterial(categoria: string): string[] {
 export function buildAssetPayload(formValues: Record<string, unknown>, id: number): Asset {
   const tipo = String(formValues['tipo'] || 'Fijo');
   const rawCat = String(formValues['categoria'] || '');
+  const esMaterial = tipo === 'Material';
   const cleanCat = tipo === 'Fijo'
     ? mapearCategoriaFijo(rawCat)
-    : formatTitleCase(rawCat);
-  const cleanSub = tipo === 'Fijo' ? '' : formatTitleCase(String(formValues['subcategoria'] || ''));
+    : esMaterial
+      ? String(rawCat).toUpperCase().trim()
+      : formatTitleCase(rawCat);
+  const cleanSub = tipo === 'Fijo' ? '' : (esMaterial
+    ? String(formValues['subcategoria'] || '').trim()
+    : formatTitleCase(String(formValues['subcategoria'] || '')));
   const esFabricacion = tipo === 'Fijo' && esEquiposFabricacion(cleanCat);
+  const tecnologia = esFabricacion
+    ? String(formValues['tecnologia'] || '')
+    : (esMaterial ? cleanCat : '');
 
   return {
     id: id > 0 ? id : 0,
@@ -80,7 +92,9 @@ export function buildAssetPayload(formValues: Record<string, unknown>, id: numbe
     costoInicial: Number(formValues['costoInicial']) || 0,
     categoria: cleanCat,
     subCategoria: cleanSub,
-    tecnologia: esFabricacion ? String(formValues['tecnologia'] || '') : '',
+    tecnologia: tecnologia,
+    marca: esMaterial ? String(formValues['marca'] || '').trim() : '',
+    color: esMaterial ? String(formValues['color'] || '').trim() : '',
     
     valorResidual: tipo === 'Fijo' ? (Number(formValues['valorResidual']) || 0) : 0,
     vidaUtil: tipo === 'Fijo' ? (Number(formValues['vidaUtil']) || 0) : 0,
@@ -91,10 +105,10 @@ export function buildAssetPayload(formValues: Record<string, unknown>, id: numbe
     costoMantenimiento: esFabricacion ? (Number(formValues['costoMantenimiento']) || 0) : 0,
 
     cantidad: Number(formValues['cantidad']) || 1,
-    valorUnitario: tipo === 'Circulante' ? (Number(formValues['costoInicial']) || Number(formValues['valorUnitario']) || 0) : 0,
-    unidadMedida: tipo === 'Circulante' ? String(formValues['unidadMedida'] || '') : '',
-    presentacion: tipo === 'Circulante' ? String(formValues['presentacion'] || '') : '',
-    descripcion: tipo === 'Circulante' ? String(formValues['descripcion'] || '') : '',
-    ubicacion: tipo === 'Circulante' ? String(formValues['ubicacion'] || '') : ''
+    valorUnitario: (tipo === 'Circulante' || tipo === 'Material') ? (Number(formValues['costoInicial']) || Number(formValues['valorUnitario']) || 0) : 0,
+    unidadMedida: (tipo === 'Circulante' || tipo === 'Material') ? String(formValues['unidadMedida'] || '') : '',
+    presentacion: (tipo === 'Circulante' || tipo === 'Material') ? String(formValues['presentacion'] || '') : '',
+    descripcion: (tipo === 'Circulante' || tipo === 'Material') ? String(formValues['descripcion'] || '') : '',
+    ubicacion: (tipo === 'Circulante' || tipo === 'Material') ? String(formValues['ubicacion'] || '') : ''
   };
 }

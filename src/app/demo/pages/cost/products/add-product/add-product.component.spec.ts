@@ -37,16 +37,15 @@ describe('AddProductComponent', () => {
   it('should allow adding manufactured parts to piezasPendientes array', () => {
     component.form.patchValue({
       piezaTipo: 'Fabricada',
+      piezaTecnologia: 'FDM',
       piezaFabricada: 'Tapa Frontal',
       piezaCantidad: 2,
       piezaGramos: 150,
-      piezaHoras: 2,
-      piezaMinutos: 0,
       piezaMaterialId: 10
     });
 
-    component.activosCirculantes = [
-      { id: 10, nombre: 'Filamento ABS', tipo: 'Circulante' } as unknown as Asset
+    component.activosMateriales = [
+      { id: 10, nombre: 'Filamento ABS', tipo: 'Material' } as unknown as Asset
     ];
 
     component.agregarPieza();

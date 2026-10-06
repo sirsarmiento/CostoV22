@@ -12,17 +12,18 @@ import { CodingService } from '../../../../../core/services/cost/coding.service'
 import { CatalogConfigService } from '../../../../../core/services/cost/catalog-config.service';
 import { Product, PiezaProducto } from '../../../../../core/models/Cost/product';
 import { Family, Subfamily } from '../../../../../core/models/Cost/family';
-import { MaterialCatalogo, TecnologiaCatalogo } from '../../../../../core/models/Cost/catalog-config';
+import { MaterialCatalogo, TecnologiaCatalogo, CatalogoSimple } from '../../../../../core/models/Cost/catalog-config';
 import { previsualizarCodigo } from '../../../../../core/utils/catalog-sku';
-import { esEquiposFabricacion, materialCompatibleConTecnologia } from '../../../../../core/constants/asset-categories';
+import { esEquiposFabricacion } from '../../../../../core/constants/asset-categories';
 import {
   calcularPrecioPorGramo,
   formatAssetOption,
   resolverNombreMaquina,
   resolverNombreMaterial,
   filtrarMaquinasPorTecnologia,
-  obtenerCategoriasMaterialPorTecnologia,
-  filtrarMaterialesPorCategoria
+  filtrarMaterialesImpresion,
+  listarPolimeros,
+  listarValoresUnicos
 } from '../../../../../core/utils/piece-builder.helper';
 import {
   extractCorrelativosUsadosDeFamilia,
@@ -66,6 +67,8 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
   tecnologias: TecnologiaCatalogo[] = [];
   materiales: MaterialCatalogo[] = [];
   materialesFiltrados: MaterialCatalogo[] = [];
+  marcas: CatalogoSimple[] = [];
+  colores: CatalogoSimple[] = [];
   productosExistentes: Product[] = [];
 
   previewSku = '';
@@ -84,9 +87,9 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
   activosMateriales: Asset[] = [];
   maquinasList: Asset[] = [];
   maquinasFiltradas: Asset[] = [];
-  categoriasMaterial: string[] = [];
-  subcategoriasMaterial: string[] = [];
-  materialesPorCategoria: Asset[] = [];
+  polimerosPieza: string[] = [];
+  marcasPieza: string[] = [];
+  coloresPieza: string[] = [];
   materialesFiltradosCirculantes: Asset[] = [];
 
   readonly opcionesConceptos: Record<string, string[]> = {
@@ -144,6 +147,8 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       familias: this.codingService.getFamilies().pipe(catchError(() => of([]))),
       tecnologias: this.catalogConfigService.getTecnologias().pipe(catchError(() => of([]))),
       materiales: this.catalogConfigService.getMateriales().pipe(catchError(() => of([]))),
+      marcas: this.catalogConfigService.getMarcas().pipe(catchError(() => of([]))),
+      colores: this.catalogConfigService.getColores().pipe(catchError(() => of([]))),
       productos: this.productService.getProducts().pipe(catchError(() => of([])))
     }).subscribe({
       next: (data) => {
@@ -159,7 +164,10 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
           { id: 4, codigo: 'RES', nombre: 'Resina', tecnologias: [{ id: 2, codigo: 'SLA', nombre: 'Resina' }] }
         ];
         this.productosExistentes = data.productos || [];
+        this.marcas = data.marcas || [];
+        this.colores = data.colores || [];
         this.filtrarMateriales();
+        this.aplicarFiltroMaterialesPieza();
         this.actualizarPreviewCodigo();
         this.cdr.detectChanges();
       }
@@ -298,12 +306,9 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
           this.activosMateriales = assets.filter((a: Asset) => {
             const t = (a.tipo || '').toLowerCase().trim();
             const c = (a.categoria || '').toLowerCase().trim();
-            return t === 'material' || c === 'filamento' || c === 'resina' || c === 'filamentos' || c === 'resinas' || c.includes('filamento') || c.includes('resina');
+            return t === 'material' || c === 'filamento' || c === 'resina' || c === 'filamentos' || c === 'resinas' || c === 'fdm' || c === 'sla' || c.includes('filamento') || c.includes('resina');
           });
 
-          this.categoriasMaterial = [...new Set(
-            this.activosMateriales.map(a => a.categoria).filter((c): c is string => !!c)
-          )];
           this.materialesFiltradosCirculantes = [...this.activosMateriales];
           this.form.get('piezaMaterialId')?.enable();
           this.aplicarFiltroTecnologiaPieza();
@@ -334,28 +339,6 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
     return resolverNombreMaterial(p as Record<string, unknown>, this.activosMateriales, this.activosCirculantes, this.allAssets);
   }
 
-  onPiezaCategoriaChange(categoria: string) {
-    if (categoria) {
-      this.materialesPorCategoria = filtrarMaterialesPorCategoria(this.activosMateriales, categoria);
-      this.subcategoriasMaterial = [...new Set(
-        this.materialesPorCategoria.map(a => a.subCategoria || ((a as unknown as Record<string, string>)['subcategoria'])).filter((s): s is string => !!s)
-      )].sort();
-      this.materialesFiltradosCirculantes = [...this.materialesPorCategoria];
-    } else {
-      this.materialesPorCategoria = [];
-      this.subcategoriasMaterial = [];
-      this.materialesFiltradosCirculantes = [...this.activosMateriales];
-    }
-    const subActual = this.form.get('piezaMaterialSubcategoria')?.value;
-    if (subActual && !this.subcategoriasMaterial.includes(subActual)) {
-      this.form.get('piezaMaterialSubcategoria')?.setValue('');
-    }
-    const matActual = this.form.get('piezaMaterialId')?.value;
-    if (matActual && !this.materialesFiltradosCirculantes.some(m => m.id == matActual)) {
-      this.form.get('piezaMaterialId')?.setValue(null);
-    }
-  }
-
   aplicarFiltroTecnologiaPieza() {
     const tec = (this.form.get('piezaTecnologia')?.value || '').toUpperCase().trim();
     const maqCtrl = this.form.get('activoId');
@@ -366,50 +349,41 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
     }
 
     this.maquinasFiltradas = filtrarMaquinasPorTecnologia(this.maquinasList, tec);
-    this.categoriasMaterial = obtenerCategoriasMaterialPorTecnologia(this.activosMateriales, tec);
-
-    if (tec === 'FDM') {
-      const curCat = (this.form.get('piezaMaterialCategoria')?.value || '').toLowerCase();
-      if (!curCat || curCat.includes('resina')) {
-        this.form.get('piezaMaterialCategoria')?.setValue('Filamento', { emitEvent: false });
-      }
-    } else if (tec === 'SLA') {
-      const curCat = (this.form.get('piezaMaterialCategoria')?.value || '').toLowerCase();
-      if (!curCat || curCat.includes('filam')) {
-        this.form.get('piezaMaterialCategoria')?.setValue('Resina', { emitEvent: false });
-      }
-    }
-
-    const catActual = this.form.get('piezaMaterialCategoria')?.value;
-    if (catActual) {
-      this.onPiezaCategoriaChange(catActual);
-    } else {
-      const materialesBase = this.materialesPorCategoria.length > 0
-        ? this.materialesPorCategoria
-        : this.activosMateriales;
-      this.materialesFiltradosCirculantes = tec
-        ? materialesBase.filter(m => materialCompatibleConTecnologia(m, tec))
-        : [...materialesBase];
-    }
-
     const maqActual = this.form.get('activoId')?.value;
     if (maqActual && !this.maquinasFiltradas.some(m => m.id == maqActual)) {
       this.form.get('activoId')?.setValue(null);
     }
-    const matActual = this.form.get('piezaMaterialId')?.value;
-    if (matActual && !this.materialesFiltradosCirculantes.some(m => m.id == matActual)) {
-      this.form.get('piezaMaterialId')?.setValue(null);
-    }
+    this.aplicarFiltroMaterialesPieza();
   }
 
-  onPiezaSubcategoriaChange(subcategoria: string) {
-    if (subcategoria) {
-      this.materialesFiltradosCirculantes = this.materialesPorCategoria.filter(a => 
-        (a.subCategoria || ((a as unknown as Record<string, string>)['subcategoria'])) === subcategoria
-      );
-    } else {
-      this.materialesFiltradosCirculantes = this.materialesPorCategoria.length > 0 ? [...this.materialesPorCategoria] : [...this.activosMateriales];
+  aplicarFiltroMaterialesPieza() {
+    const tec = (this.form.get('piezaTecnologia')?.value || '').toUpperCase().trim();
+    const polimero = this.form.get('piezaPolimero')?.value || '';
+    const marca = this.form.get('piezaMarca')?.value || '';
+    const color = this.form.get('piezaColor')?.value || '';
+
+    this.polimerosPieza = listarPolimeros(this.materiales, this.activosMateriales, tec);
+    if (polimero && !this.polimerosPieza.includes(polimero)) {
+      this.form.get('piezaPolimero')?.setValue('', { emitEvent: false });
     }
+
+    const filtrados = filtrarMaterialesImpresion(this.activosMateriales, {
+      tecnologia: tec,
+      polimero: this.form.get('piezaPolimero')?.value,
+      marca: this.form.get('piezaMarca')?.value,
+      color: this.form.get('piezaColor')?.value
+    });
+    this.materialesFiltradosCirculantes = filtrados;
+    this.marcasPieza = listarValoresUnicos(filtrados, 'marca', this.marcas.map(m => m.nombre));
+    this.coloresPieza = listarValoresUnicos(filtrados, 'color', this.colores.map(c => c.nombre));
+
+    if (marca && !this.marcasPieza.includes(marca)) {
+      this.form.get('piezaMarca')?.setValue('', { emitEvent: false });
+    }
+    if (color && !this.coloresPieza.includes(color)) {
+      this.form.get('piezaColor')?.setValue('', { emitEvent: false });
+    }
+
     const matActual = this.form.get('piezaMaterialId')?.value;
     if (matActual && !this.materialesFiltradosCirculantes.some(m => m.id == matActual)) {
       this.form.get('piezaMaterialId')?.setValue(null);
@@ -465,8 +439,8 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       }
       nombre = this.form.get('piezaFabricada')?.value;
       gramos = Number(this.form.get('piezaGramos')?.value) || 0;
-      horas = Number(this.form.get('piezaHoras')?.value);
-      minutos = Number(this.form.get('piezaMinutos')?.value);
+      horas = 0;
+      minutos = 0;
       
       const maqVal = this.form.get('activoId')?.value;
       if (maqVal) {
@@ -497,14 +471,6 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
         Swal.fire('Atención', 'Ingrese los gramos de la pieza.', 'warning');
         return;
       }
-      if (horas === null || isNaN(horas) || horas < 0) {
-        Swal.fire('Atención', 'Ingrese las horas de fabricación.', 'warning');
-        return;
-      }
-      if (minutos === null || isNaN(minutos) || minutos < 0 || minutos > 59) {
-        Swal.fire('Atención', 'Ingrese los minutos válidos (0-59).', 'warning');
-        return;
-      }
     }
 
     if (!cantidad || cantidad <= 0) {
@@ -524,10 +490,9 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       piezaTecnologia: this.form.get('tecnologia')?.value || '',
       piezaCantidad: 1,
       piezaGramos: '',
-      piezaHoras: '',
-      piezaMinutos: '',
-      piezaMaterialCategoria: '',
-      piezaMaterialSubcategoria: '',
+      piezaPolimero: '',
+      piezaMarca: '',
+      piezaColor: '',
       piezaMaterialId: null,
       piezaPrecioMaterial: ''
     });
@@ -602,6 +567,8 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       costoPrecio: [''],
       // Parámetros de Presupuesto
       tiempoSetup: [''],
+      horasImpresion: [0],
+      minutosImpresion: [0],
       postProcesado: [0],
       tasaFallo: [0],
       margenGanancia: [0, [Validators.min(this.minMargenGanancia), Validators.max(100)]],
@@ -611,23 +578,26 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       piezaTecnologia: [''],
       piezaCantidad: [1],
       piezaGramos: [''],
-      piezaHoras: [''],
-      piezaMinutos: [''],
-      piezaMaterialCategoria: [''],
-      piezaMaterialSubcategoria: [''],
+      piezaPolimero: [''],
+      piezaMarca: [''],
+      piezaColor: [''],
       piezaMaterialId: [{value: null, disabled: false}],
       piezaPrecioMaterial: [''],
       activoId: [null],
       imagen: ['']
     });
 
-    this.form.get('piezaMaterialCategoria')?.valueChanges.pipe(
+    this.form.get('piezaPolimero')?.valueChanges.pipe(
       takeUntilDestroyed(this.destroyRef)
-    ).subscribe(val => this.onPiezaCategoriaChange(val));
+    ).subscribe(() => this.aplicarFiltroMaterialesPieza());
 
-    this.form.get('piezaMaterialSubcategoria')?.valueChanges.pipe(
+    this.form.get('piezaMarca')?.valueChanges.pipe(
       takeUntilDestroyed(this.destroyRef)
-    ).subscribe(val => this.onPiezaSubcategoriaChange(val));
+    ).subscribe(() => this.aplicarFiltroMaterialesPieza());
+
+    this.form.get('piezaColor')?.valueChanges.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(() => this.aplicarFiltroMaterialesPieza());
 
     this.form.get('piezaMaterialId')?.valueChanges.pipe(
       takeUntilDestroyed(this.destroyRef)
@@ -718,6 +688,8 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       const margenVal = rawMargen > 0 ? rawMargen : (this.minMargenGanancia || 20);
 
       this.form.get('tiempoSetup')?.setValue(prepVal);
+      this.form.get('horasImpresion')?.setValue(Number(data.horasImpresion ?? dRec['horasImpresion']) || 0);
+      this.form.get('minutosImpresion')?.setValue(Number(data.minutosImpresion ?? dRec['minutosImpresion']) || 0);
       this.form.get('postProcesado')?.setValue(postVal);
       this.form.get('tasaFallo')?.setValue(tasaVal);
       this.form.get('margenGanancia')?.setValue(margenVal);
@@ -811,6 +783,8 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       perfil: Number(this.form.get('perfil')?.value) || 0,
       tasaFallo: tasaNum,
       tiempoSetup: prepNum,
+      horasImpresion: Number(this.form.get('horasImpresion')?.value) || 0,
+      minutosImpresion: Number(this.form.get('minutosImpresion')?.value) || 0,
       postProcesado: postNum,
       margenGanancia: margenNum,
       piezasProducto: mappedPiezas,

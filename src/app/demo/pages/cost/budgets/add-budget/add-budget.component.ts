@@ -16,7 +16,8 @@ import { AssetService } from '../../../../../core/services/cost/asset.service';
 import { FixeService } from '../../../../../core/services/cost/fixe.service';
 import { Fixe } from '../../../../../core/models/Cost/fixe';
 import { ClientService } from '../../../../../core/services/cost/client.service';
-import { forkJoin } from 'rxjs';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import Swal from 'sweetalert2';
 import { calculateBudgetTotals } from '../../../../../core/utils/budget-calculator';
 import {
@@ -28,14 +29,15 @@ import {
   buildBudgetPayload
 } from '../../../../../core/utils/budget-mapper';
 import { CatalogConfigService } from '../../../../../core/services/cost/catalog-config.service';
-import { TecnologiaCatalogo } from '../../../../../core/models/Cost/catalog-config';
-import { esEquiposFabricacion, materialCompatibleConTecnologia } from '../../../../../core/constants/asset-categories';
+import { CatalogoSimple, MaterialCatalogo, TecnologiaCatalogo } from '../../../../../core/models/Cost/catalog-config';
+import { esEquiposFabricacion } from '../../../../../core/constants/asset-categories';
 import {
   calcularPrecioPorGramo,
   formatAssetOption,
   filtrarMaquinasPorTecnologia,
-  obtenerCategoriasMaterialPorTecnologia,
-  filtrarMaterialesPorCategoria
+  filtrarMaterialesImpresion,
+  listarPolimeros,
+  listarValoresUnicos
 } from '../../../../../core/utils/piece-builder.helper';
 import { ComponentCanDeactivate } from '../../../../../core/guards/pending-changes.guard';
 import { QuickClientModalComponent, QuickClientData } from '../../../../../theme/shared/components/quick-client-modal/quick-client-modal.component';
@@ -82,12 +84,14 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
   productosList: Product[] = [];
   filteredItemsList: Product[] = [];
   clientesList: { id: number; nombre: string }[] = [];
-  materialesPorCategoria: Asset[] = [];
   materialesFiltradosCirculantes: Asset[] = [];
   tecnologias: TecnologiaCatalogo[] = [];
-
-  categoriasMaterial: string[] = [];
-  subcategoriasMaterial: string[] = [];
+  materialesCatalogo: MaterialCatalogo[] = [];
+  marcas: CatalogoSimple[] = [];
+  colores: CatalogoSimple[] = [];
+  polimerosPieza: string[] = [];
+  marcasPieza: string[] = [];
+  coloresPieza: string[] = [];
 
   // Modal de Cliente / Prospecto (SRP)
   showClienteModal = false;
@@ -126,7 +130,10 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
       assets: this.assetService.getAssets(),
       fixes: this.fixeService.getFixes(),
       clients: this.clientService.getClients(),
-      tecnologias: this.catalogConfigService.getTecnologias()
+      tecnologias: this.catalogConfigService.getTecnologias().pipe(catchError(() => of([]))),
+      materiales: this.catalogConfigService.getMateriales().pipe(catchError(() => of([]))),
+      marcas: this.catalogConfigService.getMarcas().pipe(catchError(() => of([]))),
+      colores: this.catalogConfigService.getColores().pipe(catchError(() => of([])))
     }).subscribe(data => {
       if (data.clients?.length) {
         this.clientesList = data.clients.map(c => ({
@@ -139,6 +146,9 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
         { id: 1, codigo: 'FDM', nombre: 'Filamento' },
         { id: 2, codigo: 'SLA', nombre: 'Resina' }
       ];
+      this.materialesCatalogo = data.materiales || [];
+      this.marcas = data.marcas || [];
+      this.colores = data.colores || [];
 
       if (data.configs?.length) {
         const configObj = data.configs[0];
@@ -185,12 +195,9 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
       this.activosMateriales = (data.assets || []).filter((a: Asset) => {
         const t = (a.tipo || '').toLowerCase().trim();
         const c = (a.categoria || '').toLowerCase().trim();
-        return t === 'material' || c === 'filamento' || c === 'resina' || c === 'filamentos' || c === 'resinas' || c.includes('filamento') || c.includes('resina');
+        return t === 'material' || c === 'filamento' || c === 'resina' || c === 'filamentos' || c === 'resinas' || c === 'fdm' || c === 'sla' || c.includes('filamento') || c.includes('resina');
       });
 
-      this.categoriasMaterial = [...new Set(
-        this.activosMateriales.map(a => a.categoria).filter((c): c is string => !!c)
-      )].sort();
       this.materialesFiltradosCirculantes = [...this.activosMateriales];
       this.aplicarFiltroTecnologiaPieza();
 
@@ -370,8 +377,8 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
       }
       nombre = this.form.get('piezaFabricada')?.value;
       gramos = Number(this.form.get('piezaGramos')?.value) || 0;
-      horas = Number(this.form.get('piezaHoras')?.value) || 0;
-      minutos = Number(this.form.get('piezaMinutos')?.value) || 0;
+      horas = 0;
+      minutos = 0;
 
       const maqVal = this.form.get('activoId')?.value;
       if (maqVal) {
@@ -437,10 +444,9 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
       piezaFabricada: '',
       piezaCantidad: 1,
       piezaGramos: '',
-      piezaHoras: '',
-      piezaMinutos: '',
-      piezaMaterialCategoria: '',
-      piezaMaterialSubcategoria: '',
+      piezaPolimero: '',
+      piezaMarca: '',
+      piezaColor: '',
       piezaMaterialId: null,
       piezaPrecioMaterial: '',
       activoId: null
@@ -462,6 +468,8 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
         descripcion: product.descripcion || product.nombre,
         tasaFalloGlobal: Number(product.tasaFallo) || 0,
         tiempoSetup: Number(product.tiempoSetup) || 0,
+        horasImpresion: Number(product.horasImpresion) || 0,
+        minutosImpresion: Number(product.minutosImpresion) || 0,
         tiempoPostProcesado: Number(product.postProcesado) || 0,
         margenGanancia: Number(product.margenGanancia) || this.minMargenGanancia
       });
@@ -496,10 +504,9 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
       piezaFabricada: '',
       piezaCantidad: 1,
       piezaGramos: '',
-      piezaHoras: '',
-      piezaMinutos: '',
-      piezaMaterialCategoria: '',
-      piezaMaterialSubcategoria: '',
+      piezaPolimero: '',
+      piezaMarca: '',
+      piezaColor: '',
       piezaMaterialId: null,
       piezaPrecioMaterial: ''
     });
@@ -584,6 +591,8 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
         clienteId: parsedClienteId,
         tasaFalloGlobal: Number(dRec['tasaFalloGlobal'] ?? dRec['tasaFallo']) || 0,
         tiempoSetup: Number(dRec['tiempoSetup']) || 0,
+        horasImpresion: Number(dRec['horasImpresion']) || 0,
+        minutosImpresion: Number(dRec['minutosImpresion']) || 0,
         tiempoPostProcesado: Number(dRec['tiempoPostProcesado'] ?? dRec['postProcesado']) || 0,
         margenGanancia: Number(dRec['margenGanancia']) || this.minMargenGanancia
       }, { emitEvent: false });
@@ -620,17 +629,18 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
       piezaCantidad: [1],
       materialTipo: [''],
       subcategoria: [''],
-      piezaMaterialCategoria: [''],
-      piezaMaterialSubcategoria: [''],
+      piezaPolimero: [''],
+      piezaMarca: [''],
+      piezaColor: [''],
       piezaMaterialId: [null],
       piezaPrecioMaterial: [''],
       piezaGramos: [''],
-      piezaHoras: [''],
-      piezaMinutos: [''],
 
       activoId: [null],
       tasaFalloGlobal: [0, [Validators.required, Validators.min(0), Validators.max(100)]],
       tiempoSetup: [0, [Validators.required, Validators.min(0)]],
+      horasImpresion: [0, [Validators.min(0)]],
+      minutosImpresion: [0, [Validators.min(0), Validators.max(59)]],
       tiempoPostProcesado: [0, [Validators.required, Validators.min(0)]],
       margenGanancia: [0, [Validators.required, Validators.min(this.minMargenGanancia), Validators.max(100)]],
       costoMaquina: [0]
@@ -663,17 +673,17 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
       this.actualizarMinMargenGanancia();
     });
 
-    this.form.get('piezaMaterialCategoria')?.valueChanges.pipe(
+    this.form.get('piezaPolimero')?.valueChanges.pipe(
       takeUntilDestroyed(this.destroyRef)
-    ).subscribe(categoria => {
-      this.onPiezaCategoriaChange(categoria);
-    });
+    ).subscribe(() => this.aplicarFiltroMaterialesPieza());
 
-    this.form.get('piezaMaterialSubcategoria')?.valueChanges.pipe(
+    this.form.get('piezaMarca')?.valueChanges.pipe(
       takeUntilDestroyed(this.destroyRef)
-    ).subscribe(subcategoria => {
-      this.onPiezaSubcategoriaChange(subcategoria);
-    });
+    ).subscribe(() => this.aplicarFiltroMaterialesPieza());
+
+    this.form.get('piezaColor')?.valueChanges.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(() => this.aplicarFiltroMaterialesPieza());
 
     this.form.get('piezaMaterialId')?.valueChanges.pipe(
       takeUntilDestroyed(this.destroyRef)
@@ -698,28 +708,6 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
     return formatAssetOption(asset, this.allAssets);
   }
 
-  onPiezaCategoriaChange(categoria: string) {
-    if (categoria) {
-      this.materialesPorCategoria = filtrarMaterialesPorCategoria(this.activosMateriales, categoria);
-      this.subcategoriasMaterial = [...new Set(
-        this.materialesPorCategoria.map(a => a.subCategoria || ((a as unknown as Record<string, string>)['subcategoria'])).filter((s): s is string => !!s)
-      )].sort();
-      this.materialesFiltradosCirculantes = [...this.materialesPorCategoria];
-    } else {
-      this.materialesPorCategoria = [];
-      this.subcategoriasMaterial = [];
-      this.materialesFiltradosCirculantes = [...this.activosMateriales];
-    }
-    const subActual = this.form.get('piezaMaterialSubcategoria')?.value;
-    if (subActual && !this.subcategoriasMaterial.includes(subActual)) {
-      this.form.get('piezaMaterialSubcategoria')?.setValue('');
-    }
-    const matActual = this.form.get('piezaMaterialId')?.value;
-    if (matActual && !this.materialesFiltradosCirculantes.some(m => m.id == matActual)) {
-      this.form.get('piezaMaterialId')?.setValue(null);
-    }
-  }
-
   aplicarFiltroTecnologiaPieza() {
     const tec = (this.form.get('piezaTecnologia')?.value || '').toUpperCase().trim();
     const maqCtrl = this.form.get('activoId');
@@ -730,50 +718,41 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
     }
 
     this.maquinasFiltradas = filtrarMaquinasPorTecnologia(this.maquinasList, tec);
-    this.categoriasMaterial = obtenerCategoriasMaterialPorTecnologia(this.activosMateriales, tec);
-
-    if (tec === 'FDM') {
-      const curCat = (this.form.get('piezaMaterialCategoria')?.value || '').toLowerCase();
-      if (!curCat || curCat.includes('resina')) {
-        this.form.get('piezaMaterialCategoria')?.setValue('Filamento', { emitEvent: false });
-      }
-    } else if (tec === 'SLA') {
-      const curCat = (this.form.get('piezaMaterialCategoria')?.value || '').toLowerCase();
-      if (!curCat || curCat.includes('filam')) {
-        this.form.get('piezaMaterialCategoria')?.setValue('Resina', { emitEvent: false });
-      }
-    }
-
-    const catActual = this.form.get('piezaMaterialCategoria')?.value;
-    if (catActual) {
-      this.onPiezaCategoriaChange(catActual);
-    } else {
-      const materialesBase = this.materialesPorCategoria.length > 0
-        ? this.materialesPorCategoria
-        : this.activosMateriales;
-      this.materialesFiltradosCirculantes = tec
-        ? materialesBase.filter(m => materialCompatibleConTecnologia(m, tec))
-        : [...materialesBase];
-    }
-
     const maqActual = this.form.get('activoId')?.value;
     if (maqActual && !this.maquinasFiltradas.some(m => m.id == maqActual)) {
       this.form.get('activoId')?.setValue(null);
     }
-    const matActual = this.form.get('piezaMaterialId')?.value;
-    if (matActual && !this.materialesFiltradosCirculantes.some(m => m.id == matActual)) {
-      this.form.get('piezaMaterialId')?.setValue(null);
-    }
+    this.aplicarFiltroMaterialesPieza();
   }
 
-  onPiezaSubcategoriaChange(subcategoria: string) {
-    if (subcategoria) {
-      this.materialesFiltradosCirculantes = this.materialesPorCategoria.filter(a => 
-        (a.subCategoria || ((a as unknown as Record<string, string>)['subcategoria'])) === subcategoria
-      );
-    } else {
-      this.materialesFiltradosCirculantes = this.materialesPorCategoria.length > 0 ? [...this.materialesPorCategoria] : [...this.activosMateriales];
+  aplicarFiltroMaterialesPieza() {
+    const tec = (this.form.get('piezaTecnologia')?.value || '').toUpperCase().trim();
+    const polimero = this.form.get('piezaPolimero')?.value || '';
+    const marca = this.form.get('piezaMarca')?.value || '';
+    const color = this.form.get('piezaColor')?.value || '';
+
+    this.polimerosPieza = listarPolimeros(this.materialesCatalogo, this.activosMateriales, tec);
+    if (polimero && !this.polimerosPieza.includes(polimero)) {
+      this.form.get('piezaPolimero')?.setValue('', { emitEvent: false });
     }
+
+    const filtrados = filtrarMaterialesImpresion(this.activosMateriales, {
+      tecnologia: tec,
+      polimero: this.form.get('piezaPolimero')?.value,
+      marca: this.form.get('piezaMarca')?.value,
+      color: this.form.get('piezaColor')?.value
+    });
+    this.materialesFiltradosCirculantes = filtrados;
+    this.marcasPieza = listarValoresUnicos(filtrados, 'marca', this.marcas.map(m => m.nombre));
+    this.coloresPieza = listarValoresUnicos(filtrados, 'color', this.colores.map(c => c.nombre));
+
+    if (marca && !this.marcasPieza.includes(marca)) {
+      this.form.get('piezaMarca')?.setValue('', { emitEvent: false });
+    }
+    if (color && !this.coloresPieza.includes(color)) {
+      this.form.get('piezaColor')?.setValue('', { emitEvent: false });
+    }
+
     const matActual = this.form.get('piezaMaterialId')?.value;
     if (matActual && !this.materialesFiltradosCirculantes.some(m => m.id == matActual)) {
       this.form.get('piezaMaterialId')?.setValue(null);

@@ -27,7 +27,7 @@ export class AddMaterialComponent implements OnInit, ComponentCanDeactivate {
 
   constructor() {
     this.form = this.formBuilder.group({
-      codigo: ['', [Validators.required, Validators.maxLength(3), Validators.pattern('^[a-zA-Z]{1,3}$')]],
+      codigo: ['', [Validators.required, Validators.maxLength(10), Validators.pattern('^[a-zA-Z0-9]{1,10}$')]],
       nombre: ['', [Validators.required, Validators.minLength(3)]],
       tecnologias: [[]]
     });

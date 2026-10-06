@@ -98,8 +98,8 @@ export function mapPiezasToPayload(
 
     const gVal = Number(pObj['gramos']) || 0;
     const mVal = Number(pObj['metros'] ?? pObj['metro']) || 0;
-    const hVal = Number(pObj['horas']) || 0;
-    const minVal = Number(pObj['minutos']) || 0;
+    const hVal = 0;
+    const minVal = 0;
     const matPrice = Number(pObj['precioMaterial'] ?? pObj['precio_material']) || 0;
     const cant = Number(pObj['cantidad']) || 1;
 

@@ -33,6 +33,8 @@ export class Product {
     periodo?: string;
     tasaFallo?: number;
     tiempoSetup?: number;
+    horasImpresion?: number;
+    minutosImpresion?: number;
     postProcesado?: number;
     margenGanancia?: number;
     piezasProducto?: PiezaProducto[];

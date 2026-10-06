@@ -14,10 +14,10 @@
     <form [formGroup]="form">
       <div class="row g-3">
         <div class="col-md-4">
-          <label class="form-label">Código (3 letras)</label>
-          <input class="form-control text-uppercase font-monospace fw-bold" formControlName="codigo" maxlength="3" [class.is-invalid]="submitted && f['codigo'].errors">
+          <label class="form-label">Código (hasta 10 letras)</label>
+          <input class="form-control text-uppercase font-monospace fw-bold" formControlName="codigo" maxlength="10" [class.is-invalid]="submitted && f['codigo'].errors">
           @if (submitted && f['codigo'].errors) {
-            <div class="invalid-feedback">Use hasta 3 letras, por ejemplo PLA o RES.</div>
+            <div class="invalid-feedback">Use hasta 10 letras, por ejemplo PLA, PETG o RES.</div>
           }
         </div>
         <div class="col-md-8">

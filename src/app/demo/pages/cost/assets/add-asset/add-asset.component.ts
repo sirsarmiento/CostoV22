@@ -7,7 +7,7 @@ import { NgSelectModule } from '@ng-select/ng-select';
 import { Asset } from '../../../../../core/models/Cost/asset';
 import { AssetService } from '../../../../../core/services/cost/asset.service';
 import { CatalogConfigService } from '../../../../../core/services/cost/catalog-config.service';
-import { TecnologiaCatalogo } from '../../../../../core/models/Cost/catalog-config';
+import { CatalogoSimple, MaterialCatalogo, TecnologiaCatalogo } from '../../../../../core/models/Cost/catalog-config';
 import { CATALOGO_MATERIALES } from '../../../../../core/constants/material-catalog';
 import {
   CATEGORIAS_ACTIVO_FIJO,
@@ -20,6 +20,7 @@ import {
   getSubcategoriasMaterial,
   buildAssetPayload
 } from '../../../../../core/utils/asset-form.helper';
+import { listarPolimeros } from '../../../../../core/utils/piece-builder.helper';
 import { ComponentCanDeactivate } from '../../../../../core/guards/pending-changes.guard';
 import Swal from 'sweetalert2';
 
@@ -45,6 +46,9 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
   allCirculanteSubcategoriasMap = new Map<string, Set<string>>();
   categoriasFijoList: string[] = [...CATEGORIAS_ACTIVO_FIJO];
   tecnologias: TecnologiaCatalogo[] = [];
+  materialesCatalogo: MaterialCatalogo[] = [];
+  marcas: CatalogoSimple[] = [];
+  colores: CatalogoSimple[] = [];
   categoriasCirculanteList: string[] = [];
   subcategoriasCirculanteList: string[] = [];
   categoriasMaterialList: string[] = Object.keys(CATALOGO_MATERIALES);
@@ -65,13 +69,27 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
           { id: 1, codigo: 'FDM', nombre: 'Filamento' },
           { id: 2, codigo: 'SLA', nombre: 'Resina' }
         ];
+        this.categoriasMaterialList = this.tecnologias.map(t => t.codigo);
       },
       error: () => {
         this.tecnologias = [
           { id: 1, codigo: 'FDM', nombre: 'Filamento' },
           { id: 2, codigo: 'SLA', nombre: 'Resina' }
         ];
+        this.categoriasMaterialList = this.tecnologias.map(t => t.codigo);
       }
+    });
+    this.catalogConfigService.getMateriales().subscribe({
+      next: (data) => {
+        this.materialesCatalogo = data || [];
+        this.actualizarSubcategoriasMaterial(this.form?.get('categoria')?.value);
+      }
+    });
+    this.catalogConfigService.getMarcas().subscribe({
+      next: (data) => { this.marcas = data || []; }
+    });
+    this.catalogConfigService.getColores().subscribe({
+      next: (data) => { this.colores = data || []; }
     });
   }
 
@@ -162,9 +180,15 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
       const tipoLimpio = rawTipo ? (rawTipo.charAt(0).toUpperCase() + rawTipo.slice(1).toLowerCase()) : 'Fijo';
       
       const rawCat = (data.categoria || '').toString().trim();
-      const catLimpia = tipoLimpio === 'Fijo'
+      let catLimpia = tipoLimpio === 'Fijo'
         ? mapearCategoriaFijo(rawCat, data.subCategoria || '')
         : rawCat;
+      if (tipoLimpio === 'Material') {
+        const catLow = catLimpia.toLowerCase();
+        if (catLow.includes('filam') || catLow === 'fdm') catLimpia = 'FDM';
+        else if (catLow.includes('resin') || catLow === 'sla') catLimpia = 'SLA';
+        else if (data.tecnologia) catLimpia = String(data.tecnologia).toUpperCase();
+      }
 
       this.form.patchValue({
         nombre: data.nombre,
@@ -181,7 +205,9 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
         valorUnitario: data.valorUnitario || data.costoInicial || 0,
         categoria: catLimpia,
         subcategoria: tipoLimpio === 'Fijo' ? '' : (data.subCategoria || ((data as unknown as Record<string, unknown>)['subcategoria'] as string) || ((data as unknown as Record<string, unknown>)['Subcategoria'] as string) || ''),
-        tecnologia: data.tecnologia || '',
+        tecnologia: data.tecnologia || (tipoLimpio === 'Material' ? catLimpia : ''),
+        marca: data.marca || '',
+        color: data.color || '',
         consumoMaquina: data.consumoMaquina,
         tarifa: data.tarifa,
         costoMantenimiento: data.costoMantenimiento
@@ -194,7 +220,8 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
   }
 
   actualizarSubcategoriasMaterial(categoria: string) {
-    this.subcategoriasMaterialList = getSubcategoriasMaterial(categoria);
+    const fromCatalog = listarPolimeros(this.materialesCatalogo, [], categoria);
+    this.subcategoriasMaterialList = fromCatalog.length > 0 ? fromCatalog : getSubcategoriasMaterial(categoria);
   }
 
   myFormValues() {
@@ -205,6 +232,8 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
       categoria: [''],
       subcategoria: [''],
       tecnologia: [''],
+      marca: [''],
+      color: [''],
       // Campos de Fijos
       valorResidual: [''],
       vidaUtil: [''],
@@ -226,7 +255,7 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
     ).subscribe(tipo => {
       this.isSwitchingType = true;
       if (tipo === 'Material' && !this.form.get('categoria')?.value) {
-        this.form.get('categoria')?.setValue('Filamento');
+        this.form.get('categoria')?.setValue('FDM');
       }
       const cat = this.form.get('categoria')?.value;
       if (tipo === 'Circulante') {
@@ -270,6 +299,7 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
     if (tipo === 'Fijo') {
       this.setValidators(camposFijos, [Validators.required]);
       this.setValidators(['categoria'], [Validators.required]);
+      this.setValidators(['subcategoria', 'marca', 'color'], []);
       if (this.isFabricacionCategory) {
         this.setValidators(['tecnologia'], [Validators.required]);
       } else {
@@ -280,6 +310,11 @@ export class AddAssetComponent implements OnInit, ComponentCanDeactivate {
       this.setValidators(camposCirculantes, [Validators.required]);
       this.setValidators(camposEquipo, []);
       this.setValidators(['tecnologia'], []);
+      if (tipo === 'Material') {
+        this.setValidators(['categoria', 'subcategoria'], [Validators.required]);
+      } else {
+        this.setValidators(['subcategoria'], []);
+      }
     }
   }
 

@@ -188,3 +188,73 @@ export function listarValoresUnicos(activos: Asset[], campo: 'marca' | 'color', 
   const deActivos = activos.map(a => a[campo]).filter((s): s is string => !!s);
   return [...new Set([...extra, ...deActivos])].sort();
 }
+
+export interface StockDisponibilidad {
+  disponibleGramos: number;
+  requeridoGramos: number;
+  faltanteGramos: number;
+  estado: 'suficiente' | 'insuficiente' | 'agotado' | 'sin_seleccion';
+  mensaje: string;
+}
+
+/* Obtiene el stock disponible real en gramos de un material de inventario. */
+export function obtenerStockDisponibleGramos(asset?: Asset | null): number {
+  if (!asset) return 0;
+  const cantidad = Number(asset.cantidad) || 0;
+  const reservada = Number(asset.cantidadReservada) || 0;
+  const disponible = Math.max(0, cantidad - reservada);
+  const u = (asset.unidadMedida || '').toLowerCase().trim();
+  const esGramos = u === 'gramos' || u === 'gramo' || u === 'g' || u === 'gr';
+  return esGramos ? Math.round(disponible * 100) / 100 : Math.round(disponible * 1000 * 100) / 100;
+}
+
+/* Evalúa la disponibilidad de stock en tiempo real según gramos y cantidad requerida. */
+export function evaluarDisponibilidadStock(
+  asset?: Asset | null,
+  gramosPorPieza?: number | null,
+  cantidadPiezas?: number | null
+): StockDisponibilidad {
+  if (!asset) {
+    return {
+      disponibleGramos: 0,
+      requeridoGramos: 0,
+      faltanteGramos: 0,
+      estado: 'sin_seleccion',
+      mensaje: ''
+    };
+  }
+
+  const disponibleGramos = obtenerStockDisponibleGramos(asset);
+  const gr = Math.max(0, Number(gramosPorPieza) || 0);
+  const cant = Math.max(1, Number(cantidadPiezas) || 1);
+  const requeridoGramos = Math.round(gr * cant * 100) / 100;
+
+  if (disponibleGramos <= 0) {
+    return {
+      disponibleGramos: 0,
+      requeridoGramos,
+      faltanteGramos: requeridoGramos,
+      estado: 'agotado',
+      mensaje: 'Material sin stock disponible en inventario'
+    };
+  }
+
+  if (requeridoGramos > disponibleGramos) {
+    const faltanteGramos = Math.round((requeridoGramos - disponibleGramos) * 100) / 100;
+    return {
+      disponibleGramos,
+      requeridoGramos,
+      faltanteGramos,
+      estado: 'insuficiente',
+      mensaje: `Stock insuficiente: ${disponibleGramos} g disponibles (faltan ${faltanteGramos} g)`
+    };
+  }
+
+  return {
+    disponibleGramos,
+    requeridoGramos,
+    faltanteGramos: 0,
+    estado: 'suficiente',
+    mensaje: `Stock disponible: ${disponibleGramos} g`
+  };
+}

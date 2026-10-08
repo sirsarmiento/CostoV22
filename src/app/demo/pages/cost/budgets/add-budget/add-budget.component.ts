@@ -37,7 +37,9 @@ import {
   filtrarMaquinasPorTecnologia,
   filtrarMaterialesImpresion,
   listarPolimeros,
-  listarValoresUnicos
+  listarValoresUnicos,
+  evaluarDisponibilidadStock,
+  StockDisponibilidad
 } from '../../../../../core/utils/piece-builder.helper';
 import { ComponentCanDeactivate } from '../../../../../core/guards/pending-changes.guard';
 import { QuickClientModalComponent, QuickClientData } from '../../../../../theme/shared/components/quick-client-modal/quick-client-modal.component';
@@ -263,6 +265,23 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
 
   getNombreMaterial(row: Parts | Record<string, unknown> | unknown): string {
     return getNombreMaterial(row, this.catalog);
+  }
+
+  get stockPiezaActual(): StockDisponibilidad {
+    const matId = this.form.get('piezaMaterialId')?.value;
+    if (!matId) {
+      return {
+        disponibleGramos: 0,
+        requeridoGramos: 0,
+        faltanteGramos: 0,
+        estado: 'sin_seleccion',
+        mensaje: ''
+      };
+    }
+    const asset = this.activosMateriales.find(a => a.id == matId);
+    const gramos = this.form.get('piezaGramos')?.value;
+    const cantidad = this.form.get('piezaCantidad')?.value;
+    return evaluarDisponibilidadStock(asset, gramos, cantidad);
   }
 
   actualizarItemsFiltrados(): void {

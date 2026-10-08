@@ -9,6 +9,31 @@ export function formatTitleCase(text: string): string {
   return clean.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
 }
 
+/* Determina si una unidad de medida representa una fracción submúltiplo (Gramos) respecto a la unidad base de costo (Kilo). */
+export function esUnidadFraccionaria(unidadMedida?: string | null): boolean {
+  if (!unidadMedida) return false;
+  const u = unidadMedida.toLowerCase().trim();
+  return u === 'gramos';
+}
+
+/* Calcula el valor monetario total de un activo según su tipo, cantidad y unidad de medida. */
+export function calcularValorTotalActivo(asset?: Asset | null): number {
+  if (!asset) return 0;
+  const cantidad = Number(asset.cantidad) || 0;
+  const valorUnitario = Number(asset.costoInicial) || Number(asset.valorUnitario) || 0;
+  if (cantidad <= 0 || valorUnitario <= 0) return 0;
+
+  const tipo = (asset.tipo || '').toLowerCase().trim();
+  const cat = (asset.categoria || '').toLowerCase().trim();
+  const esMaterial = tipo === 'material' || cat.includes('filam') || cat.includes('resin');
+
+  if (esMaterial && esUnidadFraccionaria(asset.unidadMedida)) {
+    return Math.round((cantidad / 1000) * valorUnitario * 100) / 100;
+  }
+
+  return Math.round(cantidad * valorUnitario * 100) / 100;
+}
+
 /* Extrae las sugerencias de categorías y subcategorías a partir de la lista global de activos. */
 export function extractAssetSuggestions(assets: Asset[]): {
   categoriasFijo: string[];
@@ -72,18 +97,33 @@ export function buildAssetPayload(formValues: Record<string, unknown>, id: numbe
   const tipo = String(formValues['tipo'] || 'Fijo');
   const rawCat = String(formValues['categoria'] || '');
   const esMaterial = tipo === 'Material';
-  const cleanCat = tipo === 'Fijo'
-    ? mapearCategoriaFijo(rawCat)
-    : esMaterial
-      ? String(rawCat).toUpperCase().trim()
-      : formatTitleCase(rawCat);
+
+  let cleanCat: string;
+  let tecnologia = '';
+
+  if (tipo === 'Fijo') {
+    cleanCat = mapearCategoriaFijo(rawCat);
+    tecnologia = esEquiposFabricacion(cleanCat) ? String(formValues['tecnologia'] || '') : '';
+  } else if (esMaterial) {
+    const rawUpper = String(rawCat).toUpperCase().trim();
+    if (rawUpper === 'FDM' || rawUpper.includes('FILAM')) {
+      cleanCat = 'Filamento';
+      tecnologia = 'FDM';
+    } else if (rawUpper === 'SLA' || rawUpper.includes('RESIN')) {
+      cleanCat = 'Resina';
+      tecnologia = 'SLA';
+    } else {
+      cleanCat = formatTitleCase(rawCat);
+      tecnologia = rawUpper;
+    }
+  } else {
+    cleanCat = formatTitleCase(rawCat);
+  }
+
+  const esFabricacion = tipo === 'Fijo' && esEquiposFabricacion(cleanCat);
   const cleanSub = tipo === 'Fijo' ? '' : (esMaterial
     ? String(formValues['subcategoria'] || '').trim()
     : formatTitleCase(String(formValues['subcategoria'] || '')));
-  const esFabricacion = tipo === 'Fijo' && esEquiposFabricacion(cleanCat);
-  const tecnologia = esFabricacion
-    ? String(formValues['tecnologia'] || '')
-    : (esMaterial ? cleanCat : '');
 
   return {
     id: id > 0 ? id : 0,

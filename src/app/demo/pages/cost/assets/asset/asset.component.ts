@@ -5,6 +5,7 @@ import { Router, RouterModule } from '@angular/router';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { Asset } from '../../../../../core/models/Cost/asset';
 import { AssetService } from '../../../../../core/services/cost/asset.service';
+import { calcularValorTotalActivo } from '../../../../../core/utils/asset-form.helper';
 
 @Component({
   selector: 'app-asset',
@@ -176,12 +177,20 @@ export class AssetComponent implements OnInit {
       temp = temp.filter(item => 
         item.nombre.toLowerCase().includes(query) ||
         item.descripcion.toLowerCase().includes(query) ||
+        (item.marca || '').toLowerCase().includes(query) ||
+        (item.subCategoria || '').toLowerCase().includes(query) ||
         item.ubicacion.toLowerCase().includes(query)
       );
     }
 
     // Ordenamiento
     temp.sort((a: Asset, b: Asset) => {
+      if (this.sortColumn === 'valorTotal') {
+        const valA = this.calcularValorTotal(a);
+        const valB = this.calcularValorTotal(b);
+        return this.sortAscending ? valA - valB : valB - valA;
+      }
+
       const prop = this.sortColumn as keyof Asset;
       let valA = a[prop];
       let valB = b[prop];
@@ -208,9 +217,9 @@ export class AssetComponent implements OnInit {
     if (this.activeTab === 'fijo') {
       this.totalFijos = this.filteredAssets.reduce((sum, item) => sum + (item.depMensual || 0), 0);
     } else if (this.activeTab === 'material') {
-      this.totalMateriales = this.filteredAssets.reduce((sum, item) => sum + (item.costoInicial || 0), 0);
+      this.totalMateriales = this.filteredAssets.reduce((sum, item) => sum + this.calcularValorTotal(item), 0);
     } else {
-      this.totalCirculantes = this.filteredAssets.reduce((sum, item) => sum + (item.costoInicial || 0), 0);
+      this.totalCirculantes = this.filteredAssets.reduce((sum, item) => sum + this.calcularValorTotal(item), 0);
     }
 
     // Paginación
@@ -257,6 +266,10 @@ export class AssetComponent implements OnInit {
 
   calcularDepreciacionMensual(row: Asset): number {
     return this.calcularDepreciacionAnual(row) / 12;
+  }
+
+  calcularValorTotal(row: Asset): number {
+    return calcularValorTotalActivo(row);
   }
 
   onEdit(row: Asset) {

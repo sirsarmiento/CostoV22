@@ -23,7 +23,9 @@ import {
   filtrarMaquinasPorTecnologia,
   filtrarMaterialesImpresion,
   listarPolimeros,
-  listarValoresUnicos
+  listarValoresUnicos,
+  evaluarDisponibilidadStock,
+  StockDisponibilidad
 } from '../../../../../core/utils/piece-builder.helper';
 import {
   extractCorrelativosUsadosDeFamilia,
@@ -337,6 +339,23 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
 
   getNombreMaterial(p: Record<string, unknown> | PiezaProducto | unknown): string {
     return resolverNombreMaterial(p as Record<string, unknown>, this.activosMateriales, this.activosCirculantes, this.allAssets);
+  }
+
+  get stockPiezaActual(): StockDisponibilidad {
+    const matId = this.form.get('piezaMaterialId')?.value;
+    if (!matId) {
+      return {
+        disponibleGramos: 0,
+        requeridoGramos: 0,
+        faltanteGramos: 0,
+        estado: 'sin_seleccion',
+        mensaje: ''
+      };
+    }
+    const asset = this.activosMateriales.find(a => a.id == matId);
+    const gramos = this.form.get('piezaGramos')?.value;
+    const cantidad = this.form.get('piezaCantidad')?.value;
+    return evaluarDisponibilidadStock(asset, gramos, cantidad);
   }
 
   aplicarFiltroTecnologiaPieza() {

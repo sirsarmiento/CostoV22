@@ -310,27 +310,33 @@
           <!-- TAB 3: PARÁMETROS DE FABRICACIÓN -->
           @if (activeTab === 'piezas') {
             <div class="row g-3">
-              <div class="col-md-3">
+              <!-- Fila 1 (3 campos de col-md-4) -->
+              <div class="col-md-4">
                 <label class="form-label">Horas de impresión</label>
                 <input type="number" min="0" class="form-control" formControlName="horasImpresion" placeholder="0">
               </div>
-              <div class="col-md-3">
+
+              <div class="col-md-4">
                 <label class="form-label">Minutos de impresión</label>
                 <input type="number" min="0" max="59" class="form-control" formControlName="minutosImpresion" placeholder="0">
               </div>
-              <div class="col-md-3">
+
+              <div class="col-md-4">
                 <label class="form-label">Prep. Slicing (min)</label>
                 <input type="number" class="form-control" formControlName="tiempoSetup" placeholder="0">
               </div>
-              <div class="col-md-3">
+
+              <!-- Fila 2 (3 campos de col-md-4) -->
+              <div class="col-md-4">
                 <label class="form-label">Post-Procesado (min)</label>
                 <input type="number" class="form-control" formControlName="postProcesado" placeholder="0">
               </div>
-              <div class="col-md-3">
+
+              <div class="col-md-4">
                 <label class="form-label">Tasa de Fallo (%)</label>
                 <ng-select 
                   formControlName="tasaFallo"
-                  placeholder="Seleccione tasa..."
+                  placeholder="Seleccione..."
                   [clearable]="true"
                   [searchable]="false"
                   appendTo="body">
@@ -339,7 +345,8 @@
                   <ng-option [value]="25">25%</ng-option>
                 </ng-select>
               </div>
-              <div class="col-md-3">
+
+              <div class="col-md-4">
                 <label class="form-label">Margen de Ganancia (%)</label>
                 <input type="number" class="form-control" formControlName="margenGanancia" [min]="minMargenGanancia" (blur)="onMargenBlur()" placeholder="0">
                 <small class="text-muted" style="font-size: 0.75rem;">Mínimo permitido: {{ minMargenGanancia }}%</small>
@@ -349,7 +356,7 @@
                 <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">Piezas Base</h6>
               </div>
 
-              <!-- Fila 1 para agregar pieza -->
+              <!-- Fila 1: Configuración de la Pieza y Equipo (12 cols) -->
               <div class="col-md-2">
                 <label class="form-label">Tipo de Pieza</label>
                 <ng-select formControlName="piezaTipo" [clearable]="false" [searchable]="false" appendTo="body" dropdownPosition="bottom">
@@ -359,10 +366,12 @@
               </div>
 
               @if (f['piezaTipo'].value === 'Del Inventario') {
-                <div class="col-md-6">
+                <div class="col-md-7">
                   <label class="form-label">Activo circulante</label>
                   <ng-select 
                     formControlName="piezaInventario" 
+                    [items]="activosCirculantes"
+                    bindValue="id"
                     placeholder="Seleccione tornillos, herrajes u otro circulante..." 
                     [clearable]="true" 
                     [searchable]="true" 
@@ -371,19 +380,17 @@
                     <ng-template ng-label-tmp let-item="item">
                       <span [title]="formatAssetOption(item)" class="text-truncate d-inline-block mw-100">{{ formatAssetOption(item) }}</span>
                     </ng-template>
-                    @for (asset of activosCirculantes; track asset.id) {
-                      <ng-option [value]="asset.id" [attr.title]="formatAssetOption(asset)">
-                        <span [title]="formatAssetOption(asset)">{{ formatAssetOption(asset) }}</span>
-                      </ng-option>
-                    }
+                    <ng-template ng-option-tmp let-item="item">
+                      <span [title]="formatAssetOption(item)">{{ formatAssetOption(item) }}</span>
+                    </ng-template>
                   </ng-select>
                 </div>
                 <div class="col-md-2">
                   <label class="form-label">Cantidad</label>
                   <input type="number" min="1" class="form-control" formControlName="piezaCantidad">
                 </div>
-                <div class="col-auto d-flex align-items-end">
-                  <button type="button" class="btn btn-primary btn-square-icon" (click)="agregarPieza()" title="Agregar Pieza">
+                <div class="col-md-1 d-flex align-items-end">
+                  <button type="button" class="btn btn-primary btn-square-icon w-100" (click)="agregarPieza()" title="Agregar Pieza">
                     <i class="ti ti-plus fs-4"></i>
                   </button>
                 </div>
@@ -412,6 +419,9 @@
                   <label class="form-label">Impresora / Máquina</label>
                   <ng-select 
                     formControlName="activoId" 
+                    [items]="maquinasFiltradas"
+                    bindValue="id"
+                    bindLabel="nombre"
                     placeholder="{{ f['piezaTecnologia'].value ? 'Seleccione máquina...' : 'Elija primero la tecnología' }}" 
                     [clearable]="true" 
                     [searchable]="true" 
@@ -419,23 +429,21 @@
                     appendTo="body" 
                     dropdownPosition="bottom">
                     <ng-template ng-label-tmp let-item="item">
-                      <span [title]="item.nombre || item" class="text-truncate d-inline-block mw-100">{{ item.nombre || item }}</span>
+                      <span [title]="item?.nombre || formatAssetOption(item)" class="text-truncate d-inline-block mw-100">{{ item?.nombre || formatAssetOption(item) }}</span>
                     </ng-template>
-                    @for (m of maquinasFiltradas; track m.id) {
-                      <ng-option [value]="m.id" [attr.title]="m.nombre">
-                        <span [title]="m.nombre">{{ m.nombre }}</span>
-                      </ng-option>
-                    }
+                    <ng-template ng-option-tmp let-item="item">
+                      <span [title]="item?.nombre || formatAssetOption(item)">{{ item?.nombre || formatAssetOption(item) }}</span>
+                    </ng-template>
                   </ng-select>
                 </div>
 
-                <div class="col-md-2">
-                  <label class="form-label">Cantidad</label>
-                  <input type="number" min="1" class="form-control" formControlName="piezaCantidad">
+                <!-- Fila 2: Material, Gramaje y Acción (12 cols) -->
+                <div class="col-md-1">
+                  <label class="form-label">Cant.</label>
+                  <input type="number" min="1" class="form-control px-2" formControlName="piezaCantidad">
                 </div>
 
-                <!-- Fila 2 para Pieza Fabricada -->
-                <div class="col-md-3">
+                <div class="col-md-2">
                   <label class="form-label">Tipo de polímero</label>
                   <ng-select formControlName="piezaPolimero" placeholder="PLA, ABS, PETG..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom">
                     @for (pol of polimerosPieza; track pol) {
@@ -463,9 +471,11 @@
                 </div>
 
                 <div class="col-md-3">
-                  <label class="form-label">Material</label>
+                  <label class="form-label">Material (Insumo)</label>
                   <ng-select 
                     formControlName="piezaMaterialId" 
+                    [items]="materialesFiltradosCirculantes"
+                    bindValue="id"
                     placeholder="Seleccione material..." 
                     [clearable]="true" 
                     [searchable]="true" 
@@ -474,11 +484,9 @@
                     <ng-template ng-label-tmp let-item="item">
                       <span [title]="formatAssetOption(item)" class="text-truncate d-inline-block mw-100">{{ formatAssetOption(item) }}</span>
                     </ng-template>
-                    @for (m of materialesFiltradosCirculantes; track m.id) {
-                      <ng-option [value]="m.id" [attr.title]="formatAssetOption(m)">
-                        <span [title]="formatAssetOption(m)">{{ formatAssetOption(m) }}</span>
-                      </ng-option>
-                    }
+                    <ng-template ng-option-tmp let-item="item">
+                      <span [title]="formatAssetOption(item)">{{ formatAssetOption(item) }}</span>
+                    </ng-template>
                   </ng-select>
                 </div>
 
@@ -487,11 +495,29 @@
                   <input type="number" class="form-control px-2" formControlName="piezaGramos" placeholder="0">
                 </div>
 
-                <div class="col-auto d-flex align-items-end">
-                  <button type="button" class="btn btn-primary btn-square-icon" (click)="agregarPieza()" title="Agregar Pieza Fabricada">
+                <div class="col-md-1 d-flex align-items-end">
+                  <button type="button" class="btn btn-primary btn-square-icon w-100" (click)="agregarPieza()" title="Agregar Pieza Fabricada">
                     <i class="ti ti-plus fs-4"></i>
                   </button>
                 </div>
+
+                @if (stockPiezaActual.estado !== 'sin_seleccion') {
+                  <div class="col-12 mt-1">
+                    @if (stockPiezaActual.estado === 'suficiente') {
+                      <span class="badge bg-light-success text-success d-inline-flex align-items-center gap-1 py-1 px-2 border border-success border-opacity-25">
+                        <i class="ti ti-check fs-6"></i> {{ stockPiezaActual.mensaje }}
+                      </span>
+                    } @else if (stockPiezaActual.estado === 'insuficiente') {
+                      <span class="badge bg-light-warning text-warning d-inline-flex align-items-center gap-1 py-1 px-2 border border-warning border-opacity-50">
+                        <i class="ti ti-alert-triangle fs-6"></i> {{ stockPiezaActual.mensaje }}
+                      </span>
+                    } @else if (stockPiezaActual.estado === 'agotado') {
+                      <span class="badge bg-light-danger text-danger d-inline-flex align-items-center gap-1 py-1 px-2 border border-danger border-opacity-50">
+                        <i class="ti ti-alert-circle fs-6"></i> {{ stockPiezaActual.mensaje }}
+                      </span>
+                    }
+                  </div>
+                }
               }
 
               <!-- Tabla de Piezas -->

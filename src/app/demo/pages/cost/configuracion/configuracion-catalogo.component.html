@@ -18,10 +18,10 @@
             <button class="nav-link" [class.active]="activeTab === 'familias'" (click)="setActiveTab('familias')" type="button">Familias</button>
           </li>
           <li class="nav-item">
-            <button class="nav-link" [class.active]="activeTab === 'materiales'" (click)="setActiveTab('materiales')" type="button">Polímeros</button>
+            <button class="nav-link" [class.active]="activeTab === 'tecnologias'" (click)="setActiveTab('tecnologias')" type="button">Tecnologías</button>
           </li>
           <li class="nav-item">
-            <button class="nav-link" [class.active]="activeTab === 'tecnologias'" (click)="setActiveTab('tecnologias')" type="button">Tecnologías</button>
+            <button class="nav-link" [class.active]="activeTab === 'materiales'" (click)="setActiveTab('materiales')" type="button">Polímeros</button>
           </li>
           <li class="nav-item">
             <button class="nav-link" [class.active]="activeTab === 'marcas'" (click)="setActiveTab('marcas')" type="button">Marcas</button>
@@ -39,11 +39,11 @@
             @if (activeTab === 'familias') {
               <button class="btn btn-primary" type="button" (click)="openAddFamily()">Agregar familia</button>
             }
-            @if (activeTab === 'materiales') {
-              <button class="btn btn-primary" type="button" (click)="openAddMaterial()">Agregar polímero</button>
-            }
             @if (activeTab === 'tecnologias') {
               <button class="btn btn-primary" type="button" (click)="openAddTecnologia()">Agregar tecnología</button>
+            }
+            @if (activeTab === 'materiales') {
+              <button class="btn btn-primary" type="button" (click)="openAddMaterial()">Agregar polímero</button>
             }
             @if (activeTab === 'marcas') {
               <button class="btn btn-primary" type="button" (click)="openAddMarca()">Agregar marca</button>

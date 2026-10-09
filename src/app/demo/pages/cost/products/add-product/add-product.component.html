@@ -568,6 +568,15 @@
                         </tr>
                       }
                     </tbody>
+                    @if (piezasPendientes.length > 0) {
+                      <tfoot class="table-light">
+                        <tr>
+                          <td colspan="5" class="text-end fw-bold">Total gramos</td>
+                          <td class="fw-bold">{{ totalGramosPiezas | number:'1.0-2' }} g</td>
+                          <td></td>
+                        </tr>
+                      </tfoot>
+                    }
                   </table>
                 </div>
               </div>

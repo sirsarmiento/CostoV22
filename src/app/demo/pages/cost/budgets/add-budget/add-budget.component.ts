@@ -35,9 +35,8 @@ import {
   calcularPrecioPorGramo,
   formatAssetOption,
   filtrarMaquinasPorTecnologia,
-  filtrarMaterialesImpresion,
-  listarPolimeros,
-  listarValoresUnicos,
+  armarFiltrosMaterialPieza,
+  sumarGramosPiezas,
   evaluarDisponibilidadStock,
   StockDisponibilidad
 } from '../../../../../core/utils/piece-builder.helper';
@@ -744,32 +743,34 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
     this.aplicarFiltroMaterialesPieza();
   }
 
+  get totalGramosPiezas(): number {
+    return sumarGramosPiezas(this.piezas);
+  }
+
   aplicarFiltroMaterialesPieza() {
     const tec = (this.form.get('piezaTecnologia')?.value || '').toUpperCase().trim();
-    const polimero = this.form.get('piezaPolimero')?.value || '';
-    const marca = this.form.get('piezaMarca')?.value || '';
-    const color = this.form.get('piezaColor')?.value || '';
+    const armado = armarFiltrosMaterialPieza(
+      this.activosMateriales,
+      this.materialesCatalogo,
+      tec,
+      this.form.get('piezaPolimero')?.value || '',
+      this.form.get('piezaMarca')?.value || '',
+      this.form.get('piezaColor')?.value || ''
+    );
 
-    this.polimerosPieza = listarPolimeros(this.materialesCatalogo, this.activosMateriales, tec);
-    if (polimero && !this.polimerosPieza.includes(polimero)) {
-      this.form.get('piezaPolimero')?.setValue('', { emitEvent: false });
+    this.polimerosPieza = armado.polimeros;
+    this.marcasPieza = armado.marcas;
+    this.coloresPieza = armado.colores;
+    this.materialesFiltradosCirculantes = armado.materiales;
+
+    if ((this.form.get('piezaPolimero')?.value || '') !== armado.polimero) {
+      this.form.get('piezaPolimero')?.setValue(armado.polimero, { emitEvent: false });
     }
-
-    const filtrados = filtrarMaterialesImpresion(this.activosMateriales, {
-      tecnologia: tec,
-      polimero: this.form.get('piezaPolimero')?.value,
-      marca: this.form.get('piezaMarca')?.value,
-      color: this.form.get('piezaColor')?.value
-    });
-    this.materialesFiltradosCirculantes = filtrados;
-    this.marcasPieza = listarValoresUnicos(filtrados, 'marca', this.marcas.map(m => m.nombre));
-    this.coloresPieza = listarValoresUnicos(filtrados, 'color', this.colores.map(c => c.nombre));
-
-    if (marca && !this.marcasPieza.includes(marca)) {
-      this.form.get('piezaMarca')?.setValue('', { emitEvent: false });
+    if ((this.form.get('piezaMarca')?.value || '') !== armado.marca) {
+      this.form.get('piezaMarca')?.setValue(armado.marca, { emitEvent: false });
     }
-    if (color && !this.coloresPieza.includes(color)) {
-      this.form.get('piezaColor')?.setValue('', { emitEvent: false });
+    if ((this.form.get('piezaColor')?.value || '') !== armado.color) {
+      this.form.get('piezaColor')?.setValue(armado.color, { emitEvent: false });
     }
 
     const matActual = this.form.get('piezaMaterialId')?.value;

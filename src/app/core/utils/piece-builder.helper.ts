@@ -168,25 +168,124 @@ export function filtrarMaterialesImpresion(
   });
 }
 
+export function listarUnicosNormalizados(valores: (string | undefined | null)[]): string[] {
+  const vistos = new Map<string, string>();
+  for (const valor of valores) {
+    const limpio = String(valor || '').trim();
+    if (!limpio) {
+      continue;
+    }
+    const clave = limpio.toLowerCase();
+    if (!vistos.has(clave)) {
+      vistos.set(clave, limpio);
+    }
+  }
+  return Array.from(vistos.values()).sort((a, b) => a.localeCompare(b, 'es'));
+}
+
+export function estaEnLista(lista: string[], valor: string | undefined | null): boolean {
+  const buscado = String(valor || '').trim().toLowerCase();
+  if (!buscado) {
+    return false;
+  }
+  return lista.some(item => item.toLowerCase() === buscado);
+}
+
 export function listarPolimeros(
   materialesCatalogo: MaterialCatalogo[],
   activosMateriales: Asset[],
   tecnologia: string
 ): string[] {
   const tec = (tecnologia || '').toUpperCase().trim();
-  const delCatalogo = (materialesCatalogo || [])
-    .filter(m => !tec || (m.tecnologias || []).some(t => (t.codigo || '').toUpperCase() === tec))
-    .map(m => m.codigo || m.nombre)
-    .filter(Boolean);
-  const deActivos = filtrarMaterialesImpresion(activosMateriales, { tecnologia: tec })
-    .map(a => a.subCategoria)
-    .filter((s): s is string => !!s);
-  return [...new Set([...delCatalogo, ...deActivos])].sort();
+  const deActivos = listarUnicosNormalizados(
+    filtrarMaterialesImpresion(activosMateriales, { tecnologia: tec }).map(a => a.subCategoria)
+  );
+  if (deActivos.length > 0) {
+    return deActivos;
+  }
+  return listarUnicosNormalizados(
+    (materialesCatalogo || [])
+      .filter(m => !tec || (m.tecnologias || []).some(t => (t.codigo || '').toUpperCase() === tec))
+      .map(m => m.codigo || m.nombre)
+  );
 }
 
 export function listarValoresUnicos(activos: Asset[], campo: 'marca' | 'color', extra: string[] = []): string[] {
-  const deActivos = activos.map(a => a[campo]).filter((s): s is string => !!s);
-  return [...new Set([...extra, ...deActivos])].sort();
+  return listarUnicosNormalizados([
+    ...extra,
+    ...activos.map(a => a[campo])
+  ]);
+}
+
+export function armarFiltrosMaterialPieza(
+  activosMateriales: Asset[],
+  materialesCatalogo: MaterialCatalogo[],
+  tecnologia: string,
+  polimero: string,
+  marca: string,
+  color: string
+): {
+  polimeros: string[];
+  marcas: string[];
+  colores: string[];
+  materiales: Asset[];
+  polimero: string;
+  marca: string;
+  color: string;
+} {
+  const tec = (tecnologia || '').toUpperCase().trim();
+  const polimeros = listarPolimeros(materialesCatalogo, activosMateriales, tec);
+  const polimeroOk = estaEnLista(polimeros, polimero) ? String(polimero).trim() : '';
+
+  if (!polimeroOk) {
+    return {
+      polimeros,
+      marcas: [],
+      colores: [],
+      materiales: filtrarMaterialesImpresion(activosMateriales, { tecnologia: tec }),
+      polimero: '',
+      marca: '',
+      color: ''
+    };
+  }
+
+  const paraMarcas = filtrarMaterialesImpresion(activosMateriales, { tecnologia: tec, polimero: polimeroOk });
+  const marcas = listarValoresUnicos(paraMarcas, 'marca');
+  const marcaOk = estaEnLista(marcas, marca) ? String(marca).trim() : '';
+
+  const paraColores = filtrarMaterialesImpresion(activosMateriales, {
+    tecnologia: tec,
+    polimero: polimeroOk,
+    marca: marcaOk
+  });
+  const colores = listarValoresUnicos(paraColores, 'color');
+  const colorOk = estaEnLista(colores, color) ? String(color).trim() : '';
+
+  const materiales = filtrarMaterialesImpresion(activosMateriales, {
+    tecnologia: tec,
+    polimero: polimeroOk,
+    marca: marcaOk,
+    color: colorOk
+  });
+
+  return {
+    polimeros,
+    marcas,
+    colores,
+    materiales,
+    polimero: polimeroOk,
+    marca: marcaOk,
+    color: colorOk
+  };
+}
+
+export function sumarGramosPiezas(piezas: Array<{ gramos?: number; cantidad?: number } | Record<string, unknown>>): number {
+  return piezas.reduce((suma, pieza) => {
+    const fila = pieza as Record<string, unknown>;
+    const cantidad = Number(fila['cantidad']) || 1;
+    const gramos = Number(fila['gramos']) || 0;
+    return suma + (gramos * cantidad);
+  }, 0);
 }
 
 export interface StockDisponibilidad {

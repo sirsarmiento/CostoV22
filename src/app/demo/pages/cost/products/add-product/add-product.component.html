@@ -493,6 +493,11 @@
                 <div class="col-md-1">
                   <label class="form-label">Gramos</label>
                   <input type="number" class="form-control px-2" formControlName="piezaGramos" placeholder="0">
+                  @if ((form.get('piezaCantidad')?.value || 1) > 1 && (form.get('piezaGramos')?.value || 0) > 0) {
+                    <div class="text-primary mt-1 fw-bold" style="font-size: 0.68rem; line-height: 1.1;" title="Total para la cantidad indicada">
+                      Tot: {{ ((form.get('piezaCantidad')?.value || 1) * (form.get('piezaGramos')?.value || 0)) | number:'1.0-2' }}g
+                    </div>
+                  }
                 </div>
 
                 <div class="col-md-1 d-flex align-items-end">
@@ -539,12 +544,12 @@
                       @for (p of piezasPendientes; track $index) {
                         <tr>
                           <td>
-                            <span class="badge" [class.bg-light-success]="p['tipo'] === 'Fabricada'" [class.bg-light-info]="p['tipo'] === 'Del Inventario'">
-                              {{ p['tipo'] }}
+                            <span class="badge" [class.bg-light-success]="p.tipo === 'Fabricada'" [class.bg-light-info]="p.tipo === 'Del Inventario'">
+                              {{ p.tipo }}
                             </span>
                           </td>
-                          <td class="fw-bold">{{ p['cantidad'] }}</td>
-                          <td class="fw-medium">{{ p['nombre'] }}</td>
+                          <td class="fw-bold">{{ p.cantidad }}</td>
+                          <td class="fw-medium">{{ p.nombre }}</td>
                           <td>
                             @if (getNombreMaquina(p) !== '-') {
                               <span class="badge bg-light-primary text-primary px-2 py-1"><i class="ti ti-printer me-1"></i>{{ getNombreMaquina(p) }}</span>
@@ -553,7 +558,18 @@
                             }
                           </td>
                           <td>{{ getNombreMaterial(p) }}</td>
-                          <td>{{ p['gramos'] ? p['gramos'] + ' g' : '-' }}</td>
+                          <td>
+                            @if (p.gramos) {
+                              @if ((p.cantidad || 1) > 1) {
+                                <div class="fw-bold text-dark">{{ ((p.gramos || 0) * (p.cantidad || 1)) | number:'1.0-2' }} g</div>
+                                <small class="text-muted d-block" style="font-size: 0.72rem;">({{ p.gramos | number:'1.0-2' }} g c/u)</small>
+                              } @else {
+                                <span>{{ p.gramos + ' g' }}</span>
+                              }
+                            } @else {
+                              <span class="text-muted">-</span>
+                            }
+                          </td>
                           <td class="text-center">
                             <button type="button" class="btn btn-sm btn-icon btn-light-danger" (click)="removerPieza($index)" title="Eliminar Pieza">
                               <i class="ti ti-trash fs-5"></i>

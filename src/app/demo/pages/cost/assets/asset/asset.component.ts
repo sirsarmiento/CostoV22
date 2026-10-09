@@ -113,6 +113,8 @@ export class AssetComponent implements OnInit {
             presentacion: item.presentacion || '',
             categoria: item.categoria || ((item as unknown as Record<string, unknown>)['Categoria'] as string) || '',
             subCategoria: item.subCategoria || ((item as unknown as Record<string, unknown>)['subcategoria'] as string) || ((item as unknown as Record<string, unknown>)['Subcategoria'] as string) || ((item as unknown as Record<string, unknown>)['SUBCATEGORIA'] as string) || '',
+            color: item.color || ((item as unknown as Record<string, unknown>)['color'] as string) || ((item as unknown as Record<string, unknown>)['Color'] as string) || '',
+            marca: item.marca || ((item as unknown as Record<string, unknown>)['marca'] as string) || ((item as unknown as Record<string, unknown>)['Marca'] as string) || '',
             depMensual: 0,
             depAnual: 0
           };
@@ -179,6 +181,7 @@ export class AssetComponent implements OnInit {
         item.descripcion.toLowerCase().includes(query) ||
         (item.marca || '').toLowerCase().includes(query) ||
         (item.subCategoria || '').toLowerCase().includes(query) ||
+        (item.color || '').toLowerCase().includes(query) ||
         item.ubicacion.toLowerCase().includes(query)
       );
     }

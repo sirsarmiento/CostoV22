@@ -1,5 +1,5 @@
 import { Asset } from '../models/Cost/asset';
-import { Product } from '../models/Cost/product';
+import { Product, PiezaProducto } from '../models/Cost/product';
 import { resolverNombreMaquina, resolverNombreMaterial } from './piece-builder.helper';
 
 /* Extrae los correlativos ya usados para productos de la misma familia.*/
@@ -46,41 +46,41 @@ export function mapDbPiezasToView(
   activosMateriales: Asset[],
   activosCirculantes: Asset[],
   allAssets: Asset[] = []
-): Record<string, unknown>[] {
+): PiezaProducto[] {
   const piezasArray = Array.isArray(rawPiezas) ? rawPiezas : [];
   return piezasArray.map(p => {
-    const pObj = p as Record<string, unknown>;
-    const maqId = Number(pObj['maquina'] ?? pObj['maquinaId'] ?? pObj['maquina_id']) || undefined;
-    const maqName = resolverNombreMaquina(pObj, maquinasList, allAssets);
+    const pRecord = p as Record<string, unknown>;
+    const rawMaq = pRecord['maquina'] ?? pRecord['maquinaId'] ?? pRecord['maquina_id'];
+    const maqId = (rawMaq !== null && rawMaq !== undefined && rawMaq !== '') ? Number(rawMaq) : undefined;
+    const maqName = resolverNombreMaquina(pRecord, maquinasList, allAssets);
 
-    const actId = Number(pObj['activo'] ?? pObj['assetId'] ?? pObj['activo_id']) || undefined;
-    const matName = resolverNombreMaterial(pObj, activosMateriales, activosCirculantes, allAssets);
+    const rawAct = pRecord['activo'] ?? pRecord['assetId'] ?? pRecord['activo_id'];
+    const actId = (rawAct !== null && rawAct !== undefined && rawAct !== '') ? Number(rawAct) : undefined;
+    const matName = resolverNombreMaterial(pRecord, activosMateriales, activosCirculantes, allAssets);
 
     return {
-      ...pObj,
+      ...(p as PiezaProducto),
       fromDb: true,
-      maquinaId: maqId,
-      maquinaNombre: maqName !== '-' ? maqName : (pObj['maquinaNombre'] as string | undefined),
-      assetId: actId,
-      materialDisplayName: matName !== '-' ? matName : (pObj['materialDisplayName'] as string | undefined)
+      maquina: maqId,
+      maquinaNombre: maqName !== '-' ? maqName : (pRecord['maquinaNombre'] as string | undefined),
+      activo: actId,
+      activoNombre: matName !== '-' ? matName : (pRecord['activoNombre'] as string | undefined)
     };
   });
 }
 
 /* Mapea las piezas pendientes al formato de payload para la API.*/
 export function mapPiezasToPayload(
-  piezasPendientes: Record<string, unknown>[],
+  piezasPendientes: PiezaProducto[],
   assetsMobiliario: Asset[],
   activosCirculantes: Asset[]
 ): Record<string, unknown>[] {
   return piezasPendientes.map((p, idx) => {
     const pObj = p;
-    const actId = pObj['activo'] ?? pObj['assetId'] ?? pObj['activo_id'];
-    const maqId = pObj['maquina'] ?? pObj['maquinaId'] ?? pObj['maquina_id'];
-    const numAct = (actId !== null && actId !== undefined && actId !== '') ? Number(actId) : null;
-    const numMaq = (maqId !== null && maqId !== undefined && maqId !== '') ? Number(maqId) : null;
+    const numAct = (pObj.activo !== null && pObj.activo !== undefined) ? Number(pObj.activo) : null;
+    const numMaq = (pObj.maquina !== null && pObj.maquina !== undefined) ? Number(pObj.maquina) : null;
 
-    let nom = String(pObj['nombre'] || '').trim();
+    let nom = String(pObj.nombre || '').trim();
     if (!nom || nom === 'null' || nom === 'undefined') {
       if (numAct) {
         const foundMob = assetsMobiliario.find(a => a.id == numAct);
@@ -91,17 +91,17 @@ export function mapPiezasToPayload(
       }
     }
 
-    let tip = String(pObj['tipo'] || '').trim();
+    let tip = String(pObj.tipo || '').trim();
     if (!tip || tip === 'null' || tip === 'undefined') {
       tip = numAct && !numMaq ? 'Del Inventario' : 'Producción';
     }
 
-    const gVal = Number(pObj['gramos']) || 0;
-    const mVal = Number(pObj['metros'] ?? pObj['metro']) || 0;
+    const gVal = Number(pObj.gramos) || 0;
+    const mVal = Number(pObj.metros) || 0;
     const hVal = 0;
     const minVal = 0;
-    const matPrice = Number(pObj['precioMaterial'] ?? pObj['precio_material']) || 0;
-    const cant = Number(pObj['cantidad']) || 1;
+    const matPrice = Number(pObj.precioMaterial) || 0;
+    const cant = Number(pObj.cantidad) || 1;
 
     const piece: Record<string, unknown> = {
       nombre: nom,
@@ -119,8 +119,8 @@ export function mapPiezasToPayload(
       maquina_id: numMaq
     };
 
-    if (pObj['fromDb'] && pObj['id'] && Number(pObj['id']) > 0) {
-      piece['id'] = Number(pObj['id']);
+    if (pObj.fromDb && pObj.id && Number(pObj.id) > 0) {
+      piece['id'] = Number(pObj.id);
     }
 
     return piece;

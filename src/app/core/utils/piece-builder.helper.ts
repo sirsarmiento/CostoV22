@@ -50,14 +50,15 @@ export function formatAssetOption(asset: Asset | unknown, fallbackAssets: Asset[
 
 /* Resuelve el nombre de la máquina asociada a una pieza.*/
 export function resolverNombreMaquina(
-  p: Record<string, unknown> | null | undefined,
+  p: Record<string, unknown> | object | null | undefined,
   maquinasList: Asset[],
   allAssets: Asset[] = []
 ): string {
   if (!p) return '-';
-  if (p['maquinaNombre'] && p['maquinaNombre'] !== '-') return String(p['maquinaNombre']);
+  const pRecord = p as Record<string, unknown>;
+  if (pRecord['maquinaNombre'] && pRecord['maquinaNombre'] !== '-') return String(pRecord['maquinaNombre']);
 
-  const rawMaq = p['maquina'] ?? p['maquinaId'] ?? p['maquina_id'];
+  const rawMaq = pRecord['maquina'] ?? pRecord['maquinaId'] ?? pRecord['maquina_id'];
   if (typeof rawMaq === 'object' && rawMaq !== null) {
     const nom = (rawMaq as Record<string, unknown>)['nombre'];
     if (nom) return String(nom);
@@ -75,16 +76,17 @@ export function resolverNombreMaquina(
 
 /* Resuelve el nombre del material asociado a una pieza.*/
 export function resolverNombreMaterial(
-  p: Record<string, unknown> | null | undefined,
+  p: Record<string, unknown> | object | null | undefined,
   activosMateriales: Asset[],
   activosCirculantes: Asset[] = [],
   allAssets: Asset[] = []
 ): string {
   if (!p) return '-';
-  if (p['materialDisplayName'] && p['materialDisplayName'] !== '-') return String(p['materialDisplayName']);
-  if (p['materialTipo'] && p['materialTipo'] !== 'Sin material') return String(p['materialTipo']);
+  const pRecord = p as Record<string, unknown>;
+  if (pRecord['materialDisplayName'] && pRecord['materialDisplayName'] !== '-') return String(pRecord['materialDisplayName']);
+  if (pRecord['materialTipo'] && pRecord['materialTipo'] !== 'Sin material') return String(pRecord['materialTipo']);
 
-  const rawAct = p['activo'] ?? p['assetId'] ?? p['activo_id'];
+  const rawAct = pRecord['activo'] ?? pRecord['assetId'] ?? pRecord['activo_id'];
   if (typeof rawAct === 'object' && rawAct !== null) {
     const nom = (rawAct as Record<string, unknown>)['nombre'];
     if (nom) return String(nom);

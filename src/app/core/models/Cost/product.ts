@@ -13,6 +13,8 @@ export interface PiezaProducto {
     activoNombre?: string;
     maquina?: number;
     maquinaNombre?: string;
+    tecnologia?: string;
+    fromDb?: boolean;
 }
 
 export class Product { 

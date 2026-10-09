@@ -81,7 +81,7 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
   imagenSrc: string | null = null;
 
   // Parámetros de Presupuesto y Piezas
-  piezasPendientes: Record<string, unknown>[] = [];
+  piezasPendientes: PiezaProducto[] = [];
   allAssets: Asset[] = [];
   assetsMobiliario: Asset[] = [];
   activosCirculantes: Asset[] = [];
@@ -499,7 +499,17 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
     }
 
     this.piezasPendientes.push({ 
-      tipo, nombre, cantidad, assetId, gramos, horas, minutos, precioMaterial, materialDisplayName, maquinaId, maquinaNombre,
+      tipo,
+      nombre,
+      cantidad,
+      activo: assetId ? Number(assetId) : undefined,
+      gramos,
+      horas,
+      minutos,
+      precioMaterial,
+      activoNombre: materialDisplayName,
+      maquina: maquinaId ? Number(maquinaId) : undefined,
+      maquinaNombre,
       tecnologia: tipo === 'Fabricada' ? this.form.get('piezaTecnologia')?.value : ''
     });
     this.piezasPendientes = [...this.piezasPendientes];

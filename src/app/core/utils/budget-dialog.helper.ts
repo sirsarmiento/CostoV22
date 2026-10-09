@@ -141,7 +141,7 @@ export function showBudgetStudyModal(
     return `
       <tr>
         <td class="text-start fw-medium">${p.nombre || 'Pieza'} ${cant > 1 ? `(x${cant})` : ''}</td>
-        <td>${g > 0 ? g.toFixed(2) : '-'}</td>
+        <td>${g > 0 ? (cant > 1 ? `<b>${(g * cant).toFixed(2)}g</b> <span class="text-muted d-block" style="font-size: 0.72rem;">(${g.toFixed(2)}g c/u)</span>` : `${g.toFixed(2)}g`) : '-'}</td>
         <td>${h * cant}</td>
         <td>${min * cant}</td>
         <td>$${matCost.toFixed(2)}</td>

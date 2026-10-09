@@ -14,7 +14,7 @@
   </div>
 </div>
 
-<!-- Tarjetas Métricas Financieras (KPIs de Ventas) -->
+<!-- Tarjetas Métricas Financieras (KPIs de Ventas) (Comentado temporalmente hasta agregar propiedad en backend)
 <div class="row g-3 mb-4">
   <div class="col-md-4">
     <div class="card border-0 shadow-sm bg-light-primary border-start border-primary border-4 h-100 mb-0">
@@ -65,15 +65,16 @@
     </div>
   </div>
 </div>
+-->
 
 <div class="row">
   <div class="col-12">
     <div class="card">
       <div class="card-body">
         
-        <!-- Barra de Búsqueda y Pestañas de Filtro -->
+        <!-- Barra de Búsqueda -->
         <div class="row g-3 align-items-center mb-3">
-          <div class="col-md-4">
+          <div class="col-md-6">
             <input 
               type="text" 
               class="form-control" 
@@ -82,7 +83,8 @@
               (input)="onSearchChange()">
           </div>
 
-          <div class="col-md-8 d-flex justify-content-md-end gap-2 flex-wrap">
+          <!-- Filtros por Estado de Venta (Comentado temporalmente hasta agregar propiedad en backend)
+          <div class="col-md-6 d-flex justify-content-md-end gap-2 flex-wrap">
             <button 
               type="button" 
               class="btn btn-sm" 
@@ -116,6 +118,7 @@
               <i class="ti ti-clock me-1"></i> Pendientes
             </button>
           </div>
+          -->
         </div>
 
         <!-- Tabla de Ventas -->
@@ -139,9 +142,11 @@
                 <th style="cursor: pointer;" class="text-end" (click)="sortData('total')">
                   Total <i class="ti fs-6" [class]="getSortClass('total')"></i>
                 </th>
+                <!-- Columna de Estado de Venta (Comentado temporalmente hasta agregar propiedad en backend)
                 <th class="text-center" style="min-width: 170px;">
                   Estado de Venta
                 </th>
+                -->
               </tr>
             </thead>
             <tbody>
@@ -158,6 +163,7 @@
                     <span class="badge bg-light-primary text-primary px-2 py-1">{{ row.cantidad || 1 }} unid.</span>
                   </td>
                   <td class="text-end fw-bold text-dark fs-6">${{ (row.total || 0) | number:'1.2-2' }}</td>
+                  <!-- Botón Estado de Venta (Comentado temporalmente hasta agregar propiedad en backend)
                   <td class="text-center" (click)="$event.stopPropagation()">
                     @if (getEstadoVenta(row) === 'PAGADO') {
                       <button 
@@ -185,10 +191,11 @@
                       </button>
                     }
                   </td>
+                  -->
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="7" class="text-center py-4 text-muted">
+                  <td colspan="6" class="text-center py-4 text-muted">
                     <i class="ti ti-search fs-1 d-block mb-2 opacity-50"></i>
                     No se encontraron ventas registradas con el filtro actual.
                   </td>
@@ -229,15 +236,13 @@
   </div>
 </div>
 
-<!-- ========================================================================= -->
-<!-- MODAL DE GESTIÓN Y ACTUALIZACIÓN DE ESTADO DE VENTA                       -->
-<!-- ========================================================================= -->
+<!-- MODAL DE GESTIÓN Y ACTUALIZACIÓN DE ESTADO DE VENTA (Comentado temporalmente) -->
+<!--
 @if (showPaymentModal && selectedSaleForPayment) {
   <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.55);" (click)="closePaymentModal()">
     <div class="modal-dialog modal-dialog-centered" (click)="$event.stopPropagation()">
       <div class="modal-content shadow-lg border-0 rounded-3">
         
-        <!-- Header -->
         <div class="modal-header bg-primary text-white py-3">
           <h5 class="modal-title text-white fs-5 fw-bold d-flex align-items-center gap-2">
             <i class="ti ti-cash fs-4"></i> Control de Estado de Venta
@@ -248,7 +253,6 @@
         <form (ngSubmit)="savePaymentStatus()">
           <div class="modal-body p-4">
             
-            <!-- Resumen de la Venta -->
             <div class="bg-light p-3 rounded-3 mb-4 border">
               <div class="d-flex justify-content-between align-items-center mb-2">
                 <span class="text-muted text-xs text-uppercase fw-bold">Venta</span>
@@ -264,7 +268,6 @@
               </div>
             </div>
 
-            <!-- Selector de Estado de Venta -->
             <label class="form-label fw-bold text-dark mb-2">Seleccione el Estado de Venta:</label>
             <div class="row g-2 mb-3">
               <div class="col-4">
@@ -304,7 +307,6 @@
               </div>
             </div>
 
-            <!-- Campos condicionales si es ABONADO -->
             @if (paymentModalData.estadoVenta === 'ABONADO') {
               <div class="card bg-light-warning border-warning border-opacity-25 p-3 mb-3">
                 <div class="mb-3">
@@ -329,7 +331,6 @@
               </div>
             }
 
-            <!-- Método de Pago y Observaciones -->
             <div class="row g-2 mb-2">
               <div class="col-12 mb-2">
                 <label class="form-label text-xs fw-bold text-secondary mb-1">Método de Pago</label>
@@ -355,7 +356,6 @@
 
           </div>
 
-          <!-- Footer -->
           <div class="modal-footer bg-light border-top py-2 px-4">
             <button class="btn btn-outline-secondary btn-sm" type="button" (click)="closePaymentModal()">Cancelar</button>
             <button class="btn btn-primary btn-sm d-inline-flex align-items-center gap-1" type="submit">
@@ -368,3 +368,4 @@
     </div>
   </div>
 }
+-->

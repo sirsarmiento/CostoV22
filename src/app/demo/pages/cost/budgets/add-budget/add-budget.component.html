@@ -324,6 +324,11 @@
                   <div class="col-md-1">
                     <label class="form-label text-xs mb-1">Gramos</label>
                     <input type="number" class="form-control form-control-sm px-1" formControlName="piezaGramos">
+                    @if ((form.get('piezaCantidad')?.value || 1) > 1 && (form.get('piezaGramos')?.value || 0) > 0) {
+                      <div class="text-primary mt-1 fw-bold" style="font-size: 0.68rem; line-height: 1.1;" title="Total para la cantidad indicada">
+                        Tot: {{ ((form.get('piezaCantidad')?.value || 1) * (form.get('piezaGramos')?.value || 0)) | number:'1.0-2' }}g
+                      </div>
+                    }
                   </div>
 
                   <div class="col-md-1 d-flex align-items-end">
@@ -389,7 +394,18 @@
                       </td>
                       <td>{{ getNombreMaterial(row) }}</td>
                       <td>{{ row.precioMaterial ? (row.precioMaterial | currency:'USD') : '-' }}</td>
-                      <td>{{ row.gramos ? (row.gramos | number:'1.1-2') + ' g' : '-' }}</td>
+                      <td>
+                        @if (row.gramos) {
+                          @if ((row.cantidad || 1) > 1) {
+                            <div class="fw-bold text-dark">{{ ((row.gramos || 0) * (row.cantidad || 1)) | number:'1.1-2' }} g</div>
+                            <small class="text-muted d-block" style="font-size: 0.72rem;">({{ row.gramos | number:'1.1-2' }} g c/u)</small>
+                          } @else {
+                            <span>{{ (row.gramos | number:'1.1-2') + ' g' }}</span>
+                          }
+                        } @else {
+                          <span class="text-muted">-</span>
+                        }
+                      </td>
                       <td class="text-end">
                         <button class="btn btn-sm btn-icon btn-light-danger" type="button" (click)="onDelete(row)" title="Eliminar Pieza">
                           <i class="ti ti-trash"></i>

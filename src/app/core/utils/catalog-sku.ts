@@ -36,9 +36,67 @@ export interface SkuPreviewInput {
   clasificacion?: string;
   tecnologia?: string;
   material?: string;
+  tecnologias?: string[];
+  materiales?: string[];
   familiaCodigo?: string;
   serie?: string;
   correlativosUsados?: string[];
+}
+
+export function unicosMayusculas(valores?: Array<string | undefined | null>): string[] {
+  const vistos = new Set<string>();
+  const salida: string[] = [];
+  (valores || []).forEach(valor => {
+    const limpio = String(valor || '').toUpperCase().trim();
+    if (!limpio || limpio === 'M' || vistos.has(limpio)) {
+      return;
+    }
+    vistos.add(limpio);
+    salida.push(limpio);
+  });
+  return salida;
+}
+
+export function tecnologiasDesdePiezas(
+  piezas: Array<{ tipo?: string; tecnologia?: string }>
+): string[] {
+  return unicosMayusculas(
+    (piezas || [])
+      .filter(pieza => String(pieza.tipo || '').toLowerCase() !== 'del inventario')
+      .map(pieza => pieza.tecnologia)
+  );
+}
+
+export function materialesDesdePiezas(
+  piezas: Array<{ tipo?: string; material?: string; polimero?: string; subCategoria?: string }>
+): string[] {
+  return unicosMayusculas(
+    (piezas || [])
+      .filter(pieza => String(pieza.tipo || '').toLowerCase() !== 'del inventario')
+      .map(pieza => pieza.material || pieza.polimero || pieza.subCategoria || '')
+  );
+}
+
+export function armarSegmentosTecMat(
+  tecnologias: string[],
+  materiales: string[]
+): { tecnologia: string; material: string; tecnologias: string[]; materiales: string[] } {
+  const tecs = unicosMayusculas(tecnologias.flatMap(valor => String(valor || '').split(/[/,|-]/)));
+  const mats = unicosMayusculas(materiales.flatMap(valor => String(valor || '').split(/[/,|-]/)));
+  if (tecs.length > 1) {
+    return {
+      tecnologia: `M-${tecs.join('/')}`,
+      material: mats.join('/') || 'NA',
+      tecnologias: tecs,
+      materiales: mats
+    };
+  }
+  return {
+    tecnologia: tecs[0] || '',
+    material: mats[0] || '',
+    tecnologias: tecs,
+    materiales: mats
+  };
 }
 
 export function categoriaDesdeClasificacion(clasificacion?: string): string {
@@ -46,50 +104,61 @@ export function categoriaDesdeClasificacion(clasificacion?: string): string {
   if (['producto', 'productos', 'producto final', 'producto fabricado', 'pf'].includes(valor)) {
     return 'PF';
   }
-  if (['proyecto', 'proyectos', 'pr', 'py'].includes(valor)) {
-    return 'PR';
+  if (['proyecto', 'proyectos', 'pr', 'py', 'p'].includes(valor)) {
+    return 'P';
   }
   return 'SR';
 }
 
 export function previsualizarCodigo(input: SkuPreviewInput): { sku: string; codigoCatalogo: string; correlativo: string } {
-  const tecnologia = (input.tecnologia || '').toUpperCase().trim();
-  const material = (input.material || '').toUpperCase().trim();
+  const vacio = { sku: '', codigoCatalogo: '', correlativo: '' };
+  const segs = armarSegmentosTecMat(
+    input.tecnologias?.length ? input.tecnologias : [input.tecnologia || ''],
+    input.materiales?.length ? input.materiales : [input.material || '']
+  );
   const familia = (input.familiaCodigo || '').toUpperCase().trim();
-  if (!tecnologia || !material || !familia) {
-    return { sku: '', codigoCatalogo: '', correlativo: '' };
+  const categoria = categoriaDesdeClasificacion(input.clasificacion);
+  const esProyecto = categoria === 'P';
+
+  if (esProyecto && !segs.tecnologia) {
+    return vacio;
+  }
+  if (!esProyecto && (!segs.tecnologia || !segs.material || !familia)) {
+    return vacio;
   }
 
-  const categoria = categoriaDesdeClasificacion(input.clasificacion);
   const usados = (input.correlativosUsados || []).map(c => c.toUpperCase());
   const rawNombre = (input.nombre || '').toLowerCase().trim();
   const nombreLimpio = rawNombre.replace(/^(juegos?\s+(de\s+)?|el\s+|la\s+|los\s+|las\s+)/i, '').trim();
   const entryLud = CATALOGO_LUD[rawNombre] || CATALOGO_LUD[nombreLimpio];
   const isLudTaken = entryLud ? usados.some(u => u === entryLud || u.endsWith(entryLud)) : false;
-
-  const esProyecto = ['proyecto', 'proyectos'].includes((input.clasificacion || '').toLowerCase().trim());
   const serie = (input.serie || '').toUpperCase().trim();
 
   let correlativo: string;
 
   if (esProyecto) {
     correlativo = siguientePrefijo(usados, 'P', 2);
-  } else if (serie && /^[A-Z]{1,3}$/.test(serie)) {
-    // Si se seleccionó una Serie/Subfamilia (ej: 'RC', 'JM', 'FG')
+    return {
+      sku: `P-${correlativo}-${segs.tecnologias.join('/')}`,
+      codigoCatalogo: `P-${correlativo}`,
+      correlativo
+    };
+  }
+
+  if (serie && /^[A-Z]{1,3}$/.test(serie)) {
     if (familia === 'LUD' && entryLud && entryLud.startsWith(serie) && !isLudTaken) {
       correlativo = entryLud;
     } else {
       correlativo = siguientePrefijo(usados, serie, 2);
     }
   } else if (familia === 'LUD' && entryLud && !isLudTaken) {
-    // Si no tiene serie seleccionada pero coincide con un nombre del catálogo histórico
     correlativo = entryLud;
   } else {
     correlativo = siguienteNumerico(usados);
   }
 
   return {
-    sku: `${categoria}-${tecnologia}-${material}-${familia}-${correlativo}`,
+    sku: `${categoria}-${segs.tecnologia}-${segs.material}-${familia}-${correlativo}`,
     codigoCatalogo: `${familia}-${correlativo}`,
     correlativo
   };

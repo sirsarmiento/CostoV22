@@ -101,17 +101,43 @@ export const NavigationItems: NavigationItem[] = [
         icon: 'calculator',
         children: [
           {
-            id: 'products',
-            title: 'Catálogo',
-            type: 'item',
-            classes: 'nav-item',
-            url: '/products',
+            id: 'productos-servicios',
+            title: 'Productos y servicios',
+            type: 'collapse',
             icon: 'gold',
-            breadcrumbs: false
+            children: [
+              {
+                id: 'products',
+                title: 'Catálogo',
+                type: 'item',
+                classes: 'nav-item',
+                url: '/products',
+                icon: 'gold',
+                breadcrumbs: false
+              },
+              {
+                id: 'products-producto',
+                title: 'Productos',
+                type: 'item',
+                classes: 'nav-item',
+                url: '/products/add-product?ambito=producto',
+                icon: 'gold',
+                breadcrumbs: false
+              },
+              {
+                id: 'products-servicio',
+                title: 'Servicios',
+                type: 'item',
+                classes: 'nav-item',
+                url: '/products/add-product?ambito=servicio',
+                icon: 'gold',
+                breadcrumbs: false
+              }
+            ]
           },
           {
             id: 'fixes',
-            title: 'Costos',
+            title: 'Estructura de costos',
             type: 'item',
             classes: 'nav-item',
             url: '/fixes',

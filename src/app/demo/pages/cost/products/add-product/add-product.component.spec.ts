@@ -53,5 +53,26 @@ describe('AddProductComponent', () => {
     expect(component.piezasPendientes.length).toBe(1);
     expect(component.piezasPendientes[0]['nombre']).toBe('Tapa Frontal');
     expect(component.piezasPendientes[0]['cantidad']).toBe(2);
+    expect(component.piezasPendientes[0]['horas']).toBe(0);
+  });
+
+  it('nombra sola la pieza si no escriben nombre', () => {
+    component.form.patchValue({
+      piezaTipo: 'Fabricada',
+      piezaTecnologia: 'FDM',
+      piezaFabricada: '',
+      piezaCantidad: 1,
+      piezaGramos: 10,
+      piezaHoras: 1,
+      piezaMinutos: 15,
+      piezaMaterialId: 10
+    });
+    component.activosMateriales = [
+      { id: 10, nombre: 'Filamento PLA', tipo: 'Material', subCategoria: 'PLA' } as unknown as Asset
+    ];
+    component.agregarPieza();
+    expect(component.piezasPendientes[0]['nombre']).toBe('Pieza 1');
+    expect(component.piezasPendientes[0]['horas']).toBe(1);
+    expect(component.piezasPendientes[0]['minutos']).toBe(15);
   });
 });

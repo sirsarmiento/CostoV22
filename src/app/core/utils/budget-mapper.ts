@@ -176,7 +176,8 @@ export function mapProductToPieces(product: Product, catalog: AssetCatalog): Par
       minutos: Number(pb['minutos']) || 0,
       maquinaId: maqId,
       maquina: maqId,
-      maquinaNombre: maqName
+      maquinaNombre: maqName,
+      tecnologia: (pb['tecnologia'] as string) || ''
     };
   });
 }
@@ -226,7 +227,8 @@ export function buildBudgetPayload(params: BudgetPayloadParams): Record<string, 
       cantidad: Number(p.cantidad) || 1,
       producto: prodId ? Number(prodId) : null,
       activo: actId ? Number(actId) : null,
-      maquina: maqId ? Number(maqId) : null
+      maquina: maqId ? Number(maqId) : null,
+      tecnologia: p.tecnologia || pObj['tecnologia'] || ''
     };
 
     if (p.maquinaNombre) {
@@ -258,6 +260,8 @@ export function buildBudgetPayload(params: BudgetPayloadParams): Record<string, 
     costoOperador: Number(formValue['costoOperador']) || 0,
     costoMaquina: Number(formValue['costoMaquina']) || 0,
     tasaFalloGlobal: Number(formValue['tasaFalloGlobal']) || 0,
+    tasasFallo: formValue['tasasFallo'] || '',
+    multitecnologia: !!formValue['multitecnologia'],
     tiempoSetup: Number(formValue['tiempoSetup']) || 0,
     horasImpresion: Number(formValue['horasImpresion']) || 0,
     minutosImpresion: Number(formValue['minutosImpresion']) || 0,

@@ -1,5 +1,6 @@
 import { Budget, Parts } from '../models/Cost/budge';
 import { Asset } from '../models/Cost/asset';
+import { parsearTasasFallo, tasaFalloDePieza } from './family-rules';
 
 export interface BudgetCalculationResult {
   totalGramos: number;
@@ -43,6 +44,18 @@ export function isMachineAsset(asset: Asset | null | undefined): boolean {
     || cat.includes('herramienta')
     || tipo === 'maquinaria'
     || consumo > 0;
+}
+
+export function costoHoraMaquina(asset: Asset): { rate: number; dep: number } {
+  const consumo = Number(asset.consumoMaquina) || 0;
+  const tarifa = Number(asset.tarifa) || 0;
+  const mantenimiento = Number(asset.costoMantenimiento) || 0;
+  const rate = (consumo / 1000 * tarifa) + mantenimiento;
+  const costoInicial = Number(asset.costoInicial) || 0;
+  const valorResidual = Number(asset.valorResidual) || 0;
+  const vidaUtilAnos = Number(asset.vidaUtil) > 0 ? Number(asset.vidaUtil) : 1;
+  const dep = (costoInicial - valorResidual) / (vidaUtilAnos * 1920);
+  return { rate, dep: dep > 0 ? dep : 0 };
 }
 
 export function depreciacionAnualMaquina(asset: Asset): number {
@@ -93,6 +106,10 @@ export function calculateBudgetTotals(
   let rawMaterialCost = 0;
   let totalCostoInventario = 0;
   let totalTiempoHorasPiezas = 0;
+  let totalCostoMaquinaPiezas = 0;
+  let depreciacionPiezas = 0;
+  const tasasPorTecnologia = parsearTasasFallo((budget as Budget).tasasFallo);
+  const tasaFalloGlobal = budget.tasaFalloGlobal || 0;
 
   piezas.forEach(pieza => {
     const cant = Number(pieza.cantidad) || 1;
@@ -122,31 +139,39 @@ export function calculateBudgetTotals(
       if (precioMaterial >= 1.0) {
         precioMaterial = precioMaterial / 1000;
       }
-      rawMaterialCost += (gramos * precioMaterial) * cant;
+      const tasaPieza = tasaFalloDePieza(pieza, tasasPorTecnologia, tasaFalloGlobal);
+      rawMaterialCost += (gramos * precioMaterial) * cant * (1 + (tasaPieza / 100));
 
       const horas = Number(pieza.horas) || 0;
       const minutos = Number(pieza.minutos) || 0;
-      const tiempoPieza = horas + (minutos / 60);
-      totalTiempoHorasPiezas += tiempoPieza * cant;
+      const tiempoPieza = (horas + (minutos / 60)) * cant;
+      totalTiempoHorasPiezas += tiempoPieza;
+
+      const maquinaPieza = pieza.maquina && allAssets.length > 0
+        ? allAssets.find(a => a.id === pieza.maquina)
+        : undefined;
+      if (maquinaPieza && tiempoPieza > 0) {
+        const costos = costoHoraMaquina(maquinaPieza);
+        totalCostoMaquinaPiezas += costos.rate * tiempoPieza;
+        depreciacionPiezas += costos.dep * tiempoPieza;
+      }
     }
   });
 
   const headerHoras = Number((budget as Budget).horasImpresion) || 0;
   const headerMinutos = Number((budget as Budget).minutosImpresion) || 0;
   const tiempoCabecera = headerHoras + (headerMinutos / 60);
-  if (tiempoCabecera > 0) {
+  if (totalTiempoHorasPiezas <= 0 && tiempoCabecera > 0) {
     totalTiempoHorasPiezas = tiempoCabecera;
   }
 
-  const tasaFalloGlobal = budget.tasaFalloGlobal || 0;
-  const totalCostoMaterial = rawMaterialCost * (1 + (tasaFalloGlobal / 100));
+  const totalCostoMaterial = rawMaterialCost;
 
   const tiempoSetupMin = budget.tiempoSetup || 0;
   const tiempoPostProcesadoMin = budget.tiempoPostProcesado || 0;
   const tiempoExtraHoras = (tiempoSetupMin + tiempoPostProcesadoMin) / 60;
   const totalTiempoHoras = totalTiempoHorasPiezas + tiempoExtraHoras;
 
-  // Determinar costo de máquina y depreciación de máquina por hora
   let costoMaquinaRate = 0;
   let tasaDepreciacionMaquina = 0;
 
@@ -162,7 +187,6 @@ export function calculateBudgetTotals(
     if (directRate > 0) {
       costoMaquinaRate = directRate;
     } else {
-      // Buscar máquina asociada en presupuesto o piezas
       let machineAsset: Asset | undefined;
       if (budget.activo && allAssets.length > 0) {
         machineAsset = allAssets.find(a => a.id === budget.activo);
@@ -180,28 +204,26 @@ export function calculateBudgetTotals(
       }
 
       if (machineAsset) {
-        const consumo = Number(machineAsset.consumoMaquina) || 0;
-        const tarifa = Number(machineAsset.tarifa) || 0;
-        const mantenimiento = Number(machineAsset.costoMantenimiento) || 0;
-        costoMaquinaRate = (consumo / 1000 * tarifa) + mantenimiento;
-
+        const costos = costoHoraMaquina(machineAsset);
+        costoMaquinaRate = costos.rate;
         if (tasaDepreciacionMaquina <= 0) {
-          const costoInicial = Number(machineAsset.costoInicial) || 0;
-          const valorResidual = Number(machineAsset.valorResidual) || 0;
-          const vidaUtilAnos = Number(machineAsset.vidaUtil) > 0 ? Number(machineAsset.vidaUtil) : 1;
-          const vidaUtilHoras = vidaUtilAnos * 1920;
-          tasaDepreciacionMaquina = (costoInicial - valorResidual) / vidaUtilHoras;
+          tasaDepreciacionMaquina = costos.dep;
         }
       }
     }
   }
 
-  const totalCostoMaquina = costoMaquinaRate * totalTiempoHoras;
+  const usarCostoPorPieza = totalCostoMaquinaPiezas > 0 && !(overrideCostoMaquina !== undefined && overrideCostoMaquina > 0);
+  const totalCostoMaquina = usarCostoPorPieza
+    ? totalCostoMaquinaPiezas + (costoMaquinaRate * tiempoExtraHoras)
+    : costoMaquinaRate * totalTiempoHoras;
 
   const capHoras = capacidadHorasMaquina > 0 ? capacidadHorasMaquina : 160;
   const tasaCIF = (totalFijoIndirecto || 0) / capHoras;
   const costoIndirectoAsignado = tasaCIF * totalTiempoHoras;
-  const depreciacionAsignada = tasaDepreciacionMaquina * totalTiempoHoras;
+  const depreciacionAsignada = (depreciacionPiezas > 0 && overrideDepreciacionMaquina === undefined)
+    ? depreciacionPiezas + (tasaDepreciacionMaquina * tiempoExtraHoras)
+    : tasaDepreciacionMaquina * totalTiempoHoras;
 
   const costoTotalUnitarioBase = totalCostoMaterial + totalCostoMaquina + costoIndirectoAsignado + depreciacionAsignada + totalCostoInventario;
 

@@ -14,61 +14,22 @@
     <div class="card shadow-sm border-0">
       <div class="card-body">
         <form [formGroup]="form">
-          <!-- DATOS BÁSICOS -->
+          <!-- DATOS BÁSICOS: cliente → fecha → tipo → producto -->
           <div class="row g-3 mb-4 pb-3 border-bottom">
             <div class="col-md-3">
-              <label class="form-label">Clasificación</label>
-              <ng-select 
-                formControlName="clasificacion"
-                placeholder="Seleccione (opcional)..."
-                [clearable]="true"
-                [searchable]="false"
-                appendTo="body"
-                dropdownPosition="bottom">
-                <ng-option value="Proyecto">Proyecto</ng-option>
-                <ng-option value="Servicio">Servicio</ng-option>
-                <ng-option value="Producto">Producto</ng-option>
-              </ng-select>
-            </div>
-
-            @if (f['clasificacion'].value) {
-              <div class="col-md-3">
-                <label class="form-label">Seleccione {{ f['clasificacion'].value }} (Opcional)</label>
-                <ng-select 
-                  formControlName="productoId"
-                  placeholder="Seleccione..."
-                  [clearable]="true"
-                  [searchable]="true"
-                  [items]="filteredItemsList"
-                  bindValue="id"
-                  bindLabel="nombre"
-                  (change)="onProductSelect($event)"
-                  appendTo="body"
-                  dropdownPosition="bottom">
-                </ng-select>
-              </div>
-            }
-
-            @if (f['clasificacion'].value !== 'Producto') {
-              <div class="col-md-3">
-                <label class="form-label">Número de Orden <span class="text-muted fw-normal">(Opcional)</span></label>
-                <input type="text" class="form-control" formControlName="numero" maxlength="25" placeholder="Ej: ORD-001">
-              </div>
-            }
-
-            <div class="col-md-3">
-              <label class="form-label">Cliente</label>
+              <label class="form-label">Cliente *</label>
               <div class="d-flex gap-2">
                 <div class="flex-grow-1">
                   @if (!isCreandoClienteNuevo) {
                     <ng-select 
                       formControlName="clienteId"
-                      placeholder="-- Sin cliente --"
+                      placeholder="Busque por nombre o cédula..."
                       [clearable]="true"
                       [searchable]="true"
                       [items]="clientesList"
                       bindValue="id"
-                      bindLabel="nombre"
+                      bindLabel="etiqueta"
+                      [searchFn]="buscarCliente"
                       appendTo="body"
                       dropdownPosition="bottom"
                       [class.is-invalid]="submitted && f['clienteId'].errors">
@@ -105,12 +66,52 @@
             </div>
 
             <div class="col-md-3">
-              <label class="form-label">Fecha</label>
+              <label class="form-label">Fecha *</label>
               <input type="date" class="form-control" formControlName="fecha" [class.is-invalid]="submitted && f['fecha'].errors">
               @if (submitted && f['fecha'].errors?.['required']) {
                 <div class="invalid-feedback">Seleccione la fecha</div>
               }
             </div>
+
+            <div class="col-md-3">
+              <label class="form-label">Clasificación *</label>
+              <ng-select 
+                formControlName="clasificacion"
+                placeholder="Seleccione..."
+                [clearable]="false"
+                [searchable]="false"
+                appendTo="body"
+                dropdownPosition="bottom">
+                <ng-option value="Proyecto">Proyecto</ng-option>
+                <ng-option value="Servicio">Servicio</ng-option>
+                <ng-option value="Producto">Producto</ng-option>
+              </ng-select>
+            </div>
+
+            @if (f['clasificacion'].value) {
+              <div class="col-md-3">
+                <label class="form-label">Seleccione {{ f['clasificacion'].value }}</label>
+                <ng-select 
+                  formControlName="productoId"
+                  placeholder="Seleccione..."
+                  [clearable]="true"
+                  [searchable]="true"
+                  [items]="filteredItemsList"
+                  bindValue="id"
+                  bindLabel="nombre"
+                  (change)="onProductSelect($event)"
+                  appendTo="body"
+                  dropdownPosition="bottom">
+                </ng-select>
+              </div>
+            }
+
+            @if (f['clasificacion'].value !== 'Producto') {
+              <div class="col-md-3">
+                <label class="form-label">Número de Orden <span class="text-muted fw-normal">(Opcional)</span></label>
+                <input type="text" class="form-control" formControlName="numero" maxlength="25" placeholder="Ej: ORD-001">
+              </div>
+            }
 
             <div class="col-md-3">
               <label class="form-label">Cantidad Presupuestada</label>
@@ -128,15 +129,16 @@
 
           <!-- COSTOS GENERALES Y CONFIGURACIÓN GLOBAL -->
           <div class="row g-3 mb-4 pb-3 border-bottom">
-            <!-- Fila 1 (3 campos de col-md-4) -->
-            <div class="col-md-4">
-              <label class="form-label">Horas de impresión</label>
-              <input type="number" min="0" class="form-control" formControlName="horasImpresion" placeholder="0">
+            <div class="col-md-4 d-flex align-items-end">
+              <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" formControlName="multitecnologia" id="multiTecPresupuesto">
+                <label class="form-check-label" for="multiTecPresupuesto">Multitecnología</label>
+              </div>
             </div>
 
             <div class="col-md-4">
-              <label class="form-label">Minutos de impresión</label>
-              <input type="number" min="0" max="59" class="form-control" formControlName="minutosImpresion" placeholder="0">
+              <label class="form-label">Horas totales (suma de piezas)</label>
+              <input type="text" class="form-control" [value]="resumenHorasTexto" readonly>
             </div>
 
             <div class="col-md-4">
@@ -144,7 +146,6 @@
               <input type="number" class="form-control" formControlName="tiempoSetup" min="0" [class.is-invalid]="submitted && f['tiempoSetup'].errors" placeholder="0">
             </div>
 
-            <!-- Fila 2 (3 campos de col-md-4) -->
             <div class="col-md-4">
               <label class="form-label">Post-Procesado (min)</label>
               <input type="number" class="form-control" formControlName="tiempoPostProcesado" min="0" [class.is-invalid]="submitted && f['tiempoPostProcesado'].errors" placeholder="0">
@@ -155,13 +156,13 @@
               <ng-select 
                 formControlName="tasaFalloGlobal"
                 placeholder="Seleccione..."
-                [clearable]="true"
+                [clearable]="false"
                 [searchable]="false"
                 appendTo="body"
                 [class.is-invalid]="submitted && f['tasaFalloGlobal'].errors">
-                <ng-option [value]="5">5% - Baja complejidad</ng-option>
-                <ng-option [value]="12">12% - Media complejidad</ng-option>
-                <ng-option [value]="25">25% - Alta complejidad</ng-option>
+                <ng-option [value]="5">5%</ng-option>
+                <ng-option [value]="11">11%</ng-option>
+                <ng-option [value]="18">18%</ng-option>
               </ng-select>
             </div>
 
@@ -225,7 +226,7 @@
                 } @else {
                   <div class="col-md-3">
                     <label class="form-label text-xs mb-1">Nombre Pieza Fabricada</label>
-                    <input type="text" class="form-control form-control-sm" formControlName="piezaFabricada" placeholder="Ej: Pieza 1">
+                    <input type="text" class="form-control form-control-sm" formControlName="piezaFabricada" [placeholder]="siguienteNombrePieza">
                   </div>
 
                   <div class="col-md-3">
@@ -238,7 +239,7 @@
                       appendTo="body"
                       dropdownPosition="bottom"
                       class="ng-select-sm">
-                      @for (tec of tecnologias; track tec.id) {
+                      @for (tec of tecnologiasDisponiblesPieza; track tec.id) {
                         <ng-option [value]="tec.codigo">{{ tec.nombre }} ({{ tec.codigo }})</ng-option>
                       }
                     </ng-select>
@@ -322,6 +323,16 @@
                   </div>
 
                   <div class="col-md-1">
+                    <label class="form-label text-xs mb-1">Horas</label>
+                    <input type="number" min="0" class="form-control form-control-sm px-1" formControlName="piezaHoras">
+                  </div>
+
+                  <div class="col-md-1">
+                    <label class="form-label text-xs mb-1">Min</label>
+                    <input type="number" min="0" max="59" class="form-control form-control-sm px-1" formControlName="piezaMinutos">
+                  </div>
+
+                  <div class="col-md-1">
                     <label class="form-label text-xs mb-1">Gramos</label>
                     <input type="number" class="form-control form-control-sm px-1" formControlName="piezaGramos">
                     @if ((form.get('piezaCantidad')?.value || 1) > 1 && (form.get('piezaGramos')?.value || 0) > 0) {
@@ -372,6 +383,7 @@
                     <th>Material / Detalle</th>
                     <th>Costo Mat. / Insumo</th>
                     <th>Gramos</th>
+                    <th>Tiempo</th>
                     <th class="text-end">Acción</th>
                   </tr>
                 </thead>
@@ -406,6 +418,13 @@
                           <span class="text-muted">-</span>
                         }
                       </td>
+                      <td>
+                        @if (row.tipo === 'Fabricada') {
+                          {{ row.horas || 0 }} h {{ row.minutos || 0 }} min
+                        } @else {
+                          <span class="text-muted">-</span>
+                        }
+                      </td>
                       <td class="text-end">
                         <button class="btn btn-sm btn-icon btn-light-danger" type="button" (click)="onDelete(row)" title="Eliminar Pieza">
                           <i class="ti ti-trash"></i>
@@ -416,8 +435,9 @@
                 </tbody>
                 <tfoot class="table-light">
                   <tr>
-                    <td colspan="6" class="text-end fw-bold">Total gramos</td>
+                    <td colspan="6" class="text-end fw-bold">Totales</td>
                     <td class="fw-bold">{{ totalGramosPiezas | number:'1.1-2' }} g</td>
+                    <td class="fw-bold">{{ resumenHorasTexto }}</td>
                     <td></td>
                   </tr>
                 </tfoot>

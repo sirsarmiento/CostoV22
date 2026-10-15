@@ -10,6 +10,8 @@ export class Budget { // Presupuesto
     costoOperador?: number;
     costoMaquina?: number;
     tasaFalloGlobal?: number;
+    tasasFallo?: string;
+    multitecnologia?: boolean;
     tiempoSetup?: number;
     horasImpresion?: number;
     minutosImpresion?: number;
@@ -44,4 +46,6 @@ export class Parts { // Piezas
     activoNombre?: string;
     maquina?: number;
     maquinaNombre?: string;
+    tecnologia?: string;
+    tasaFallo?: number;
 }

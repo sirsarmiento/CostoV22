@@ -14,6 +14,9 @@ export interface PiezaProducto {
     maquina?: number;
     maquinaNombre?: string;
     tecnologia?: string;
+    tasaFallo?: number;
+    material?: string;
+    polimero?: string;
     fromDb?: boolean;
 }
 
@@ -34,6 +37,8 @@ export class Product {
     perfil!: number;
     periodo?: string;
     tasaFallo?: number;
+    tasasFallo?: string;
+    multitecnologia?: boolean;
     tiempoSetup?: number;
     horasImpresion?: number;
     minutosImpresion?: number;

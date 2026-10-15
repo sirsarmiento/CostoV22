@@ -1,8 +1,8 @@
 import { Component, OnInit, inject, ChangeDetectorRef, DestroyRef } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { Router, RouterModule } from '@angular/router';
+import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { ProductService } from '../../../../../core/services/cost/product.service';
 import { ConfigService } from '../../../../../core/services/cost/config.service';
@@ -13,7 +13,16 @@ import { CatalogConfigService } from '../../../../../core/services/cost/catalog-
 import { Product, PiezaProducto } from '../../../../../core/models/Cost/product';
 import { Family, Subfamily } from '../../../../../core/models/Cost/family';
 import { MaterialCatalogo, TecnologiaCatalogo, CatalogoSimple } from '../../../../../core/models/Cost/catalog-config';
-import { previsualizarCodigo } from '../../../../../core/utils/catalog-sku';
+import { armarSegmentosTecMat, materialesDesdePiezas, previsualizarCodigo, tecnologiasDesdePiezas } from '../../../../../core/utils/catalog-sku';
+import {
+  TASAS_FALLO,
+  familiasPermitidas,
+  horasPorTecnologia,
+  nombrePiezaAutomatico,
+  parsearTasasFallo,
+  serializarTasasFallo,
+  sumarTiempoPiezas
+} from '../../../../../core/utils/family-rules';
 import { esEquiposFabricacion } from '../../../../../core/constants/asset-categories';
 import {
   calcularPrecioPorGramo,
@@ -42,7 +51,7 @@ import { ComponentCanDeactivate } from '../../../../../core/guards/pending-chang
 @Component({
   selector: 'app-add-product',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, NgSelectModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, NgSelectModule],
   templateUrl: './add-product.component.html'
 })
 export class AddProductComponent implements OnInit, ComponentCanDeactivate {
@@ -54,6 +63,7 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
   private codingService = inject(CodingService);
   private catalogConfigService = inject(CatalogConfigService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private cdr = inject(ChangeDetectorRef);
   private destroyRef = inject(DestroyRef);
 
@@ -75,10 +85,13 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
   previewSku = '';
   previewCatalogo = '';
   previewCorrelativo = '';
-  activeTab: 'def' | 'costos' | 'piezas' = 'def';
+  activeTab: 'def' | 'costos' | 'piezas' = 'piezas';
   costosPendientes: Fixe[] = [];
   costosEliminados: number[] = [];
   imagenSrc: string | null = null;
+  ambito = '';
+  tasasFalloPorTecnologia: Record<string, number> = {};
+  readonly tasasFalloOpciones = TASAS_FALLO;
 
   // Parámetros de Presupuesto y Piezas
   piezasPendientes: PiezaProducto[] = [];
@@ -116,6 +129,7 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
   get f() { return this.form.controls; }
 
   ngOnInit() {
+    this.aplicarAmbito();
     this.loadConfigs();
     this.loadAssets();
     this.loadCatalogo();
@@ -205,10 +219,106 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
     return (this.familiaSeleccionada()?.codigo || '').toUpperCase() === 'LUD';
   }
 
+  aplicarAmbito() {
+    this.ambito = (this.route.snapshot.queryParamMap.get('ambito') || '').toLowerCase();
+    if (this.ambito === 'servicio') {
+      this.form.get('clasificacion')?.setValue('Servicio');
+      this.form.get('clasificacion')?.disable({ emitEvent: false });
+    } else if (this.ambito === 'producto' && !this.form.get('clasificacion')?.value) {
+      this.form.get('clasificacion')?.setValue('Productos');
+    }
+  }
+
+  get tituloAmbito(): string {
+    if (this.ambito === 'servicio') return 'Crear servicio';
+    if (this.ambito === 'producto') return 'Crear producto';
+    return 'Crear';
+  }
+
+  get etiquetaTipo(): string {
+    const tipo = String(this.form?.get('clasificacion')?.value || '').toLowerCase();
+    if (tipo.startsWith('serv')) return 'servicio';
+    if (tipo.startsWith('proy')) return 'proyecto';
+    return 'producto';
+  }
+
+  get opcionesClasificacion(): Array<{ valor: string; etiqueta: string }> {
+    if (this.ambito === 'servicio') {
+      return [{ valor: 'Servicio', etiqueta: 'Servicio' }];
+    }
+    if (this.ambito === 'producto') {
+      return [
+        { valor: 'Productos', etiqueta: 'Producto' },
+        { valor: 'Proyecto', etiqueta: 'Proyecto' }
+      ];
+    }
+    return [
+      { valor: 'Productos', etiqueta: 'Producto' },
+      { valor: 'Servicio', etiqueta: 'Servicio' },
+      { valor: 'Proyecto', etiqueta: 'Proyecto' }
+    ];
+  }
+
+  get familiasFiltradas(): Family[] {
+    return familiasPermitidas(this.form?.getRawValue()?.clasificacion, this.familias);
+  }
+
+  get tecnologiasDePiezas(): string[] {
+    return tecnologiasDesdePiezas(this.piezasPendientes);
+  }
+
+  get tecnologiasDisponiblesPieza() {
+    const usadas = this.tecnologiasDePiezas;
+    const actual = String(this.form?.get('piezaTecnologia')?.value || '').toUpperCase();
+    if (!this.form?.get('multitecnologia')?.value) {
+      if (usadas.length > 0) {
+        return this.tecnologias.filter(t => (t.codigo || '').toUpperCase() === usadas[0]);
+      }
+      return this.tecnologias;
+    }
+    return this.tecnologias.filter(t => {
+      const codigo = (t.codigo || '').toUpperCase();
+      return codigo === actual || !usadas.includes(codigo);
+    });
+  }
+
+  get resumenHoras() {
+    return horasPorTecnologia(this.piezasPendientes);
+  }
+
+  get resumenHorasTexto(): string {
+    const total = sumarTiempoPiezas(this.piezasPendientes);
+    if (total.totalMinutos <= 0) return '0 h 0 min';
+    return `${total.horas} h ${total.minutos} min`;
+  }
+
+  get siguienteNombrePieza(): string {
+    const fabricadas = this.piezasPendientes.filter(p => p.tipo === 'Fabricada').length;
+    return nombrePiezaAutomatico(fabricadas);
+  }
+
+  onTasaTecnologiaChange(tecnologia: string, valor: number) {
+    this.tasasFalloPorTecnologia = {
+      ...this.tasasFalloPorTecnologia,
+      [tecnologia]: Number(valor)
+    };
+    this.form.get('tasaFallo')?.setValue(Number(valor) || 5);
+  }
+
   actualizarPreviewCodigo() {
     const familia = this.familiaSeleccionada();
     const famCod = (familia?.codigo || '').toUpperCase().trim();
     const famId = familia?.id ? Number(familia.id) : null;
+    const tecs = this.tecnologiasDePiezas;
+    const mats = materialesDesdePiezas(this.piezasPendientes.map(p => ({
+      tipo: p.tipo,
+      material: p.material,
+      polimero: p.polimero,
+      subCategoria: this.resolverPolimeroPieza(p)
+    })));
+    const segs = armarSegmentosTecMat(tecs, mats);
+    this.form.get('tecnologia')?.setValue(segs.tecnologia, { emitEvent: false });
+    this.form.get('material')?.setValue(segs.material, { emitEvent: false });
 
     const correlativosUsados = extractCorrelativosUsadosDeFamilia(
       this.productosExistentes,
@@ -219,9 +329,9 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
 
     const preview = previsualizarCodigo({
       nombre: this.form.get('nombre')?.value,
-      clasificacion: this.form.get('clasificacion')?.value,
-      tecnologia: this.form.get('tecnologia')?.value,
-      material: this.form.get('material')?.value,
+      clasificacion: this.form.getRawValue().clasificacion,
+      tecnologias: tecs,
+      materiales: mats,
       familiaCodigo: familia?.codigo,
       serie: this.form.get('serie')?.value,
       correlativosUsados: correlativosUsados
@@ -232,6 +342,14 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
     this.previewCorrelativo = preview.correlativo;
     this.form.get('sku')?.setValue(preview.sku, { emitEvent: false });
     this.form.get('codigoCatalogo')?.setValue(preview.codigoCatalogo, { emitEvent: false });
+  }
+
+  resolverPolimeroPieza(pieza: PiezaProducto): string {
+    const directo = pieza.material || pieza.polimero || '';
+    if (directo) return directo;
+    const asset = this.activosMateriales.find(a => a.id == pieza.activo)
+      || this.activosCirculantes.find(a => a.id == pieza.activo);
+    return asset?.subCategoria || '';
   }
 
   loadConfigs() {
@@ -457,10 +575,10 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
         Swal.fire('Atención', 'Seleccione el tipo de tecnología de la pieza.', 'warning');
         return;
       }
-      nombre = this.form.get('piezaFabricada')?.value;
+      nombre = this.form.get('piezaFabricada')?.value || this.siguienteNombrePieza;
       gramos = Number(this.form.get('piezaGramos')?.value) || 0;
-      horas = 0;
-      minutos = 0;
+      horas = Number(this.form.get('piezaHoras')?.value) || 0;
+      minutos = Number(this.form.get('piezaMinutos')?.value) || 0;
       
       const maqVal = this.form.get('activoId')?.value;
       if (maqVal) {
@@ -483,10 +601,6 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
         materialDisplayName = assetCirc.nombre;
       }
 
-      if (!nombre) {
-        Swal.fire('Atención', 'Ingrese el nombre de la pieza fabricada.', 'warning');
-        return;
-      }
       if (gramos === null || isNaN(gramos) || gramos < 0) {
         Swal.fire('Atención', 'Ingrese los gramos de la pieza.', 'warning');
         return;
@@ -510,16 +624,25 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       activoNombre: materialDisplayName,
       maquina: maquinaId ? Number(maquinaId) : undefined,
       maquinaNombre,
-      tecnologia: tipo === 'Fabricada' ? this.form.get('piezaTecnologia')?.value : ''
+      tecnologia: tipo === 'Fabricada' ? this.form.get('piezaTecnologia')?.value : '',
+      material: tipo === 'Fabricada' ? this.resolverCodigoMaterial(assetId) : '',
+      polimero: this.form.get('piezaPolimero')?.value || '',
+      tasaFallo: tipo === 'Fabricada'
+        ? (this.tasasFalloPorTecnologia[this.form.get('piezaTecnologia')?.value] || TASAS_FALLO[0])
+        : undefined
     });
     this.piezasPendientes = [...this.piezasPendientes];
+    this.asegurarTasasDePiezas();
+    this.actualizarPreviewCodigo();
 
     this.form.patchValue({
       piezaInventario: '',
       piezaFabricada: '',
-      piezaTecnologia: this.form.get('tecnologia')?.value || '',
+      piezaTecnologia: this.form.get('multitecnologia')?.value ? '' : (this.tecnologiasDePiezas[0] || ''),
       piezaCantidad: 1,
       piezaGramos: '',
+      piezaHoras: 0,
+      piezaMinutos: 0,
       piezaPolimero: '',
       piezaMarca: '',
       piezaColor: '',
@@ -532,7 +655,29 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
   removerPieza(index: number) {
     this.piezasPendientes.splice(index, 1);
     this.piezasPendientes = [...this.piezasPendientes];
+    this.asegurarTasasDePiezas();
+    this.actualizarPreviewCodigo();
     this.cdr.detectChanges();
+  }
+
+  resolverCodigoMaterial(assetId: number | null): string {
+    if (!assetId) return '';
+    const asset = this.activosMateriales.find(a => a.id == assetId)
+      || this.activosCirculantes.find(a => a.id == assetId);
+    return (asset?.subCategoria || '').toUpperCase();
+  }
+
+  asegurarTasasDePiezas() {
+    this.tecnologiasDePiezas.forEach(tec => {
+      if (!this.tasasFalloPorTecnologia[tec]) {
+        this.tasasFalloPorTecnologia[tec] = TASAS_FALLO[0];
+      }
+    });
+    Object.keys(this.tasasFalloPorTecnologia).forEach(tec => {
+      if (!this.tecnologiasDePiezas.includes(tec)) {
+        delete this.tasasFalloPorTecnologia[tec];
+      }
+    });
   }
 
   agregarCosto() {
@@ -582,14 +727,15 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       medida: ['Unidades'],
       sku: [{ value: '', disabled: true }],
       codigoCatalogo: [{ value: '', disabled: true }],
-      tecnologia: ['', Validators.required],
-      material: ['', Validators.required],
+      tecnologia: [''],
+      material: [''],
       familiaId: [null as number | null, Validators.required],
       serie: [''],
       descripcion: ['', Validators.required],
       clasificacion: ['', Validators.required],
       perfil: [''],
       periodo: [''],
+      multitecnologia: [false],
       // Costos directos
       costoTipo: ['Variable'],
       costoConcepto: [''],
@@ -600,13 +746,15 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       horasImpresion: [0],
       minutosImpresion: [0],
       postProcesado: [0],
-      tasaFallo: [0],
-      margenGanancia: [0, [Validators.min(this.minMargenGanancia), Validators.max(100)]],
+      tasaFallo: [TASAS_FALLO[0]],
+      margenGanancia: [0],
       piezaTipo: ['Del Inventario'],
       piezaInventario: [''],
       piezaFabricada: [''],
       piezaTecnologia: [''],
       piezaCantidad: [1],
+      piezaHoras: [0],
+      piezaMinutos: [0],
       piezaGramos: [''],
       piezaPolimero: [''],
       piezaMarca: [''],
@@ -648,6 +796,16 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
     this.form.get('perfil')?.valueChanges.pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(() => this.actualizarMinMargenGanancia());
+
+    this.form.get('clasificacion')?.valueChanges.pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(() => {
+      const permitidas = this.familiasFiltradas;
+      const actual = Number(this.form.get('familiaId')?.value);
+      if (actual && !permitidas.some(f => Number(f.id) === actual)) {
+        this.form.get('familiaId')?.setValue(null);
+      }
+    });
 
     ['nombre', 'clasificacion', 'tecnologia', 'material', 'familiaId', 'serie'].forEach(campo => {
       this.form.get(campo)?.valueChanges.pipe(
@@ -721,8 +879,10 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       this.form.get('horasImpresion')?.setValue(Number(data.horasImpresion ?? dRec['horasImpresion']) || 0);
       this.form.get('minutosImpresion')?.setValue(Number(data.minutosImpresion ?? dRec['minutosImpresion']) || 0);
       this.form.get('postProcesado')?.setValue(postVal);
-      this.form.get('tasaFallo')?.setValue(tasaVal);
+      this.form.get('tasaFallo')?.setValue(tasaVal || TASAS_FALLO[0]);
       this.form.get('margenGanancia')?.setValue(margenVal);
+      this.form.get('multitecnologia')?.setValue(!!(data as unknown as Record<string, unknown>)['multitecnologia']);
+      this.tasasFalloPorTecnologia = parsearTasasFallo(String((data as unknown as Record<string, unknown>)['tasasFallo'] || ''));
       
       const rawPiezas = dRec['piezasProducto'] ?? dRec['piezas_producto'] ?? dRec['piezas'] ?? data.piezasProducto ?? [];
       this.piezasPendientes = mapDbPiezasToView(
@@ -732,6 +892,8 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
         this.activosCirculantes,
         this.allAssets
       );
+      this.asegurarTasasDePiezas();
+      this.actualizarPreviewCodigo();
       this.id = data.id;
 
       this.loadCostosAsociados(data.id);
@@ -758,27 +920,21 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       this.agregarPieza();
     }
 
-    if (this.form.invalid) {
+    const clasificacion = String(this.form.getRawValue().clasificacion || '');
+    const requierePiezas = !clasificacion.toLowerCase().startsWith('serv');
+    if (this.form.invalid || (requierePiezas && this.piezasPendientes.length === 0)) {
       const invalidFields: string[] = [];
-      if (this.form.get('nombre')?.invalid) invalidFields.push('Nombre del producto');
+      if (this.form.get('nombre')?.invalid) invalidFields.push('Nombre');
       if (this.form.get('clasificacion')?.invalid) invalidFields.push('Tipo');
-      if (this.form.get('tecnologia')?.invalid) invalidFields.push('Tecnología');
-      if (this.form.get('material')?.invalid) invalidFields.push('Material');
       if (this.form.get('familiaId')?.invalid) invalidFields.push('Familia');
       if (this.form.get('descripcion')?.invalid) invalidFields.push('Descripción');
-      if (this.form.get('margenGanancia')?.invalid) invalidFields.push(`Margen de Ganancia (mínimo ${this.minMargenGanancia}%)`);
-
-      if (this.form.get('nombre')?.invalid || this.form.get('clasificacion')?.invalid || this.form.get('descripcion')?.invalid || this.form.get('tecnologia')?.invalid || this.form.get('material')?.invalid || this.form.get('familiaId')?.invalid) {
-        this.activeTab = 'def';
-      } else if (this.form.get('margenGanancia')?.invalid) {
-        this.activeTab = 'piezas';
-      }
+      if (requierePiezas && this.piezasPendientes.length === 0) invalidFields.push('Al menos una pieza');
 
       const mensaje = invalidFields.length > 0
-        ? `Por favor revise los siguientes campos obligatorios: ${invalidFields.join(', ')}.`
-        : 'Por favor complete todos los datos obligatorios del producto.';
+        ? `El formulario no se guarda incompleto. Revise: ${invalidFields.join(', ')}.`
+        : 'El formulario no se guarda incompleto. Complete los datos obligatorios.';
 
-      Swal.fire('Formulario Incompleto', mensaje, 'warning');
+      Swal.fire('Formulario incompleto', mensaje, 'warning');
       return;
     }
 
@@ -790,13 +946,12 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       this.activosCirculantes
     );
 
+    this.actualizarPreviewCodigo();
     const prepNum = Number(this.form.get('tiempoSetup')?.value) || 0;
     const postNum = Number(this.form.get('postProcesado')?.value) || 0;
-    const tasaNum = Number(this.form.get('tasaFallo')?.value) || 0;
-    const margenNum = Number(this.form.get('margenGanancia')?.value) || 0;
-
-    const rawCorr = this.previewCorrelativo || (this.previewSku ? this.previewSku.split('-').pop() : '') || '001';
-    const corrSoloNum = String(rawCorr).replace(/\D+/g, '') || '001';
+    const tiempoPiezas = sumarTiempoPiezas(this.piezasPendientes);
+    const tasasTexto = serializarTasasFallo(this.tasasFalloPorTecnologia);
+    const primeraTasa = Number(Object.values(this.tasasFalloPorTecnologia)[0]) || TASAS_FALLO[0];
 
     const productPayload: Record<string, unknown> = {
       nombre: this.form.get('nombre')?.value,
@@ -806,17 +961,19 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       material: this.form.get('material')?.value,
       familiaId: Number(this.form.get('familiaId')?.value) || null,
       serie: this.form.get('serie')?.value || '',
-      correlativo: corrSoloNum,
+      correlativo: this.previewCorrelativo,
       descripcion: this.form.get('descripcion')?.value,
-      clasificacion: this.form.get('clasificacion')?.value,
+      clasificacion: this.form.getRawValue().clasificacion,
       medida: this.form.get('medida')?.value,
       perfil: Number(this.form.get('perfil')?.value) || (this.configs.length > 0 ? Number(this.configs[0].id) : 0),
-      tasaFallo: tasaNum,
+      tasaFallo: primeraTasa,
+      tasasFallo: tasasTexto,
+      multitecnologia: !!this.form.get('multitecnologia')?.value,
       tiempoSetup: prepNum,
-      horasImpresion: Number(this.form.get('horasImpresion')?.value) || 0,
-      minutosImpresion: Number(this.form.get('minutosImpresion')?.value) || 0,
+      horasImpresion: tiempoPiezas.horas,
+      minutosImpresion: tiempoPiezas.minutos,
       postProcesado: postNum,
-      margenGanancia: margenNum,
+      margenGanancia: 0,
       piezasProducto: mappedPiezas,
       imagen: this.form.get('imagen')?.value || this.imagenSrc || undefined
     };

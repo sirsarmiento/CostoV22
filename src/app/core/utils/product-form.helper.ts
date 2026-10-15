@@ -98,8 +98,8 @@ export function mapPiezasToPayload(
 
     const gVal = Number(pObj.gramos) || 0;
     const mVal = Number(pObj.metros) || 0;
-    const hVal = 0;
-    const minVal = 0;
+    const hVal = Number(pObj.horas) || 0;
+    const minVal = Number(pObj.minutos) || 0;
     const matPrice = Number(pObj.precioMaterial) || 0;
     const cant = Number(pObj.cantidad) || 1;
 
@@ -116,7 +116,8 @@ export function mapPiezasToPayload(
       activo: numAct,
       activo_id: numAct,
       maquina: numMaq,
-      maquina_id: numMaq
+      maquina_id: numMaq,
+      tecnologia: pObj.tecnologia || ''
     };
 
     if (pObj.fromDb && pObj.id && Number(pObj.id) > 0) {

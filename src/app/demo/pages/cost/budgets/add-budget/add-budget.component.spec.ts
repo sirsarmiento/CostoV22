@@ -31,7 +31,7 @@ describe('AddBudgetComponent', () => {
     expect(component.form.get('clasificacion')?.value).toBe('');
     expect(component.form.get('cantidadGlobal')?.value).toBe(1);
     expect(component.form.get('delivery')?.value).toBe(0);
-    expect(component.form.get('tasaFalloGlobal')?.value).toBe(0);
+    expect(component.form.get('tasaFalloGlobal')?.value).toBe(5);
   });
 
   it('should calculate budget totals accurately with material waste, margin and delivery', () => {

@@ -42,6 +42,8 @@ import {
 } from '../../../../../core/utils/piece-builder.helper';
 import { ComponentCanDeactivate } from '../../../../../core/guards/pending-changes.guard';
 import { QuickClientModalComponent, QuickClientData } from '../../../../../theme/shared/components/quick-client-modal/quick-client-modal.component';
+import { TASAS_FALLO, horasPorTecnologia, nombrePiezaAutomatico, sumarTiempoPiezas } from '../../../../../core/utils/family-rules';
+import { tecnologiasDesdePiezas } from '../../../../../core/utils/catalog-sku';
 
 @Component({
   selector: 'app-add-budget',
@@ -84,7 +86,8 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
   assetsMobiliario: Asset[] = [];
   productosList: Product[] = [];
   filteredItemsList: Product[] = [];
-  clientesList: { id: number; nombre: string }[] = [];
+  clientesList: { id: number; nombre: string; cedula: string; etiqueta: string }[] = [];
+  readonly tasasFalloOpciones = TASAS_FALLO;
   materialesFiltradosCirculantes: Asset[] = [];
   tecnologias: TecnologiaCatalogo[] = [];
   materialesCatalogo: MaterialCatalogo[] = [];
@@ -124,6 +127,58 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
     };
   }
 
+  armarClienteLista(c: Client | { id?: number; nombre?: string; apellido?: string; cedula?: string; rifCedula?: string }): { id: number; nombre: string; cedula: string; etiqueta: string } {
+    const nombre = `${c.nombre || ''} ${('apellido' in c ? c.apellido : '') || ''}`.trim();
+    const cedula = String(('cedula' in c ? c.cedula : '') || ('rifCedula' in c ? c.rifCedula : '') || '');
+    return {
+      id: Number(c.id) || 0,
+      nombre,
+      cedula,
+      etiqueta: cedula ? `${nombre} — ${cedula}` : nombre
+    };
+  }
+
+  buscarCliente = (term: string, item: { nombre: string; cedula: string; etiqueta: string }): boolean => {
+    const t = (term || '').toLowerCase().trim();
+    if (!t) return true;
+    return (item.nombre || '').toLowerCase().includes(t)
+      || (item.cedula || '').toLowerCase().includes(t)
+      || (item.etiqueta || '').toLowerCase().includes(t);
+  };
+
+  get tecnologiasDePiezas(): string[] {
+    return tecnologiasDesdePiezas(this.piezas);
+  }
+
+  get tecnologiasDisponiblesPieza() {
+    const usadas = this.tecnologiasDePiezas;
+    const actual = String(this.form?.get('piezaTecnologia')?.value || '').toUpperCase();
+    if (!this.form?.get('multitecnologia')?.value) {
+      if (usadas.length > 0) {
+        return this.tecnologias.filter(t => (t.codigo || '').toUpperCase() === usadas[0]);
+      }
+      return this.tecnologias;
+    }
+    return this.tecnologias.filter(t => {
+      const codigo = (t.codigo || '').toUpperCase();
+      return codigo === actual || !usadas.includes(codigo);
+    });
+  }
+
+  get resumenHoras() {
+    return horasPorTecnologia(this.piezas);
+  }
+
+  get resumenHorasTexto(): string {
+    const total = sumarTiempoPiezas(this.piezas);
+    if (total.totalMinutos <= 0) return '0 h 0 min';
+    return `${total.horas} h ${total.minutos} min`;
+  }
+
+  get siguienteNombrePieza(): string {
+    return nombrePiezaAutomatico(this.piezas.filter(p => p.tipo === 'Fabricada').length);
+  }
+
   ngOnInit(): void {
     forkJoin({
       configs: this.configService.getConfigs(),
@@ -137,10 +192,7 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
       colores: this.catalogConfigService.getColores().pipe(catchError(() => of([])))
     }).subscribe(data => {
       if (data.clients?.length) {
-        this.clientesList = data.clients.map(c => ({
-          id: Number(c.id) || 0,
-          nombre: `${c.nombre} ${c.apellido || ''}`.trim()
-        }));
+        this.clientesList = data.clients.map(c => this.armarClienteLista(c));
       }
 
       this.tecnologias = data.tecnologias?.length ? data.tecnologias : [
@@ -235,7 +287,9 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
   onClientConfirmed(client: QuickClientData): void {
     this.isCreandoClienteNuevo = true;
     this.tempClienteData = client;
+    this.form.get('clienteId')?.clearValidators();
     this.form.get('clienteId')?.setValue(null);
+    this.form.get('clienteId')?.updateValueAndValidity();
     this.form.get('clienteNombreTexto')?.setValue(client.nombre);
     this.showClienteModal = false;
   }
@@ -246,6 +300,8 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
 
   clearClienteNuevo(): void {
     this.isCreandoClienteNuevo = false;
+    this.form.get('clienteId')?.setValidators([Validators.required]);
+    this.form.get('clienteId')?.updateValueAndValidity();
     this.form.get('clienteNombreTexto')?.setValue('');
     this.tempClienteData = {
       nombre: '',
@@ -393,10 +449,10 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
         Swal.fire('Atención', 'Seleccione el tipo de tecnología de la pieza.', 'warning');
         return;
       }
-      nombre = this.form.get('piezaFabricada')?.value;
+      nombre = this.form.get('piezaFabricada')?.value || this.siguienteNombrePieza;
       gramos = Number(this.form.get('piezaGramos')?.value) || 0;
-      horas = 0;
-      minutos = 0;
+      horas = Number(this.form.get('piezaHoras')?.value) || 0;
+      minutos = Number(this.form.get('piezaMinutos')?.value) || 0;
 
       const maqVal = this.form.get('activoId')?.value;
       if (maqVal) {
@@ -418,10 +474,6 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
         materialDisplayName = assetCirc.nombre;
       }
 
-      if (!nombre) {
-        Swal.fire('Por Favor', 'Debe agregar el nombre de la pieza', 'info');
-        return;
-      }
       if (gramos < 0) {
         Swal.fire('Por Favor', 'Debe agregar los gramos válidos', 'info');
         return;
@@ -447,6 +499,7 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
       activo: activoId || undefined,
       maquina: maquinaId,
       maquinaNombre: maquinaNombre,
+      tecnologia: tipo === 'Fabricada' ? this.form.get('piezaTecnologia')?.value : '',
       producto: 0
     };
 
@@ -462,6 +515,8 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
       piezaFabricada: '',
       piezaCantidad: 1,
       piezaGramos: '',
+      piezaHoras: 0,
+      piezaMinutos: 0,
       piezaPolimero: '',
       piezaMarca: '',
       piezaColor: '',
@@ -469,7 +524,7 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
       piezaPrecioMaterial: '',
       activoId: null
     }, { emitEvent: false });
-    this.form.get('nombre')?.setValue(`PIEZA ${this.piezas.length + 1}`);
+    this.form.get('nombre')?.setValue(this.siguienteNombrePieza);
   }
 
   onProductSelect(item: { id: number } | number | null): void {
@@ -570,7 +625,7 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
         parsedClienteId = Number((rawCli as Record<string, unknown>)['id']) || null;
         const nameStr = `${(rawCli as Record<string, unknown>)['nombre'] || ''} ${(rawCli as Record<string, unknown>)['apellido'] || ''}`.trim();
         if (parsedClienteId && nameStr && !this.clientesList.some(c => c.id === parsedClienteId)) {
-          this.clientesList.push({ id: parsedClienteId, nombre: nameStr });
+          this.clientesList.push({ id: parsedClienteId, nombre: nameStr, cedula: '', etiqueta: nameStr });
         }
       } else if (rawCli !== null && rawCli !== undefined && rawCli !== '') {
         parsedClienteId = Number(rawCli) || null;
@@ -628,15 +683,16 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
 
   myFormValues(): void {
     this.form = this.formBuilder.group({
-      clasificacion: [''],
+      clasificacion: ['', Validators.required],
       productoId: [''],
       descripcion: ['', Validators.required],
       numero: [''],
       fecha: ['', Validators.required],
       cantidadGlobal: [1, [Validators.required, Validators.min(1)]],
       delivery: [0, [Validators.min(0)]],
-      clienteId: [null],
+      clienteId: [null, Validators.required],
       clienteNombreTexto: [''],
+      multitecnologia: [false],
       guardarClienteEnBd: [false],
 
       nombre: [`PIEZA ${this.piezaCounter}`],
@@ -653,9 +709,11 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
       piezaMaterialId: [null],
       piezaPrecioMaterial: [''],
       piezaGramos: [''],
+      piezaHoras: [0],
+      piezaMinutos: [0],
 
       activoId: [null],
-      tasaFalloGlobal: [0, [Validators.required, Validators.min(0), Validators.max(100)]],
+      tasaFalloGlobal: [TASAS_FALLO[0], [Validators.required, Validators.min(0), Validators.max(100)]],
       tiempoSetup: [0, [Validators.required, Validators.min(0)]],
       horasImpresion: [0, [Validators.min(0)]],
       minutosImpresion: [0, [Validators.min(0), Validators.max(59)]],
@@ -827,10 +885,15 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
     const clienteTexto = String(this.f['clienteNombreTexto']?.value || '').trim();
 
     const executeSubmit = (effectiveCliId?: number) => {
+      const tiempoPiezas = sumarTiempoPiezas(this.piezas);
       const totales = this.getTotales();
       const budgetPayload = buildBudgetPayload({
         id: this.id,
-        formValue: this.form.value,
+        formValue: {
+          ...this.form.value,
+          horasImpresion: tiempoPiezas.horas,
+          minutosImpresion: tiempoPiezas.minutos
+        },
         piezas: this.piezas,
         totalCostoFinal: totales.costoTotalFinal,
         isCreandoClienteNuevo: this.isCreandoClienteNuevo,

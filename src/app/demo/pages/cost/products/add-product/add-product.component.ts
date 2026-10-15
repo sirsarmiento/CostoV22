@@ -810,7 +810,7 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       descripcion: this.form.get('descripcion')?.value,
       clasificacion: this.form.get('clasificacion')?.value,
       medida: this.form.get('medida')?.value,
-      perfil: Number(this.form.get('perfil')?.value) || 0,
+      perfil: Number(this.form.get('perfil')?.value) || (this.configs.length > 0 ? Number(this.configs[0].id) : 0),
       tasaFallo: tasaNum,
       tiempoSetup: prepNum,
       horasImpresion: Number(this.form.get('horasImpresion')?.value) || 0,

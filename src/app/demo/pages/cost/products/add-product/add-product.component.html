@@ -58,20 +58,7 @@
               <!-- Datos Principales -->
               <div class="col-12">
                 <div class="row g-3">
-                  <div class="col-md-7">
-                    <label class="form-label">Nombre del producto *</label>
-                    <input 
-                      type="text" 
-                      class="form-control" 
-                      formControlName="nombre" 
-                      maxlength="100" 
-                      [class.is-invalid]="submitted && f['nombre'].errors">
-                    @if (submitted && f['nombre'].errors?.['required']) {
-                      <div class="invalid-feedback">Ingrese el nombre del producto</div>
-                    }
-                  </div>
-
-                  <div class="col-md-5">
+                  <div class="col-md-4">
                     <label class="form-label">Categoría *</label>
                     <ng-select 
                       formControlName="clasificacion"
@@ -86,6 +73,19 @@
                     </ng-select>
                     @if (submitted && f['clasificacion'].errors?.['required']) {
                       <div class="invalid-feedback d-block">Seleccione si es producto, servicio o proyecto.</div>
+                    }
+                  </div>
+
+                  <div class="col-md-8">
+                    <label class="form-label">Nombre del producto *</label>
+                    <input 
+                      type="text" 
+                      class="form-control" 
+                      formControlName="nombre" 
+                      maxlength="100" 
+                      [class.is-invalid]="submitted && f['nombre'].errors">
+                    @if (submitted && f['nombre'].errors?.['required']) {
+                      <div class="invalid-feedback">Ingrese el nombre del producto</div>
                     }
                   </div>
 
@@ -181,20 +181,6 @@
                     @if (submitted && f['descripcion'].errors?.['required']) {
                       <div class="invalid-feedback">Ingrese la descripción del producto</div>
                     }
-                  </div>
-
-                  <div class="col-12">
-                    <label class="form-label">Empresa</label>
-                    <ng-select 
-                      formControlName="perfil"
-                      [items]="configs"
-                      bindLabel="nombre"
-                      bindValue="id"
-                      placeholder="Seleccione empresa..."
-                      [clearable]="false"
-                      [searchable]="true"
-                      appendTo="body">
-                    </ng-select>
                   </div>
                 </div>
               </div>
@@ -445,7 +431,7 @@
 
                 <div class="col-md-2">
                   <label class="form-label">Tipo de polímero</label>
-                  <ng-select formControlName="piezaPolimero" placeholder="PLA, ABS, PETG..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom">
+                  <ng-select formControlName="piezaPolimero" placeholder="Polímero (opcional)" [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom">
                     @for (pol of polimerosPieza; track pol) {
                       <ng-option [value]="pol">{{ pol }}</ng-option>
                     }
@@ -454,7 +440,7 @@
 
                 <div class="col-md-2">
                   <label class="form-label">Marca</label>
-                  <ng-select formControlName="piezaMarca" placeholder="Marca..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom">
+                  <ng-select formControlName="piezaMarca" placeholder="Marca (opcional)" [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom">
                     @for (marca of marcasPieza; track marca) {
                       <ng-option [value]="marca">{{ marca }}</ng-option>
                     }
@@ -463,7 +449,7 @@
 
                 <div class="col-md-2">
                   <label class="form-label">Color</label>
-                  <ng-select formControlName="piezaColor" placeholder="Color..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom">
+                  <ng-select formControlName="piezaColor" placeholder="Color (opcional)" [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom">
                     @for (col of coloresPieza; track col) {
                       <ng-option [value]="col">{{ col }}</ng-option>
                     }

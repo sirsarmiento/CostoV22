@@ -275,7 +275,7 @@
 
                   <div class="col-md-2">
                     <label class="form-label text-xs mb-1">Tipo de polímero</label>
-                    <ng-select formControlName="piezaPolimero" placeholder="PLA, ABS, PETG..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
+                    <ng-select formControlName="piezaPolimero" placeholder="Polímero (opcional)" [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
                       @for (pol of polimerosPieza; track pol) {
                         <ng-option [value]="pol">{{ pol }}</ng-option>
                       }
@@ -284,7 +284,7 @@
 
                   <div class="col-md-2">
                     <label class="form-label text-xs mb-1">Marca</label>
-                    <ng-select formControlName="piezaMarca" placeholder="Marca..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
+                    <ng-select formControlName="piezaMarca" placeholder="Marca (opcional)" [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
                       @for (marca of marcasPieza; track marca) {
                         <ng-option [value]="marca">{{ marca }}</ng-option>
                       }
@@ -293,7 +293,7 @@
 
                   <div class="col-md-2">
                     <label class="form-label text-xs mb-1">Color</label>
-                    <ng-select formControlName="piezaColor" placeholder="Color..." [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
+                    <ng-select formControlName="piezaColor" placeholder="Color (opcional)" [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
                       @for (col of coloresPieza; track col) {
                         <ng-option [value]="col">{{ col }}</ng-option>
                       }

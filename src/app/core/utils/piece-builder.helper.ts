@@ -13,7 +13,7 @@ export function calcularPrecioPorGramo(asset?: Asset | null): number {
   return Math.round(precioPorGramo * 10000) / 10000;
 }
 
-/* Formatea la etiqueta de visualización de un activo en dropdowns con detalles de stock.*/
+/* Formatea la etiqueta de visualización de un activo en dropdowns con detalles de stock sin duplicados.*/
 export function formatAssetOption(asset: Asset | unknown, fallbackAssets: Asset[] = []): string {
   if (!asset) return '';
   let a: Asset | undefined;
@@ -25,27 +25,51 @@ export function formatAssetOption(asset: Asset | unknown, fallbackAssets: Asset[
   }
   if (!a) return String(asset);
 
+  const nombreLimpio = (a.nombre || '').trim();
   const detalles: string[] = [];
+  const vistos = new Set<string>();
+
+  const agregarDetalle = (val: string | undefined | null) => {
+    const limpio = (val || '').trim();
+    if (!limpio || ['n/a', 'null', '-', 'n/d', 'none'].includes(limpio.toLowerCase())) {
+      return;
+    }
+    const lower = limpio.toLowerCase();
+    if (!vistos.has(lower)) {
+      vistos.add(lower);
+      detalles.push(limpio);
+    }
+  };
+
+  // 1. Marca (prioritaria)
+  agregarDetalle(a.marca);
+
+  // 2. Descripción (solo si aporta información extra y no repite la marca ni el nombre)
   const desc = a.descripcion?.trim();
-  if (desc && !['n/a', 'null', '-', 'N/A'].includes(desc.toLowerCase())) {
-    detalles.push(desc);
+  if (desc) {
+    const descLower = desc.toLowerCase();
+    const marcaLower = (a.marca || '').toLowerCase().trim();
+    const nombreLower = nombreLimpio.toLowerCase();
+    if (descLower !== marcaLower && descLower !== nombreLower && !vistos.has(descLower)) {
+      agregarDetalle(desc);
+    }
   }
-  if (a.marca) {
-    detalles.push(a.marca);
-  }
-  if (a.color) {
-    detalles.push(a.color);
-  }
-  if (a.subCategoria) {
-    detalles.push(a.subCategoria);
-  }
+
+  // 3. Color
+  agregarDetalle(a.color);
+
+  // 4. Polímero / Subcategoría
+  agregarDetalle(a.subCategoria);
+
+  // 5. Stock disponible
   if (a.cantidad !== undefined && a.cantidad !== null) {
     const unidad = a.unidadMedida ? ` ${a.unidadMedida}` : '';
     detalles.push(`Cant: ${a.cantidad}${unidad}`);
   }
+
   return detalles.length > 0
-    ? `${a.nombre} (${detalles.join(' - ')})`
-    : (a.nombre || '');
+    ? `${nombreLimpio} (${detalles.join(' - ')})`
+    : nombreLimpio;
 }
 
 /* Resuelve el nombre de la máquina asociada a una pieza.*/
@@ -239,35 +263,33 @@ export function armarFiltrosMaterialPieza(
   const polimeros = listarPolimeros(materialesCatalogo, activosMateriales, tec);
   const polimeroOk = estaEnLista(polimeros, polimero) ? String(polimero).trim() : '';
 
-  if (!polimeroOk) {
-    return {
-      polimeros,
-      marcas: [],
-      colores: [],
-      materiales: filtrarMaterialesImpresion(activosMateriales, { tecnologia: tec }),
-      polimero: '',
-      marca: '',
-      color: ''
-    };
-  }
-
-  const paraMarcas = filtrarMaterialesImpresion(activosMateriales, { tecnologia: tec, polimero: polimeroOk });
+  // 1. Marcas:
+  // Si hay polímero seleccionado, solo se muestran las marcas de ese polímero (si no tiene marcas en BD, queda vacía).
+  // Si NO hay polímero seleccionado, se pueden filtrar todas las marcas disponibles de la tecnología.
+  const paraMarcas = polimeroOk
+    ? filtrarMaterialesImpresion(activosMateriales, { tecnologia: tec, polimero: polimeroOk })
+    : filtrarMaterialesImpresion(activosMateriales, { tecnologia: tec });
   const marcas = listarValoresUnicos(paraMarcas, 'marca');
   const marcaOk = estaEnLista(marcas, marca) ? String(marca).trim() : '';
 
+  // 2. Colores:
+  // Si hay polímero y/o marca seleccionada, solo se muestran los colores de esa combinación (si no tiene, queda vacía).
+  // Si no se seleccionó ni polímero ni marca, se pueden filtrar todos los colores de la tecnología.
   const paraColores = filtrarMaterialesImpresion(activosMateriales, {
     tecnologia: tec,
-    polimero: polimeroOk,
-    marca: marcaOk
+    polimero: polimeroOk || undefined,
+    marca: marcaOk || undefined
   });
   const colores = listarValoresUnicos(paraColores, 'color');
   const colorOk = estaEnLista(colores, color) ? String(color).trim() : '';
 
+  // 3. Materiales finales:
+  // Se filtran aplicando los criterios que estén activos. Los que estén vacíos no restringen.
   const materiales = filtrarMaterialesImpresion(activosMateriales, {
     tecnologia: tec,
-    polimero: polimeroOk,
-    marca: marcaOk,
-    color: colorOk
+    polimero: polimeroOk || undefined,
+    marca: marcaOk || undefined,
+    color: colorOk || undefined
   });
 
   return {

@@ -20,6 +20,7 @@ export function extractCorrelativosUsadosDeFamilia(
     if (normFamCod && pFamCod && pFamCod.toUpperCase() === normFamCod) return true;
     if (normFamCod && p.codigoCatalogo && p.codigoCatalogo.toUpperCase().startsWith(`${normFamCod}-`)) return true;
     if (normFamCod && p.sku && p.sku.toUpperCase().includes(`-${normFamCod}-`)) return true;
+    if (normFamCod === 'SF' && (p.clasificacion?.toLowerCase().startsWith('proy') || p.sku?.toUpperCase().startsWith('P-'))) return true;
     return false;
   });
 

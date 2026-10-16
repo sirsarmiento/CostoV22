@@ -13,7 +13,7 @@ import { CatalogConfigService } from '../../../../../core/services/cost/catalog-
 import { Product, PiezaProducto } from '../../../../../core/models/Cost/product';
 import { Family, Subfamily } from '../../../../../core/models/Cost/family';
 import { MaterialCatalogo, TecnologiaCatalogo, CatalogoSimple } from '../../../../../core/models/Cost/catalog-config';
-import { armarSegmentosTecMat, materialesDesdePiezas, previsualizarCodigo, tecnologiasDesdePiezas } from '../../../../../core/utils/catalog-sku';
+import { armarSegmentosTecMat, categoriaDesdeClasificacion, materialesDesdePiezas, previsualizarCodigo, tecnologiasDesdePiezas } from '../../../../../core/utils/catalog-sku';
 import {
   TASAS_FALLO,
   familiasPermitidas,
@@ -130,6 +130,12 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
 
   ngOnInit() {
     this.aplicarAmbito();
+    this.route.queryParamMap.subscribe(params => {
+      const amb = (params.get('ambito') || '').toLowerCase();
+      if (amb && amb !== this.ambito) {
+        this.aplicarAmbito();
+      }
+    });
     this.loadConfigs();
     this.loadAssets();
     this.loadCatalogo();
@@ -224,14 +230,24 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
     if (this.ambito === 'servicio') {
       this.form.get('clasificacion')?.setValue('Servicio');
       this.form.get('clasificacion')?.disable({ emitEvent: false });
-    } else if (this.ambito === 'producto' && !this.form.get('clasificacion')?.value) {
-      this.form.get('clasificacion')?.setValue('Productos');
+    } else if (this.ambito === 'producto') {
+      this.form.get('clasificacion')?.enable({ emitEvent: false });
+      const actual = this.form.get('clasificacion')?.value;
+      if (!actual || actual === 'Servicio') {
+        this.form.get('clasificacion')?.setValue('Productos');
+      }
+    } else {
+      this.form.get('clasificacion')?.enable({ emitEvent: false });
     }
   }
 
   get tituloAmbito(): string {
     if (this.ambito === 'servicio') return 'Crear servicio';
-    if (this.ambito === 'producto') return 'Crear producto';
+    if (this.ambito === 'producto') {
+      const cls = String(this.form?.get('clasificacion')?.value || '').toLowerCase();
+      if (cls.startsWith('proy')) return 'Crear proyecto';
+      return 'Crear producto';
+    }
     return 'Crear';
   }
 
@@ -307,7 +323,8 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
 
   actualizarPreviewCodigo() {
     const familia = this.familiaSeleccionada();
-    const famCod = (familia?.codigo || '').toUpperCase().trim();
+    const esProyecto = categoriaDesdeClasificacion(this.form.getRawValue().clasificacion) === 'P';
+    const famCod = (familia?.codigo || (esProyecto ? 'SF' : '')).toUpperCase().trim();
     const famId = familia?.id ? Number(familia.id) : null;
     const tecs = this.tecnologiasDePiezas;
     const mats = materialesDesdePiezas(this.piezasPendientes.map(p => ({
@@ -332,7 +349,7 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       clasificacion: this.form.getRawValue().clasificacion,
       tecnologias: tecs,
       materiales: mats,
-      familiaCodigo: familia?.codigo,
+      familiaCodigo: familia?.codigo || (esProyecto ? 'SF' : undefined),
       serie: this.form.get('serie')?.value,
       correlativosUsados: correlativosUsados
     });

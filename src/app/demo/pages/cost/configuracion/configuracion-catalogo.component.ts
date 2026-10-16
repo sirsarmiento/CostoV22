@@ -30,6 +30,13 @@ export class ConfiguracionCatalogoComponent implements OnInit {
   colores: CatalogoSimple[] = [];
   search = '';
 
+  // Paginación y ordenación
+  currentPage: number = 1;
+  pageSize: number = 10;
+  sortColumn: string = '';
+  sortAscending: boolean = true;
+  Math = Math;
+
   ngOnInit(): void {
     this.cargar();
   }
@@ -37,6 +44,71 @@ export class ConfiguracionCatalogoComponent implements OnInit {
   setActiveTab(tab: 'familias' | 'tecnologias' | 'materiales' | 'marcas' | 'colores') {
     this.activeTab = tab;
     this.search = '';
+    this.currentPage = 1;
+    this.sortColumn = '';
+    this.sortAscending = true;
+  }
+
+  onSearchChange() {
+    this.currentPage = 1;
+  }
+
+  onPageSizeChange() {
+    this.currentPage = 1;
+  }
+
+  setPage(page: number) {
+    if (page < 1 || page > this.totalPages) return;
+    this.currentPage = page;
+  }
+
+  sortData(column: string) {
+    if (this.sortColumn === column) {
+      this.sortAscending = !this.sortAscending;
+    } else {
+      this.sortColumn = column;
+      this.sortAscending = true;
+    }
+  }
+
+  getSortClass(column: string): string {
+    if (this.sortColumn !== column) return 'ti-selector text-muted';
+    return this.sortAscending ? 'ti-chevron-up text-primary' : 'ti-chevron-down text-primary';
+  }
+
+  get totalItems(): number {
+    switch (this.activeTab) {
+      case 'familias': return this.familiasFiltradas.length;
+      case 'tecnologias': return this.tecnologiasFiltradas.length;
+      case 'materiales': return this.materialesFiltrados.length;
+      case 'marcas': return this.marcasFiltradas.length;
+      case 'colores': return this.coloresFiltrados.length;
+      default: return 0;
+    }
+  }
+
+  get totalPages(): number {
+    return Math.ceil(this.totalItems / this.pageSize) || 1;
+  }
+
+  private ordenarItems<T>(items: T[], extractor: (item: T, col: string) => unknown): T[] {
+    if (!this.sortColumn) return [...items];
+    return [...items].sort((a, b) => {
+      let valA = extractor(a, this.sortColumn);
+      let valB = extractor(b, this.sortColumn);
+      if (typeof valA === 'string') valA = (valA as string).toLowerCase();
+      if (typeof valB === 'string') valB = (valB as string).toLowerCase();
+      if (valA === null || valA === undefined) return this.sortAscending ? 1 : -1;
+      if (valB === null || valB === undefined) return this.sortAscending ? -1 : 1;
+      if (valA < valB) return this.sortAscending ? -1 : 1;
+      if (valA > valB) return this.sortAscending ? 1 : -1;
+      return 0;
+    });
+  }
+
+  private paginar<T>(items: T[]): T[] {
+    const start = (this.currentPage - 1) * this.pageSize;
+    return items.slice(start, start + this.pageSize);
   }
 
   cargar() {
@@ -77,38 +149,73 @@ export class ConfiguracionCatalogoComponent implements OnInit {
 
   get familiasFiltradas(): Family[] {
     const q = this.search.toLowerCase().trim();
-    if (!q) return this.familias;
-    return this.familias.filter(f =>
-      (f.codigo || '').toLowerCase().includes(q) || (f.nombre || '').toLowerCase().includes(q)
-    );
+    let res = this.familias;
+    if (q) {
+      res = res.filter(f =>
+        (f.codigo || '').toLowerCase().includes(q) || (f.nombre || '').toLowerCase().includes(q)
+      );
+    }
+    return this.ordenarItems(res, (f, col) => col === 'codigo' ? f.codigo : f.nombre);
+  }
+
+  get familiasPaginadas(): Family[] {
+    return this.paginar(this.familiasFiltradas);
   }
 
   get tecnologiasFiltradas(): TecnologiaCatalogo[] {
     const q = this.search.toLowerCase().trim();
-    if (!q) return this.tecnologias;
-    return this.tecnologias.filter(t =>
-      (t.codigo || '').toLowerCase().includes(q) || (t.nombre || '').toLowerCase().includes(q)
-    );
+    let res = this.tecnologias;
+    if (q) {
+      res = res.filter(t =>
+        (t.codigo || '').toLowerCase().includes(q) || (t.nombre || '').toLowerCase().includes(q)
+      );
+    }
+    return this.ordenarItems(res, (t, col) => col === 'codigo' ? t.codigo : t.nombre);
+  }
+
+  get tecnologiasPaginadas(): TecnologiaCatalogo[] {
+    return this.paginar(this.tecnologiasFiltradas);
   }
 
   get materialesFiltrados(): MaterialCatalogo[] {
     const q = this.search.toLowerCase().trim();
-    if (!q) return this.materiales;
-    return this.materiales.filter(m =>
-      (m.codigo || '').toLowerCase().includes(q) || (m.nombre || '').toLowerCase().includes(q)
-    );
+    let res = this.materiales;
+    if (q) {
+      res = res.filter(m =>
+        (m.codigo || '').toLowerCase().includes(q) || (m.nombre || '').toLowerCase().includes(q)
+      );
+    }
+    return this.ordenarItems(res, (m, col) => col === 'codigo' ? m.codigo : m.nombre);
+  }
+
+  get materialesPaginados(): MaterialCatalogo[] {
+    return this.paginar(this.materialesFiltrados);
   }
 
   get marcasFiltradas(): CatalogoSimple[] {
     const q = this.search.toLowerCase().trim();
-    if (!q) return this.marcas;
-    return this.marcas.filter(m => (m.nombre || '').toLowerCase().includes(q));
+    let res = this.marcas;
+    if (q) {
+      res = res.filter(m => (m.nombre || '').toLowerCase().includes(q));
+    }
+    return this.ordenarItems(res, m => m.nombre);
+  }
+
+  get marcasPaginadas(): CatalogoSimple[] {
+    return this.paginar(this.marcasFiltradas);
   }
 
   get coloresFiltrados(): CatalogoSimple[] {
     const q = this.search.toLowerCase().trim();
-    if (!q) return this.colores;
-    return this.colores.filter(c => (c.nombre || '').toLowerCase().includes(q));
+    let res = this.colores;
+    if (q) {
+      res = res.filter(c => (c.nombre || '').toLowerCase().includes(q));
+    }
+    return this.ordenarItems(res, c => c.nombre);
+  }
+
+  get coloresPaginados(): CatalogoSimple[] {
+    return this.paginar(this.coloresFiltrados);
   }
 
   openAddFamily() {

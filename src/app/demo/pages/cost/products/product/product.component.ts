@@ -2,13 +2,16 @@ import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
-import { Product } from '../../../../../core/models/Cost/product';
+import { Product, PiezaProducto } from '../../../../../core/models/Cost/product';
 import { ProductService } from '../../../../../core/services/cost/product.service';
 import { ConfigService } from '../../../../../core/services/cost/config.service';
+import { AssetService } from '../../../../../core/services/cost/asset.service';
+import { Asset } from '../../../../../core/models/Cost/asset';
+import { mapDbPiezasToView } from '../../../../../core/utils/product-form.helper';
 import { forkJoin } from 'rxjs';
 import Swal from 'sweetalert2';
 
-interface ProductWithProfile extends Product {
+export interface ProductWithProfile extends Product {
   perfilName?: string;
 }
 
@@ -22,12 +25,19 @@ export class ProductComponent implements OnInit {
   private router = inject(Router);
   private productService = inject(ProductService);
   private configService = inject(ConfigService);
+  private assetService = inject(AssetService);
 
   private cdr = inject(ChangeDetectorRef);
   loading = true;
   allProducts: ProductWithProfile[] = [];
   filteredProducts: ProductWithProfile[] = [];
   selectedRow: ProductWithProfile | null = null;
+  allAssets: Asset[] = [];
+
+  // Modal de detalles
+  showDetailsModal = false;
+  selectedProductForModal: ProductWithProfile | null = null;
+  loadingModalDetails = false;
 
   // Búsqueda y paginación
   searchTerm: string = '';
@@ -52,11 +62,13 @@ export class ProductComponent implements OnInit {
     
     forkJoin({
       configs: this.configService.getConfigs(),
-      products: this.productService.getProducts()
+      products: this.productService.getProducts(),
+      assets: this.assetService.getAssets()
     }).subscribe({
       next: (data) => {
         const configs = data.configs;
         const productsList = data.products;
+        this.allAssets = data.assets || [];
 
         this.allProducts = productsList.map(p => {
           let perfilId: number | null = null;
@@ -205,6 +217,66 @@ export class ProductComponent implements OnInit {
   getSortClass(column: string): string {
     if (this.sortColumn !== column) return 'ti-selector text-muted';
     return this.sortAscending ? 'ti-chevron-up text-primary' : 'ti-chevron-down text-primary';
+  }
+
+  onViewDetails(row: ProductWithProfile) {
+    this.selectedProductForModal = { ...row };
+    this.showDetailsModal = true;
+
+    const dRec = row as unknown as Record<string, unknown>;
+    const rawPiezas = dRec['piezasProducto'] ?? dRec['piezas_producto'] ?? dRec['piezas'] ?? row.piezasProducto;
+
+    if (Array.isArray(rawPiezas) && rawPiezas.length > 0) {
+      this.selectedProductForModal.piezasProducto = this.mapPiezas(rawPiezas);
+    } else if (row.id) {
+      this.loadingModalDetails = true;
+      this.productService.getProduct(row.id).subscribe({
+        next: (fullProd) => {
+          if (fullProd) {
+            const fRec = fullProd as unknown as Record<string, unknown>;
+            const piezas = fRec['piezasProducto'] ?? fRec['piezas_producto'] ?? fRec['piezas'] ?? fullProd.piezasProducto ?? [];
+            this.selectedProductForModal = {
+              ...this.selectedProductForModal,
+              ...fullProd,
+              piezasProducto: this.mapPiezas(Array.isArray(piezas) ? piezas : [])
+            };
+          }
+          this.loadingModalDetails = false;
+          this.cdr.detectChanges();
+        },
+        error: () => {
+          this.loadingModalDetails = false;
+          this.cdr.detectChanges();
+        }
+      });
+    }
+  }
+
+  private mapPiezas(rawPiezas: unknown[]): PiezaProducto[] {
+    const maquinas = this.allAssets.filter(a => (a.tipo || '').toLowerCase().includes('maquin'));
+    const materiales = this.allAssets.filter(a => (a.tipo || '').toLowerCase().includes('mater'));
+    const circulantes = this.allAssets.filter(a => (a.tipo || '').toLowerCase().includes('circulan'));
+    return mapDbPiezasToView(rawPiezas, maquinas, materiales, circulantes, this.allAssets);
+  }
+
+  closeDetailsModal() {
+    this.showDetailsModal = false;
+    this.selectedProductForModal = null;
+    this.loadingModalDetails = false;
+  }
+
+  onEditFromModal() {
+    if (this.selectedProductForModal) {
+      const prod = this.selectedProductForModal;
+      this.closeDetailsModal();
+      this.onEdit(prod);
+    }
+  }
+
+  tienePiezas(row: ProductWithProfile): boolean {
+    const dRec = row as unknown as Record<string, unknown>;
+    const rawPiezas = dRec['piezasProducto'] ?? dRec['piezas_producto'] ?? dRec['piezas'] ?? row.piezasProducto;
+    return Array.isArray(rawPiezas) && rawPiezas.length > 0;
   }
 
   onEdit(row: Product) {

@@ -6,6 +6,7 @@ export interface NavigationItem {
   icon?: string;
   hidden?: boolean;
   url?: string;
+  queryParams?: Record<string, string>;
   classes?: string;
   groupClasses?: string;
   exactMatch?: boolean;
@@ -93,6 +94,45 @@ export const NavigationItems: NavigationItem[] = [
     type: 'group',
     icon: 'icon-navigation',
     children: [
+      // Productos y servicios
+      {
+        id: 'productos-servicios',
+        title: 'Productos y servicios',
+        type: 'collapse',
+        icon: 'gold',
+        children: [
+          {
+            id: 'products',
+            title: 'Catálogo',
+            type: 'item',
+            classes: 'nav-item',
+            url: '/products',
+            icon: 'appstore',
+            breadcrumbs: false
+          },
+          {
+            id: 'products-producto',
+            title: 'Productos',
+            type: 'item',
+            classes: 'nav-item',
+            url: '/products/add-product',
+            queryParams: { ambito: 'producto' },
+            icon: 'gold',
+            breadcrumbs: false
+          },
+          {
+            id: 'products-servicio',
+            title: 'Servicios',
+            type: 'item',
+            classes: 'nav-item',
+            url: '/products/add-product',
+            queryParams: { ambito: 'servicio' },
+            icon: 'setting',
+            breadcrumbs: false
+          }
+        ]
+      },
+
       // Costos y Precios
       {
         id: 'costos-group',
@@ -100,41 +140,6 @@ export const NavigationItems: NavigationItem[] = [
         type: 'collapse',
         icon: 'calculator',
         children: [
-          {
-            id: 'productos-servicios',
-            title: 'Productos y servicios',
-            type: 'collapse',
-            icon: 'gold',
-            children: [
-              {
-                id: 'products',
-                title: 'Catálogo',
-                type: 'item',
-                classes: 'nav-item',
-                url: '/products',
-                icon: 'gold',
-                breadcrumbs: false
-              },
-              {
-                id: 'products-producto',
-                title: 'Productos',
-                type: 'item',
-                classes: 'nav-item',
-                url: '/products/add-product?ambito=producto',
-                icon: 'gold',
-                breadcrumbs: false
-              },
-              {
-                id: 'products-servicio',
-                title: 'Servicios',
-                type: 'item',
-                classes: 'nav-item',
-                url: '/products/add-product?ambito=servicio',
-                icon: 'gold',
-                breadcrumbs: false
-              }
-            ]
-          },
           {
             id: 'fixes',
             title: 'Estructura de costos',

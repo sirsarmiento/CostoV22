@@ -137,10 +137,12 @@ export function previsualizarCodigo(input: SkuPreviewInput): { sku: string; codi
   let correlativo: string;
 
   if (esProyecto) {
-    correlativo = siguientePrefijo(usados, 'P', 2);
+    const famProyecto = familia || 'SF';
+    const matProyecto = segs.material || 'NA';
+    correlativo = siguienteNumerico(usados, 2);
     return {
-      sku: `P-${correlativo}-${segs.tecnologias.join('/')}`,
-      codigoCatalogo: `P-${correlativo}`,
+      sku: `P-${segs.tecnologia}-${matProyecto}-${famProyecto}-${correlativo}`,
+      codigoCatalogo: `${famProyecto}-${correlativo}`,
       correlativo
     };
   }
@@ -154,7 +156,7 @@ export function previsualizarCodigo(input: SkuPreviewInput): { sku: string; codi
   } else if (familia === 'LUD' && entryLud && !isLudTaken) {
     correlativo = entryLud;
   } else {
-    correlativo = siguienteNumerico(usados);
+    correlativo = siguienteNumerico(usados, 3);
   }
 
   return {
@@ -176,14 +178,14 @@ function siguientePrefijo(usados: string[], prefijo: string, digitos: number): s
   return `${prefijo}${String(max + 1).padStart(digitos, '0')}`;
 }
 
-function siguienteNumerico(usados: string[]): string {
-  const patron = /(?:^|-)(\d{1,4})$/;
+function siguienteNumerico(usados: string[], digitos: number = 3): string {
+  const patron = /(?:^|-|[A-Z]+)(\d{1,4})$/i;
   let max = 0;
   usados.forEach(valor => {
-    const match = valor.match(patron);
+    const match = String(valor || '').trim().match(patron);
     if (match) {
       max = Math.max(max, Number(match[1]));
     }
   });
-  return String(max + 1).padStart(3, '0');
+  return String(max + 1).padStart(digitos, '0');
 }

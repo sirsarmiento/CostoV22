@@ -127,20 +127,16 @@
             </div>
           </div>
 
-          <!-- COSTOS GENERALES Y CONFIGURACIÓN GLOBAL -->
+          <!-- PARÁMETROS DE FABRICACIÓN Y COSTOS GLOBALES -->
+          <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3 mt-4">
+            <h6 class="fw-bold text-dark mb-0">Parámetros de fabricación</h6>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" formControlName="multitecnologia" id="multiTecPresupuesto">
+              <label class="form-check-label" for="multiTecPresupuesto">Multitecnología</label>
+            </div>
+          </div>
+
           <div class="row g-3 mb-4 pb-3 border-bottom">
-            <div class="col-md-4 d-flex align-items-end">
-              <div class="form-check mb-2">
-                <input class="form-check-input" type="checkbox" formControlName="multitecnologia" id="multiTecPresupuesto">
-                <label class="form-check-label" for="multiTecPresupuesto">Multitecnología</label>
-              </div>
-            </div>
-
-            <div class="col-md-4">
-              <label class="form-label">Horas totales (suma de piezas)</label>
-              <input type="text" class="form-control" [value]="resumenHorasTexto" readonly>
-            </div>
-
             <div class="col-md-4">
               <label class="form-label">Prep. Slicing (min)</label>
               <input type="number" class="form-control" formControlName="tiempoSetup" min="0" [class.is-invalid]="submitted && f['tiempoSetup'].errors" placeholder="0">
@@ -152,6 +148,11 @@
             </div>
 
             <div class="col-md-4">
+              <label class="form-label">Horas totales (suma de piezas)</label>
+              <input type="text" class="form-control" [value]="resumenHorasTexto" readonly>
+            </div>
+
+            <div class="col-md-6">
               <label class="form-label">Tasa de Fallo (%)</label>
               <ng-select 
                 formControlName="tasaFalloGlobal"
@@ -166,7 +167,7 @@
               </ng-select>
             </div>
 
-            <div class="col-md-4">
+            <div class="col-md-6">
               <label class="form-label">Margen de Ganancia (%)</label>
               <input type="number" class="form-control" formControlName="margenGanancia" [min]="minMargenGanancia" max="100" (blur)="onMargenBlur()" [class.is-invalid]="submitted && f['margenGanancia'].errors" placeholder="0">
               @if (f['margenGanancia'].errors) {
@@ -224,7 +225,8 @@
                     </button>
                   </div>
                 } @else {
-                  <div class="col-md-3">
+                  <!-- Fila 1: Identificación y Equipo (12 cols) -->
+                  <div class="col-md-4">
                     <label class="form-label text-xs mb-1">Nombre Pieza Fabricada</label>
                     <input type="text" class="form-control form-control-sm" formControlName="piezaFabricada" [placeholder]="siguienteNombrePieza">
                   </div>
@@ -245,7 +247,7 @@
                     </ng-select>
                   </div>
 
-                  <div class="col-md-4">
+                  <div class="col-md-3">
                     <label class="form-label text-xs mb-1">Impresora / Máquina</label>
                     <ng-select 
                       formControlName="activoId" 
@@ -268,12 +270,7 @@
                     </ng-select>
                   </div>
 
-                  <!-- Fila 2: Material, Gramos y Acción (12 cols) -->
-                  <div class="col-md-1">
-                    <label class="form-label text-xs mb-1">Cant.</label>
-                    <input type="number" min="1" class="form-control form-control-sm px-1" formControlName="piezaCantidad">
-                  </div>
-
+                  <!-- Fila 2: Filtros e Insumo de Material (12 cols) -->
                   <div class="col-md-2">
                     <label class="form-label text-xs mb-1">Tipo de polímero</label>
                     <ng-select formControlName="piezaPolimero" placeholder="Polímero (opcional)" [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom" class="ng-select-sm">
@@ -301,7 +298,7 @@
                     </ng-select>
                   </div>
 
-                  <div class="col-md-3">
+                  <div class="col-md-6">
                     <label class="form-label text-xs mb-1">Material (Insumo)</label>
                     <ng-select 
                       formControlName="piezaMaterialId" 
@@ -322,17 +319,13 @@
                     </ng-select>
                   </div>
 
-                  <div class="col-md-1">
-                    <label class="form-label text-xs mb-1">Horas</label>
-                    <input type="number" min="0" class="form-control form-control-sm px-1" formControlName="piezaHoras">
+                  <!-- Fila 3: Cantidad (2), Gramos (4 = Marca + Color), Horas + Min + Botón (6 = Material) -->
+                  <div class="col-md-2">
+                    <label class="form-label text-xs mb-1">Cant.</label>
+                    <input type="number" min="1" class="form-control form-control-sm px-1" formControlName="piezaCantidad">
                   </div>
 
-                  <div class="col-md-1">
-                    <label class="form-label text-xs mb-1">Min</label>
-                    <input type="number" min="0" max="59" class="form-control form-control-sm px-1" formControlName="piezaMinutos">
-                  </div>
-
-                  <div class="col-md-1">
+                  <div class="col-md-4">
                     <label class="form-label text-xs mb-1">Gramos</label>
                     <input type="number" class="form-control form-control-sm px-1" formControlName="piezaGramos">
                     @if ((form.get('piezaCantidad')?.value || 1) > 1 && (form.get('piezaGramos')?.value || 0) > 0) {
@@ -342,10 +335,22 @@
                     }
                   </div>
 
-                  <div class="col-md-1 d-flex align-items-end">
-                    <button class="btn btn-primary btn-square-icon w-100" type="button" (click)="addPart()" title="Agregar Pieza">
-                      <i class="ti ti-plus fs-4"></i>
-                    </button>
+                  <div class="col-md-6">
+                    <div class="row g-2 align-items-end">
+                      <div class="col">
+                        <label class="form-label text-xs mb-1">Horas</label>
+                        <input type="number" min="0" class="form-control form-control-sm px-1" formControlName="piezaHoras">
+                      </div>
+                      <div class="col">
+                        <label class="form-label text-xs mb-1">Min</label>
+                        <input type="number" min="0" max="59" class="form-control form-control-sm px-1" formControlName="piezaMinutos">
+                      </div>
+                      <div class="col-auto d-flex align-items-end">
+                        <button class="btn btn-primary btn-square-icon" type="button" (click)="addPart()" title="Agregar Pieza">
+                          <i class="ti ti-plus fs-4"></i>
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
                   @if (stockPiezaActual.estado !== 'sin_seleccion') {

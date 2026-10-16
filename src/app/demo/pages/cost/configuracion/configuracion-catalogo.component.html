@@ -33,7 +33,7 @@
 
         <div class="row align-items-center mb-3">
           <div class="col-md-8">
-            <input type="text" class="form-control" placeholder="Buscar..." [(ngModel)]="search">
+            <input type="text" class="form-control" placeholder="Buscar..." [(ngModel)]="search" (input)="onSearchChange()">
           </div>
           <div class="col-md-4 text-md-end mt-2 mt-md-0">
             @if (activeTab === 'familias') {
@@ -55,23 +55,33 @@
         </div>
 
         @if (activeTab === 'familias') {
-          <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-              <thead class="table-light">
+          <div class="table-responsive table-sm">
+            <table class="table table-hover align-middle mb-0 table-sm">
+              <thead class="table-light table-sm">
                 <tr>
-                  <th>Código</th>
-                  <th>Nombre</th>
+                  <th style="cursor: pointer;" (click)="sortData('codigo')">
+                    Código <i class="ti fs-6" [class]="getSortClass('codigo')"></i>
+                  </th>
+                  <th style="cursor: pointer;" (click)="sortData('nombre')">
+                    Nombre <i class="ti fs-6" [class]="getSortClass('nombre')"></i>
+                  </th>
                   <th class="text-center">Acciones</th>
                 </tr>
               </thead>
               <tbody>
-                @for (row of familiasFiltradas; track row.id) {
+                @for (row of familiasPaginadas; track row.id) {
                   <tr>
                     <td class="font-monospace fw-bold">{{ row.codigo }}</td>
                     <td>{{ row.nombre }}</td>
                     <td class="text-center">
                       @if (row.subFamilias && row.subFamilias.length > 0) {
-                        <button class="btn btn-icon btn-light-info me-1" type="button" (click)="onViewSubfamilies(row)" [title]="'Ver ' + row.subFamilias.length + ' subfamilia(s)'"><i class="ti ti-users"></i></button>
+                        <button class="btn btn-icon btn-light-info me-1" type="button" (click)="onViewSubfamilies(row)" [title]="'Ver ' + row.subFamilias.length + ' subfamilia(s)'">
+                          <i class="ti ti-users"></i>
+                        </button>
+                      } @else {
+                        <button class="btn btn-icon btn-light text-muted opacity-50 me-1" type="button" (click)="onViewSubfamilies(row)" title="Sin subfamilias (clic para gestionar/agregar)">
+                          <i class="ti ti-users"></i>
+                        </button>
                       }
                       <button class="btn btn-icon btn-light-primary me-1" type="button" (click)="onEditFamily(row)" title="Editar familia"><i class="ti ti-edit"></i></button>
                       <button class="btn btn-icon btn-light-danger" type="button" (click)="onDeleteFamily(row)" title="Eliminar familia"><i class="ti ti-trash"></i></button>
@@ -86,24 +96,28 @@
         }
 
         @if (activeTab === 'tecnologias') {
-          <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-              <thead class="table-light">
+          <div class="table-responsive table-sm">
+            <table class="table table-hover align-middle mb-0 table-sm">
+              <thead class="table-light table-sm">
                 <tr>
-                  <th>Código</th>
-                  <th>Nombre</th>
+                  <th style="cursor: pointer;" (click)="sortData('codigo')">
+                    Código <i class="ti fs-6" [class]="getSortClass('codigo')"></i>
+                  </th>
+                  <th style="cursor: pointer;" (click)="sortData('nombre')">
+                    Nombre <i class="ti fs-6" [class]="getSortClass('nombre')"></i>
+                  </th>
                   <th>Materiales permitidos</th>
                   <th class="text-center">Acciones</th>
                 </tr>
               </thead>
               <tbody>
-                @for (row of tecnologiasFiltradas; track row.id) {
+                @for (row of tecnologiasPaginadas; track row.id) {
                   <tr>
                     <td class="font-monospace fw-bold">{{ row.codigo }}</td>
                     <td>{{ row.nombre }}</td>
                     <td>{{ materialesDeTecnologia(row) }}</td>
                     <td class="text-center">
-                      <button class="btn btn-icon btn-light-primary" type="button" (click)="onEditTecnologia(row)"><i class="ti ti-edit"></i></button>
+                      <button class="btn btn-icon btn-light-primary me-1" type="button" (click)="onEditTecnologia(row)"><i class="ti ti-edit"></i></button>
                       <button class="btn btn-icon btn-light-danger" type="button" (click)="onDeleteTecnologia(row)"><i class="ti ti-trash"></i></button>
                     </td>
                   </tr>
@@ -116,24 +130,28 @@
         }
 
         @if (activeTab === 'materiales') {
-          <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-              <thead class="table-light">
+          <div class="table-responsive table-sm">
+            <table class="table table-hover align-middle mb-0 table-sm">
+              <thead class="table-light table-sm">
                 <tr>
-                  <th>Código</th>
-                  <th>Nombre</th>
+                  <th style="cursor: pointer;" (click)="sortData('codigo')">
+                    Código <i class="ti fs-6" [class]="getSortClass('codigo')"></i>
+                  </th>
+                  <th style="cursor: pointer;" (click)="sortData('nombre')">
+                    Nombre <i class="ti fs-6" [class]="getSortClass('nombre')"></i>
+                  </th>
                   <th>Tecnologías</th>
                   <th class="text-center">Acciones</th>
                 </tr>
               </thead>
               <tbody>
-                @for (row of materialesFiltrados; track row.id) {
+                @for (row of materialesPaginados; track row.id) {
                   <tr>
                     <td class="font-monospace fw-bold">{{ row.codigo }}</td>
                     <td>{{ row.nombre }}</td>
                     <td>{{ tecnologiasDeMaterial(row) }}</td>
                     <td class="text-center">
-                      <button class="btn btn-icon btn-light-primary" type="button" (click)="onEditMaterial(row)"><i class="ti ti-edit"></i></button>
+                      <button class="btn btn-icon btn-light-primary me-1" type="button" (click)="onEditMaterial(row)"><i class="ti ti-edit"></i></button>
                       <button class="btn btn-icon btn-light-danger" type="button" (click)="onDeleteMaterial(row)"><i class="ti ti-trash"></i></button>
                     </td>
                   </tr>
@@ -146,20 +164,22 @@
         }
 
         @if (activeTab === 'marcas') {
-          <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-              <thead class="table-light">
+          <div class="table-responsive table-sm">
+            <table class="table table-hover align-middle mb-0 table-sm">
+              <thead class="table-light table-sm">
                 <tr>
-                  <th>Nombre</th>
+                  <th style="cursor: pointer;" (click)="sortData('nombre')">
+                    Nombre <i class="ti fs-6" [class]="getSortClass('nombre')"></i>
+                  </th>
                   <th class="text-center">Acciones</th>
                 </tr>
               </thead>
               <tbody>
-                @for (row of marcasFiltradas; track row.id) {
+                @for (row of marcasPaginadas; track row.id) {
                   <tr>
                     <td>{{ row.nombre }}</td>
                     <td class="text-center">
-                      <button class="btn btn-icon btn-light-primary" type="button" (click)="onEditMarca(row)"><i class="ti ti-edit"></i></button>
+                      <button class="btn btn-icon btn-light-primary me-1" type="button" (click)="onEditMarca(row)"><i class="ti ti-edit"></i></button>
                       <button class="btn btn-icon btn-light-danger" type="button" (click)="onDeleteMarca(row)"><i class="ti ti-trash"></i></button>
                     </td>
                   </tr>
@@ -172,20 +192,22 @@
         }
 
         @if (activeTab === 'colores') {
-          <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-              <thead class="table-light">
+          <div class="table-responsive table-sm">
+            <table class="table table-hover align-middle mb-0 table-sm">
+              <thead class="table-light table-sm">
                 <tr>
-                  <th>Nombre</th>
+                  <th style="cursor: pointer;" (click)="sortData('nombre')">
+                    Nombre <i class="ti fs-6" [class]="getSortClass('nombre')"></i>
+                  </th>
                   <th class="text-center">Acciones</th>
                 </tr>
               </thead>
               <tbody>
-                @for (row of coloresFiltrados; track row.id) {
+                @for (row of coloresPaginados; track row.id) {
                   <tr>
                     <td>{{ row.nombre }}</td>
                     <td class="text-center">
-                      <button class="btn btn-icon btn-light-primary" type="button" (click)="onEditColor(row)"><i class="ti ti-edit"></i></button>
+                      <button class="btn btn-icon btn-light-primary me-1" type="button" (click)="onEditColor(row)"><i class="ti ti-edit"></i></button>
                       <button class="btn btn-icon btn-light-danger" type="button" (click)="onDeleteColor(row)"><i class="ti ti-trash"></i></button>
                     </td>
                   </tr>
@@ -194,6 +216,36 @@
                 }
               </tbody>
             </table>
+          </div>
+        }
+
+        <!-- Paginación Simple (Estilo Estándar del Sistema) -->
+        @if (totalItems > 0) {
+          <div class="d-flex flex-column flex-md-row justify-content-end align-items-center mt-3 gap-4 text-muted" style="font-size: 0.875rem;">
+            
+            <div class="d-flex align-items-center gap-2">
+              <span>Filas por página:</span>
+              <select class="form-select form-select-sm border-0 shadow-none bg-light fw-medium" style="width: 70px; cursor: pointer;" [(ngModel)]="pageSize" (change)="onPageSizeChange()">
+                <option [ngValue]="5">5</option>
+                <option [ngValue]="10">10</option>
+                <option [ngValue]="20">20</option>
+                <option [ngValue]="50">50</option>
+              </select>
+            </div>
+            
+            <span>
+              {{ (currentPage - 1) * pageSize + 1 }} - {{ Math.min(currentPage * pageSize, totalItems) }} de {{ totalItems }}
+            </span>
+            
+            <div class="d-flex align-items-center gap-2">
+              <button class="btn btn-sm btn-icon rounded-pill btn-light shadow-sm" [disabled]="currentPage === 1" (click)="setPage(currentPage - 1)" title="Anterior">
+                <i class="ti ti-chevron-left fs-5"></i>
+              </button>
+              <button class="btn btn-sm btn-icon rounded-pill btn-light shadow-sm" [disabled]="currentPage === totalPages" (click)="setPage(currentPage + 1)" title="Siguiente">
+                <i class="ti ti-chevron-right fs-5"></i>
+              </button>
+            </div>
+            
           </div>
         }
       </div>

@@ -15,56 +15,51 @@
       <div class="card-body">
         <form [formGroup]="form">
           <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
-            <h6 class="fw-bold text-dark mb-0">Parámetros de fabricación</h6>
+            <h6 class="fw-bold text-dark mb-0">Datos del {{ etiquetaTipo }}</h6>
+          </div>
+
+          <div class="row g-3 mb-4">
+            <div class="col-md-4">
+              <label class="form-label">Categoría *</label>
+              <ng-select
+                formControlName="clasificacion"
+                placeholder="Seleccione..."
+                [clearable]="false"
+                [searchable]="false"
+                appendTo="body"
+                [class.is-invalid]="submitted && f['clasificacion'].errors">
+                @for (op of opcionesClasificacion; track op.valor) {
+                  <ng-option [value]="op.valor">{{ op.etiqueta }}</ng-option>
+                }
+              </ng-select>
+              @if (submitted && f['clasificacion'].errors?.['required']) {
+                <div class="invalid-feedback d-block">Seleccione si es producto, servicio o proyecto.</div>
+              }
+            </div>
+
+            <div class="col-md-8">
+              <label class="form-label">Nombre *</label>
+              <input
+                type="text"
+                class="form-control"
+                formControlName="nombre"
+                maxlength="100"
+                [class.is-invalid]="submitted && f['nombre'].errors">
+              @if (submitted && f['nombre'].errors?.['required']) {
+                <div class="invalid-feedback">Ingrese el nombre</div>
+              }
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3 mt-4">
+            <h6 class="fw-bold text-dark mb-0">Detalle de piezas</h6>
             <div class="form-check">
               <input class="form-check-input" type="checkbox" formControlName="multitecnologia" id="multiTecProducto">
               <label class="form-check-label" for="multiTecProducto">Multitecnología</label>
             </div>
           </div>
 
-          <div class="row g-3">
-            <div class="col-md-4">
-              <label class="form-label">Prep. Slicing (min)</label>
-              <input type="number" class="form-control" formControlName="tiempoSetup" placeholder="0">
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">Post-Procesado (min)</label>
-              <input type="number" class="form-control" formControlName="postProcesado" placeholder="0">
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">Horas totales (suma de piezas)</label>
-              <input type="text" class="form-control" [value]="resumenHorasTexto" readonly>
-            </div>
-          </div>
-
-          @if (resumenHoras.length > 0) {
-            <div class="row g-3 mt-1">
-              @for (fila of resumenHoras; track fila.tecnologia) {
-                <div class="col-md-4">
-                  <label class="form-label">Tasa de fallo {{ fila.tecnologia }} (%)</label>
-                  <ng-select
-                    [ngModel]="tasasFalloPorTecnologia[fila.tecnologia]"
-                    [ngModelOptions]="{standalone: true}"
-                    (ngModelChange)="onTasaTecnologiaChange(fila.tecnologia, $event)"
-                    placeholder="Seleccione..."
-                    [clearable]="false"
-                    [searchable]="false"
-                    appendTo="body">
-                    @for (tasa of tasasFalloOpciones; track tasa) {
-                      <ng-option [value]="tasa">{{ tasa }}%</ng-option>
-                    }
-                  </ng-select>
-                  <small class="text-muted">Tiempo: {{ fila.horas }} h {{ fila.minutos }} min</small>
-                </div>
-              }
-            </div>
-          }
-
-          <div class="col-12 mt-4">
-            <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">Piezas</h6>
-          </div>
-
-          <div class="row g-3">
+          <div class="row g-3 mt-1">
             <div class="col-md-2">
               <label class="form-label">Tipo de Pieza</label>
               <ng-select formControlName="piezaTipo" [clearable]="false" [searchable]="false" appendTo="body" dropdownPosition="bottom">
@@ -103,7 +98,8 @@
                 </button>
               </div>
             } @else {
-              <div class="col-md-3">
+              <!-- Fila 1: Identificación y Equipo (12 cols) -->
+              <div class="col-md-4">
                 <label class="form-label">Nombre de la pieza</label>
                 <input type="text" class="form-control" formControlName="piezaFabricada" [placeholder]="siguienteNombrePieza">
               </div>
@@ -123,7 +119,7 @@
                 </ng-select>
               </div>
 
-              <div class="col-md-4">
+              <div class="col-md-3">
                 <label class="form-label">Impresora / Máquina</label>
                 <ng-select
                   formControlName="activoId"
@@ -145,11 +141,7 @@
                 </ng-select>
               </div>
 
-              <div class="col-md-1">
-                <label class="form-label">Cant.</label>
-                <input type="number" min="1" class="form-control px-2" formControlName="piezaCantidad">
-              </div>
-
+              <!-- Fila 2: Filtros e Insumo de Material (12 cols) -->
               <div class="col-md-2">
                 <label class="form-label">Tipo de polímero</label>
                 <ng-select formControlName="piezaPolimero" placeholder="Polímero (opcional)" [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom">
@@ -177,7 +169,7 @@
                 </ng-select>
               </div>
 
-              <div class="col-md-3">
+              <div class="col-md-6">
                 <label class="form-label">Material (Insumo)</label>
                 <ng-select
                   formControlName="piezaMaterialId"
@@ -197,25 +189,33 @@
                 </ng-select>
               </div>
 
-              <div class="col-md-1">
+              <!-- Fila 3: Cantidad (2), Gramos (4 = Marca + Color), Horas + Minutos + Botón (6 = Material) -->
+              <div class="col-md-2">
+                <label class="form-label">Cantidad</label>
+                <input type="number" min="1" class="form-control px-2" formControlName="piezaCantidad">
+              </div>
+
+              <div class="col-md-4">
                 <label class="form-label">Gramos</label>
                 <input type="number" class="form-control px-2" formControlName="piezaGramos" placeholder="0">
               </div>
 
-              <div class="col-md-1">
-                <label class="form-label">Horas</label>
-                <input type="number" min="0" class="form-control px-2" formControlName="piezaHoras" placeholder="0">
-              </div>
-
-              <div class="col-md-1">
-                <label class="form-label">Min</label>
-                <input type="number" min="0" max="59" class="form-control px-2" formControlName="piezaMinutos" placeholder="0">
-              </div>
-
-              <div class="col-md-1 d-flex align-items-end">
-                <button type="button" class="btn btn-primary btn-square-icon w-100" (click)="agregarPieza()" title="Agregar Pieza Fabricada">
-                  <i class="ti ti-plus fs-4"></i>
-                </button>
+              <div class="col-md-6">
+                <div class="row g-3">
+                  <div class="col">
+                    <label class="form-label">Horas</label>
+                    <input type="number" min="0" class="form-control px-2" formControlName="piezaHoras" placeholder="0">
+                  </div>
+                  <div class="col">
+                    <label class="form-label">Minutos</label>
+                    <input type="number" min="0" max="59" class="form-control px-2" formControlName="piezaMinutos" placeholder="0">
+                  </div>
+                  <div class="col-auto d-flex align-items-end">
+                    <button type="button" class="btn btn-primary btn-square-icon" (click)="agregarPieza()" title="Agregar Pieza Fabricada">
+                      <i class="ti ti-plus fs-4"></i>
+                    </button>
+                  </div>
+                </div>
               </div>
 
               @if (stockPiezaActual.estado !== 'sin_seleccion') {
@@ -309,43 +309,49 @@
             </div>
           </div>
 
-          <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3 mt-5">
-            <h6 class="fw-bold text-dark mb-0">Datos del {{ etiquetaTipo }}</h6>
+          <!-- Tiempos y tasas de fabricación -->
+          <div class="col-12 mt-4 pt-2">
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label">Prep. Slicing (min)</label>
+                <input type="number" class="form-control" formControlName="tiempoSetup" placeholder="0">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Post-Procesado (min)</label>
+                <input type="number" class="form-control" formControlName="postProcesado" placeholder="0">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Horas totales (suma de piezas)</label>
+                <input type="text" class="form-control" [value]="resumenHorasTexto" readonly>
+              </div>
+            </div>
+
+            @if (resumenHoras.length > 0) {
+              <div class="row g-3 mt-1">
+                @for (fila of resumenHoras; track fila.tecnologia) {
+                  <div class="col-md-4">
+                    <label class="form-label">Tasa de fallo {{ fila.tecnologia }} (%)</label>
+                    <ng-select
+                      [ngModel]="tasasFalloPorTecnologia[fila.tecnologia]"
+                      [ngModelOptions]="{standalone: true}"
+                      (ngModelChange)="onTasaTecnologiaChange(fila.tecnologia, $event)"
+                      placeholder="Seleccione..."
+                      [clearable]="false"
+                      [searchable]="false"
+                      appendTo="body">
+                      @for (tasa of tasasFalloOpciones; track tasa) {
+                        <ng-option [value]="tasa">{{ tasa }}%</ng-option>
+                      }
+                    </ng-select>
+                    <small class="text-muted">Tiempo: {{ fila.horas }} h {{ fila.minutos }} min</small>
+                  </div>
+                }
+              </div>
+            }
           </div>
 
-          <div class="row g-3">
-            <div class="col-md-4">
-              <label class="form-label">Categoría *</label>
-              <ng-select
-                formControlName="clasificacion"
-                placeholder="Seleccione..."
-                [clearable]="false"
-                [searchable]="false"
-                appendTo="body"
-                [class.is-invalid]="submitted && f['clasificacion'].errors">
-                @for (op of opcionesClasificacion; track op.valor) {
-                  <ng-option [value]="op.valor">{{ op.etiqueta }}</ng-option>
-                }
-              </ng-select>
-              @if (submitted && f['clasificacion'].errors?.['required']) {
-                <div class="invalid-feedback d-block">Seleccione si es producto, servicio o proyecto.</div>
-              }
-            </div>
-
-            <div class="col-md-8">
-              <label class="form-label">Nombre *</label>
-              <input
-                type="text"
-                class="form-control"
-                formControlName="nombre"
-                maxlength="100"
-                [class.is-invalid]="submitted && f['nombre'].errors">
-              @if (submitted && f['nombre'].errors?.['required']) {
-                <div class="invalid-feedback">Ingrese el nombre</div>
-              }
-            </div>
-
-            <div class="col-md-4">
+          <div class="row g-3 mt-4 pt-2">
+            <div [class]="tieneSubfamilias() ? 'col-md-6' : 'col-12'">
               <label class="form-label">Familia *</label>
               <ng-select
                 formControlName="familiaId"
@@ -364,7 +370,7 @@
             </div>
 
             @if (tieneSubfamilias()) {
-              <div class="col-md-4">
+              <div class="col-md-6">
                 <label class="form-label">Subfamilia / Serie</label>
                 <ng-select
                   formControlName="serie"
@@ -379,16 +385,6 @@
               </div>
             }
 
-            <div class="col-md-4">
-              <label class="form-label">Código asignado</label>
-              <input type="text" class="form-control font-monospace fw-bold" [value]="previewSku || 'Se genera al completar fabricación y familia'" readonly>
-            </div>
-
-            <div class="col-md-4">
-              <label class="form-label">Código de catálogo</label>
-              <input type="text" class="form-control font-monospace fw-bold" [value]="previewCatalogo || 'Se genera al completar los datos'" readonly>
-            </div>
-
             <div class="col-12">
               <label class="form-label">Descripción *</label>
               <textarea
@@ -401,6 +397,16 @@
               @if (submitted && f['descripcion'].errors?.['required']) {
                 <div class="invalid-feedback">Ingrese la descripción</div>
               }
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Código asignado</label>
+              <input type="text" class="form-control font-monospace fw-bold" [value]="previewSku || 'Se genera al completar fabricación y familia'" readonly>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Código de catálogo</label>
+              <input type="text" class="form-control font-monospace fw-bold" [value]="previewCatalogo || 'Se genera al completar los datos'" readonly>
             </div>
           </div>
 

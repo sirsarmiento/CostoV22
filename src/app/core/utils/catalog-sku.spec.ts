@@ -57,16 +57,27 @@ describe('catalog-sku', () => {
     expect(preview.codigoCatalogo).toBe('POP-001');
   });
 
-  it('arma el código de proyecto con P y las tecnologías', () => {
+  it('arma el código de proyecto con orden Categoria-Tecnologia-Material-Familia-Correlativo', () => {
+    const preview = previsualizarCodigo({
+      clasificacion: 'Proyecto',
+      tecnologia: 'FDM',
+      material: 'ABS',
+      correlativosUsados: []
+    });
+    expect(preview.sku).toBe('P-FDM-ABS-SF-01');
+    expect(preview.codigoCatalogo).toBe('SF-01');
+    expect(preview.correlativo).toBe('01');
+  });
+
+  it('arma el código de proyecto multitecnología y con correlativo incremental', () => {
     const preview = previsualizarCodigo({
       clasificacion: 'Proyecto',
       tecnologias: ['FDM', 'SLA'],
-      materiales: ['PLA'],
-      familiaCodigo: 'SF',
-      correlativosUsados: ['P01']
+      materiales: ['ABS', 'RES'],
+      correlativosUsados: ['01']
     });
-    expect(preview.sku).toBe('P-P02-FDM/SLA');
-    expect(preview.codigoCatalogo).toBe('P-P02');
-    expect(preview.correlativo).toBe('P02');
+    expect(preview.sku).toBe('P-M-FDM/SLA-ABS/RES-SF-02');
+    expect(preview.codigoCatalogo).toBe('SF-02');
+    expect(preview.correlativo).toBe('02');
   });
 });

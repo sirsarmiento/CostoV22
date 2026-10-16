@@ -20,6 +20,39 @@ export class NavItemComponent {
   // public props
   readonly item = input.required<NavigationItem>();
 
+  get routeUrl(): string {
+    const url = this.item().url || '';
+    return url.split('?')[0];
+  }
+
+  get routeQueryParams(): Record<string, string> {
+    if (this.item().queryParams) {
+      return this.item().queryParams!;
+    }
+    const url = this.item().url || '';
+    if (!url.includes('?')) return {};
+    const queryStr = url.split('?')[1];
+    const params = new URLSearchParams(queryStr);
+    const result: Record<string, string> = {};
+    params.forEach((val, key) => {
+      result[key] = val;
+    });
+    return result;
+  }
+
+  get hasQueryParams(): boolean {
+    return !!this.item().queryParams || (this.item().url || '').includes('?');
+  }
+
+  get activeOptions(): { paths: 'exact' | 'subset'; queryParams: 'exact' | 'ignored'; matrixParams: 'ignored'; fragment: 'ignored' } {
+    return {
+      paths: 'exact',
+      queryParams: this.hasQueryParams ? 'exact' : 'ignored',
+      matrixParams: 'ignored',
+      fragment: 'ignored'
+    };
+  }
+
   // public method
   closeOtherMenu(event: MouseEvent) {
     const ele = event.target as HTMLElement;

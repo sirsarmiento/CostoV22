@@ -312,17 +312,13 @@
           <!-- Tiempos y tasas de fabricación -->
           <div class="col-12 mt-4 pt-2">
             <div class="row g-3">
-              <div class="col-md-4">
+              <div class="col-md-6">
                 <label class="form-label">Prep. Slicing (min)</label>
                 <input type="number" class="form-control" formControlName="tiempoSetup" placeholder="0">
               </div>
-              <div class="col-md-4">
+              <div class="col-md-6">
                 <label class="form-label">Post-Procesado (min)</label>
                 <input type="number" class="form-control" formControlName="postProcesado" placeholder="0">
-              </div>
-              <div class="col-md-4">
-                <label class="form-label">Horas totales (suma de piezas)</label>
-                <input type="text" class="form-control" [value]="resumenHorasTexto" readonly>
               </div>
             </div>
 

@@ -53,7 +53,13 @@ export class AuthLoginComponent implements OnInit {
           console.warn('Could not fetch extra user info upon login:', infoError);
         }
         this.toastr.success('¡Bienvenido!', 'Sesión iniciada');
-        await this.router.navigate([this.returnUrl]);
+        const targetUrl = (this.returnUrl && this.returnUrl.startsWith('/'))
+          ? this.returnUrl
+          : `/${this.returnUrl || 'dashboard/default'}`;
+        const navigated = await this.router.navigateByUrl(targetUrl).catch(() => false);
+        if (!navigated) {
+          await this.router.navigate(['/dashboard/default']);
+        }
       } else {
         this.toastr.error(resp || 'Usuario o Contraseña inválidos', 'Error de Autenticación');
       }

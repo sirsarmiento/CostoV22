@@ -137,19 +137,14 @@
           </div>
 
           <div class="row g-3 mb-4 pb-3 border-bottom">
-            <div class="col-md-4">
+            <div class="col-md-6">
               <label class="form-label">Prep. Slicing (min)</label>
               <input type="number" class="form-control" formControlName="tiempoSetup" min="0" [class.is-invalid]="submitted && f['tiempoSetup'].errors" placeholder="0">
             </div>
 
-            <div class="col-md-4">
+            <div class="col-md-6">
               <label class="form-label">Post-Procesado (min)</label>
               <input type="number" class="form-control" formControlName="tiempoPostProcesado" min="0" [class.is-invalid]="submitted && f['tiempoPostProcesado'].errors" placeholder="0">
-            </div>
-
-            <div class="col-md-4">
-              <label class="form-label">Horas totales (suma de piezas)</label>
-              <input type="text" class="form-control" [value]="resumenHorasTexto" readonly>
             </div>
 
             <div class="col-md-6">

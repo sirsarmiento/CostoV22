@@ -26,6 +26,7 @@ export class Budget { // Presupuesto
     costoTotalFinal?: number;
     total?: number;
     estado?: string;
+    lineas?: Array<Record<string, unknown>> | string;
 }
 
 export class Parts { // Piezas

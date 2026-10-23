@@ -75,9 +75,11 @@
                   <td>
                     <span class="badge"
                       [class.bg-light-primary]="estadoDe(row) === 'borrador'"
-                      [class.bg-light-success]="estadoDe(row) === 'vendido'"
+                      [class.bg-light-info]="estadoDe(row) === 'enviado'"
+                      [class.bg-light-warning]="estadoDe(row) === 'aprobado'"
+                      [class.bg-light-success]="estadoDe(row) === 'pagado' || estadoDe(row) === 'vendido'"
                       [class.bg-light-danger]="estadoDe(row) === 'anulado'">
-                      {{ estadoDe(row) }}
+                      {{ etiquetaEstado(row) }}
                     </span>
                   </td>
                   <td class="text-center" (click)="$event.stopPropagation()">
@@ -97,6 +99,24 @@
                         <i class="ti ti-eye fs-5"></i>
                       </button>
                       @if (authService.isAdmin) {
+                        @if (estadoDe(row) === 'borrador') {
+                          <button class="btn btn-icon btn-light-info" (click)="cambiarEstado(row, 'enviado', 'Enviar presupuesto', 'El cliente verá este presupuesto como enviado.')" title="Marcar enviado">
+                            <i class="ti ti-send fs-5"></i>
+                          </button>
+                        }
+                        @if (estadoDe(row) === 'enviado') {
+                          <button class="btn btn-icon btn-light-warning" (click)="cambiarEstado(row, 'aprobado', 'Aprobar presupuesto', 'Quedará aprobado para cobro y facturación.')" title="Aprobar">
+                            <i class="ti ti-circle-check fs-5"></i>
+                          </button>
+                        }
+                        @if (estadoDe(row) === 'aprobado') {
+                          <button class="btn btn-icon btn-light-success" (click)="cambiarEstado(row, 'pagado', 'Marcar pagado', 'El presupuesto quedará pagado para facturar después.')" title="Marcar pagado">
+                            <i class="ti ti-cash fs-5"></i>
+                          </button>
+                          <button class="btn btn-icon btn-light-success" (click)="onSell(row)" title="Convertir a venta">
+                            <i class="ti ti-shopping-cart fs-5"></i>
+                          </button>
+                        }
                         @if (estadoDe(row) === 'borrador') {
                           <button class="btn btn-icon btn-light-success" (click)="onSell(row)" title="Convertir a venta">
                             <i class="ti ti-shopping-cart fs-5"></i>

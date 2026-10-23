@@ -74,48 +74,8 @@
             </div>
 
             <div class="col-md-3">
-              <label class="form-label">Clasificación *</label>
-              <ng-select 
-                formControlName="clasificacion"
-                placeholder="Seleccione..."
-                [clearable]="false"
-                [searchable]="false"
-                appendTo="body"
-                dropdownPosition="bottom">
-                <ng-option value="Proyecto">Proyecto</ng-option>
-                <ng-option value="Servicio">Servicio</ng-option>
-                <ng-option value="Producto">Producto</ng-option>
-              </ng-select>
-            </div>
-
-            @if (f['clasificacion'].value) {
-              <div class="col-md-3">
-                <label class="form-label">Seleccione {{ f['clasificacion'].value }}</label>
-                <ng-select 
-                  formControlName="productoId"
-                  placeholder="Seleccione..."
-                  [clearable]="true"
-                  [searchable]="true"
-                  [items]="filteredItemsList"
-                  bindValue="id"
-                  bindLabel="nombre"
-                  (change)="onProductSelect($event)"
-                  appendTo="body"
-                  dropdownPosition="bottom">
-                </ng-select>
-              </div>
-            }
-
-            @if (f['clasificacion'].value !== 'Producto') {
-              <div class="col-md-3">
-                <label class="form-label">Número de Orden <span class="text-muted fw-normal">(Opcional)</span></label>
-                <input type="text" class="form-control" formControlName="numero" maxlength="25" placeholder="Ej: ORD-001">
-              </div>
-            }
-
-            <div class="col-md-3">
-              <label class="form-label">Cantidad Presupuestada</label>
-              <input type="number" min="1" class="form-control" formControlName="cantidadGlobal" placeholder="1" [class.is-invalid]="submitted && f['cantidadGlobal'].errors">
+              <label class="form-label">Número de Orden <span class="text-muted fw-normal">(Opcional)</span></label>
+              <input type="text" class="form-control" formControlName="numero" maxlength="25" placeholder="Ej: ORD-001">
             </div>
 
             <div class="col-md-6">
@@ -127,58 +87,102 @@
             </div>
           </div>
 
-          <!-- PARÁMETROS DE FABRICACIÓN Y COSTOS GLOBALES -->
           <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3 mt-4">
-            <h6 class="fw-bold text-dark mb-0">Parámetros de fabricación</h6>
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" formControlName="multitecnologia" id="multiTecPresupuesto">
-              <label class="form-check-label" for="multiTecPresupuesto">Multitecnología</label>
-            </div>
+            <h6 class="fw-bold text-dark mb-0">Productos y servicios de este presupuesto</h6>
           </div>
 
-          <div class="row g-3 mb-4 pb-3 border-bottom">
-            <div class="col-md-6">
-              <label class="form-label">Prep. Slicing (min)</label>
-              <input type="number" class="form-control" formControlName="tiempoSetup" min="0" [class.is-invalid]="submitted && f['tiempoSetup'].errors" placeholder="0">
-            </div>
-
-            <div class="col-md-6">
-              <label class="form-label">Post-Procesado (min)</label>
-              <input type="number" class="form-control" formControlName="tiempoPostProcesado" min="0" [class.is-invalid]="submitted && f['tiempoPostProcesado'].errors" placeholder="0">
-            </div>
-
-            <div class="col-md-6">
-              <label class="form-label">Tasa de Fallo (%)</label>
+          <div class="row g-3 mb-3">
+            <div class="col-md-3">
+              <label class="form-label">Tipo</label>
               <ng-select 
-                formControlName="tasaFalloGlobal"
-                placeholder="Seleccione..."
-                [clearable]="false"
+                formControlName="clasificacion"
+                placeholder="Producto, servicio o proyecto"
+                [clearable]="true"
                 [searchable]="false"
                 appendTo="body"
-                [class.is-invalid]="submitted && f['tasaFalloGlobal'].errors">
-                <ng-option [value]="5">5%</ng-option>
-                <ng-option [value]="11">11%</ng-option>
-                <ng-option [value]="18">18%</ng-option>
+                dropdownPosition="bottom">
+                <ng-option value="Proyecto">Proyecto</ng-option>
+                <ng-option value="Servicio">Servicio</ng-option>
+                <ng-option value="Producto">Producto</ng-option>
               </ng-select>
             </div>
-
-            <div class="col-md-6">
-              <label class="form-label">Margen de Ganancia (%)</label>
-              <input type="number" class="form-control" formControlName="margenGanancia" [min]="minMargenGanancia" max="100" (blur)="onMargenBlur()" [class.is-invalid]="submitted && f['margenGanancia'].errors" placeholder="0">
-              @if (f['margenGanancia'].errors) {
-                <div class="invalid-feedback">
-                  @if (f['margenGanancia'].errors['required']) { <span>Ingrese el margen</span> }
-                  @if (f['margenGanancia'].errors['min']) { <span>Mín: {{ minMargenGanancia }}%</span> }
-                </div>
-              }
-              <small class="text-muted" style="font-size: 0.75rem;">Mínimo permitido: {{ minMargenGanancia }}%</small>
+            <div class="col-md-7">
+              <label class="form-label">Agregar al presupuesto</label>
+              <ng-select 
+                formControlName="productoId"
+                placeholder="Los ya agregados no vuelven a salir"
+                [clearable]="true"
+                [searchable]="true"
+                [items]="productosDisponibles"
+                bindValue="id"
+                bindLabel="nombre"
+                appendTo="body"
+                dropdownPosition="bottom">
+              </ng-select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+              <button type="button" class="btn btn-primary w-100" (click)="agregarItem()">
+                <i class="ti ti-plus me-1"></i> Agregar
+              </button>
             </div>
           </div>
+
+          @for (item of items; track item.clave) {
+            <div class="card border mb-3" [class.border-primary]="item.clave === itemActivoClave">
+              <div class="card-body py-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <button type="button" class="btn btn-link text-decoration-none p-0" (click)="seleccionarItem(item.clave)">
+                    <span class="badge me-2" [class.bg-light-info]="item.clasificacion === 'Servicio'" [class.bg-light-primary]="item.clasificacion !== 'Servicio'">{{ item.clasificacion }}</span>
+                    <strong>{{ item.nombre }}</strong>
+                    @if (item.clave === itemActivoClave) {
+                      <small class="text-primary ms-2">Editando piezas</small>
+                    }
+                  </button>
+                  <button type="button" class="btn btn-sm btn-light-danger" (click)="quitarItem(item.clave)" title="Quitar ítem">
+                    <i class="ti ti-trash"></i>
+                  </button>
+                </div>
+                <div class="row g-2">
+                  <div class="col-md-2">
+                    <label class="form-label text-xs mb-1">Cantidad</label>
+                    <input type="number" min="1" class="form-control form-control-sm" [(ngModel)]="item.cantidad" [ngModelOptions]="{standalone: true}">
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label text-xs mb-1">Prep. (min)</label>
+                    <input type="number" min="0" class="form-control form-control-sm" [(ngModel)]="item.tiempoSetup" [ngModelOptions]="{standalone: true}">
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label text-xs mb-1">Post (min)</label>
+                    <input type="number" min="0" class="form-control form-control-sm" [(ngModel)]="item.tiempoPostProcesado" [ngModelOptions]="{standalone: true}">
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label text-xs mb-1">Tasa de fallo</label>
+                    <select class="form-select form-select-sm" [(ngModel)]="item.tasaFallo" [ngModelOptions]="{standalone: true}">
+                      <option [ngValue]="5">5%</option>
+                      <option [ngValue]="11">11%</option>
+                      <option [ngValue]="18">18%</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label text-xs mb-1">Margen (%)</label>
+                    <input type="number" [min]="minMargenGanancia" max="100" class="form-control form-control-sm" [(ngModel)]="item.margenGanancia" [ngModelOptions]="{standalone: true}">
+                  </div>
+                </div>
+              </div>
+            </div>
+          } @empty {
+            <div class="alert alert-light border text-muted text-sm mb-4">
+              Agregue uno o más productos o servicios. Un presupuesto puede llevar, por ejemplo, un busto y un modelado.
+            </div>
+          }
 
           <!-- FORMULARIO DE AGREGAR PIEZA -->
           <div class="card bg-light border-0 mb-4">
             <div class="card-body py-3">
-              <h6 class="mb-3 text-muted text-sm fw-bold"><i class="ti ti-plus"></i> Detalle de Piezas / Componentes</h6>
+              <h6 class="mb-3 text-muted text-sm fw-bold">
+                <i class="ti ti-plus"></i>
+                Piezas de {{ itemActivo?.nombre || 'el ítem seleccionado' }}
+              </h6>
               
               <div class="row g-2 align-items-end">
                 <div class="col-md-2">

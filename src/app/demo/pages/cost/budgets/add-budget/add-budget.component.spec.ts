@@ -29,6 +29,7 @@ describe('AddBudgetComponent', () => {
 
   it('should initialize budget form with default control values', () => {
     expect(component.form.get('clasificacion')?.value).toBe('');
+    expect(component.items.length).toBe(0);
     expect(component.form.get('cantidadGlobal')?.value).toBe(1);
     expect(component.form.get('delivery')?.value).toBe(0);
     expect(component.form.get('tasaFalloGlobal')?.value).toBe(5);

@@ -177,7 +177,8 @@ export function mapProductToPieces(product: Product, catalog: AssetCatalog): Par
       maquinaId: maqId,
       maquina: maqId,
       maquinaNombre: maqName,
-      tecnologia: (pb['tecnologia'] as string) || ''
+      tecnologia: (pb['tecnologia'] as string) || '',
+      producto: product.id
     };
   });
 }
@@ -282,6 +283,7 @@ export function buildBudgetPayload(params: BudgetPayloadParams): Record<string, 
     direccion: isCreandoClienteNuevo ? tempClienteData.direccion : undefined,
     clienteCategoria: isCreandoClienteNuevo ? tempClienteData.categoria : undefined,
     producto: parsedProdId,
+    lineas: formValue['lineas'] || [],
     piezas: mappedPiezas,
     total: totalCostoFinal
   };

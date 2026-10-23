@@ -12,6 +12,7 @@ import { ClientService } from '../../../../../core/services/cost/client.service'
 import { forkJoin } from 'rxjs';
 import Swal from 'sweetalert2';
 import { calculateBudgetTotals, normalizeBudget } from '../../../../../core/utils/budget-calculator';
+import { calculateMultiItemTotals, hidratarLineas } from '../../../../../core/utils/budget-items';
 import {
   parseCedula,
   resolveProductDescription,
@@ -154,6 +155,21 @@ export class BudgetComponent implements OnInit {
     if (storedTotal && storedTotal > 0) {
       return storedTotal;
     }
+    const lineas = hidratarLineas(rowRec, row.piezas || [], {
+      maquinas: this.allAssets,
+      materiales: this.allAssets,
+      circulantes: this.allAssets,
+      mobiliario: this.allAssets
+    });
+    if (lineas.length > 1) {
+      return calculateMultiItemTotals(
+        lineas,
+        Number(row.delivery) || 0,
+        this.allAssets,
+        this.totalFijoIndirecto,
+        this.capacidadHorasMaquina
+      ).costoTotalFinal;
+    }
     const res = calculateBudgetTotals(
       row,
       this.allAssets,
@@ -161,6 +177,39 @@ export class BudgetComponent implements OnInit {
       this.capacidadHorasMaquina
     );
     return res.costoTotalFinal;
+  }
+
+  etiquetaEstado(row: Budget): string {
+    const mapa: Record<string, string> = {
+      borrador: 'Borrador',
+      enviado: 'Enviado',
+      aprobado: 'Aprobado',
+      pagado: 'Pagado',
+      vendido: 'Vendido',
+      anulado: 'Anulado'
+    };
+    return mapa[this.estadoDe(row)] || this.estadoDe(row);
+  }
+
+  cambiarEstado(row: Budget, estado: string, titulo: string, texto: string) {
+    if (!row.id) return;
+    Swal.fire({
+      title: titulo,
+      text: texto,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Confirmar'
+    }).then(result => {
+      if (!result.isConfirmed) return;
+      this.budgetService.updateBudget(row.id as number, { ...row, estado }).subscribe({
+        next: () => {
+          row.estado = estado;
+          this.cdr.detectChanges();
+          Swal.fire('Listo', `El presupuesto quedó ${this.etiquetaEstado(row).toLowerCase()}.`, 'success');
+        },
+        error: () => Swal.fire('Error', 'No se pudo cambiar el estado.', 'error')
+      });
+    });
   }
 
   onSearchChange() {
@@ -252,8 +301,8 @@ export class BudgetComponent implements OnInit {
 
   onSell(row: Budget) {
     if (!row.id) return;
-    if (this.estadoDe(row) === 'vendido') {
-      Swal.fire('Atención', 'Este presupuesto ya fue vendido.', 'info');
+    if (this.estadoDe(row) === 'vendido' || this.estadoDe(row) === 'pagado') {
+      Swal.fire('Atención', 'Este presupuesto ya fue cobrado o vendido.', 'info');
       return;
     }
     Swal.fire({

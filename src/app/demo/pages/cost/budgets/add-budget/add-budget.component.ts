@@ -44,6 +44,15 @@ import { ComponentCanDeactivate } from '../../../../../core/guards/pending-chang
 import { QuickClientModalComponent, QuickClientData } from '../../../../../theme/shared/components/quick-client-modal/quick-client-modal.component';
 import { TASAS_FALLO, horasPorTecnologia, nombrePiezaAutomatico, sumarTiempoPiezas } from '../../../../../core/utils/family-rules';
 import { tecnologiasDesdePiezas } from '../../../../../core/utils/catalog-sku';
+import {
+  BudgetLineItem,
+  calculateMultiItemTotals,
+  clasificacionCabecera,
+  hidratarLineas,
+  itemDesdeProducto,
+  productosYaUsados,
+  serializarLineas
+} from '../../../../../core/utils/budget-items';
 
 @Component({
   selector: 'app-add-budget',
@@ -70,6 +79,8 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
   submitted = false;
 
   piezas: Parts[] = [];
+  items: BudgetLineItem[] = [];
+  itemActivoClave: string | null = null;
   piezaCounter = 1;
   minMargenGanancia = 0;
 
@@ -145,6 +156,23 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
       || (item.cedula || '').toLowerCase().includes(t)
       || (item.etiqueta || '').toLowerCase().includes(t);
   };
+
+  get itemActivo(): BudgetLineItem | undefined {
+    return this.items.find(i => i.clave === this.itemActivoClave);
+  }
+
+  get productosDisponibles(): Product[] {
+    const usados = productosYaUsados(this.items);
+    const clasif = String(this.form?.get('clasificacion')?.value || '').toLowerCase().trim();
+    return this.productosList.filter(p => {
+      if (usados.includes(Number(p.id))) return false;
+      if (!clasif) return true;
+      const pClasif = String(p.clasificacion || '').toLowerCase().trim();
+      return (clasif === 'producto' || clasif === 'productos')
+        ? (pClasif === 'producto' || pClasif === 'productos')
+        : pClasif === clasif;
+    });
+  }
 
   get tecnologiasDePiezas(): string[] {
     return tecnologiasDesdePiezas(this.piezas);
@@ -340,22 +368,62 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
   }
 
   actualizarItemsFiltrados(): void {
-    const clasif = this.form?.get('clasificacion')?.value;
-    const currentProdId = Number(this.form?.get('productoId')?.value);
-    if (!clasif && !currentProdId) {
-      this.filteredItemsList = [];
+    this.filteredItemsList = this.productosDisponibles;
+  }
+
+  seleccionarItem(clave: string): void {
+    this.persistirPiezasActivas();
+    this.itemActivoClave = clave;
+    this.piezas = [...(this.itemActivo?.piezas || [])];
+    this.cdr.detectChanges();
+  }
+
+  persistirPiezasActivas(): void {
+    const actual = this.items.find(i => i.clave === this.itemActivoClave);
+    if (actual) {
+      actual.piezas = [...this.piezas];
+    }
+  }
+
+  agregarItem(): void {
+    const prodId = Number(this.form.get('productoId')?.value);
+    if (!prodId) {
+      Swal.fire('Atención', 'Seleccione un producto o servicio para agregarlo al presupuesto.', 'info');
       return;
     }
+    if (productosYaUsados(this.items).includes(prodId)) {
+      Swal.fire('Atención', 'Ese producto o servicio ya está en este presupuesto.', 'info');
+      return;
+    }
+    const product = this.productosList.find(p => p.id == prodId);
+    if (!product) {
+      Swal.fire('Atención', 'No se encontró el producto seleccionado.', 'warning');
+      return;
+    }
+    this.persistirPiezasActivas();
+    const nuevo = itemDesdeProducto(product, this.catalog, this.minMargenGanancia);
+    if (nuevo.margenGanancia < this.minMargenGanancia) {
+      nuevo.margenGanancia = this.minMargenGanancia;
+    }
+    this.items = [...this.items, nuevo];
+    this.itemActivoClave = nuevo.clave;
+    this.piezas = [...nuevo.piezas];
+    if (!this.form.get('descripcion')?.value) {
+      this.form.get('descripcion')?.setValue(this.items.map(i => i.nombre).join(' + '));
+    }
+    this.form.patchValue({ productoId: '', clasificacion: this.form.get('clasificacion')?.value }, { emitEvent: false });
+    this.actualizarItemsFiltrados();
+    this.cdr.detectChanges();
+  }
 
-    const cLower = String(clasif || '').toLowerCase().trim();
-    this.filteredItemsList = this.productosList.filter(p => {
-      if (currentProdId && Number(p.id) === currentProdId) return true;
-      if (!clasif) return false;
-      const pClasif = String(p.clasificacion || '').toLowerCase().trim();
-      return (cLower === 'producto' || cLower === 'productos')
-        ? (pClasif === 'producto' || pClasif === 'productos')
-        : pClasif === cLower;
-    });
+  quitarItem(clave: string): void {
+    this.items = this.items.filter(i => i.clave !== clave);
+    if (this.itemActivoClave === clave) {
+      this.itemActivoClave = this.items[0]?.clave || null;
+      this.piezas = [...(this.itemActivo?.piezas || [])];
+    }
+    this.actualizarItemsFiltrados();
+    this.cdr.detectChanges();
   }
 
   actualizarCostoMaquina(): void {
@@ -419,6 +487,10 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
   }
 
   addPart(): void {
+    if (!this.itemActivo) {
+      Swal.fire('Atención', 'Agregue primero un producto o servicio al presupuesto.', 'info');
+      return;
+    }
     let nombre: string;
     const cantidad = Number(this.form.get('piezaCantidad')?.value) || 1;
     let activoId: number | undefined;
@@ -500,11 +572,12 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
       maquina: maquinaId,
       maquinaNombre: maquinaNombre,
       tecnologia: tipo === 'Fabricada' ? this.form.get('piezaTecnologia')?.value : '',
-      producto: 0
+      producto: this.itemActivo?.productoId || 0
     };
 
     this.piezaCounter++;
     this.piezas.push(newParts);
+    this.persistirPiezasActivas();
     this.clearPieceForm();
     this.cdr.detectChanges();
   }
@@ -530,30 +603,25 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
   onProductSelect(item: { id: number } | number | null): void {
     const prodId = typeof item === 'object' && item !== null ? item.id : item;
     if (prodId) {
-      this.autoFillFromProduct(Number(prodId));
+      this.form.get('productoId')?.setValue(Number(prodId), { emitEvent: false });
     }
   }
 
   autoFillFromProduct(productId: number): void {
-    const product = this.productosList.find(p => p.id == productId);
-    if (product) {
-      this.form.patchValue({
-        descripcion: product.descripcion || product.nombre,
-        tasaFalloGlobal: Number(product.tasaFallo) || 0,
-        tiempoSetup: Number(product.tiempoSetup) || 0,
-        horasImpresion: Number(product.horasImpresion) || 0,
-        minutosImpresion: Number(product.minutosImpresion) || 0,
-        tiempoPostProcesado: Number(product.postProcesado) || 0,
-        margenGanancia: Number(product.margenGanancia) || this.minMargenGanancia
-      });
-
-      this.piezas = mapProductToPieces(product, this.catalog);
-      this.piezaCounter = this.piezas.length + 1;
-      this.cdr.detectChanges();
-    }
+    this.form.get('productoId')?.setValue(productId, { emitEvent: false });
   }
 
   getTotales() {
+    this.persistirPiezasActivas();
+    if (this.items.length > 0) {
+      return calculateMultiItemTotals(
+        this.items,
+        Number(this.form?.get('delivery')?.value) || 0,
+        [...this.maquinasList, ...this.assetsMobiliario, ...this.activosCirculantes],
+        this.totalFijoIndirecto,
+        this.capacidadHorasMaquina
+      );
+    }
     const rawBudget = this.form ? { ...this.form.value, piezas: this.piezas } : { piezas: this.piezas };
     return calculateBudgetTotals(
       rawBudget,
@@ -595,6 +663,7 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
     }).then((result) => {
       if (result.isConfirmed) {
         this.piezas = this.piezas.filter(p => p.id !== row.id);
+        this.persistirPiezasActivas();
         this.piezaCounter = Math.max(1, this.piezaCounter - 1);
         this.f['nombre'].setValue(`PIEZA ${this.piezaCounter}`);
         this.cdr.detectChanges();
@@ -671,7 +740,10 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
       }, { emitEvent: false });
 
       this.id = Number(dRec['id']) || 0;
-      this.piezas = resolvePiezasDisplay((dRec['piezas'] as Parts[]) || [], this.catalog);
+      const piezasCargadas = resolvePiezasDisplay((dRec['piezas'] as Parts[]) || [], this.catalog);
+      this.items = hidratarLineas(dRec, piezasCargadas, this.catalog);
+      this.itemActivoClave = this.items[0]?.clave || null;
+      this.piezas = [...(this.itemActivo?.piezas || piezasCargadas)];
       this.f['nombre'].setValue(`PIEZA ${this.piezas.length + 1}`);
       this.actualizarCostoMaquina();
       this.actualizarMinMargenGanancia();
@@ -683,7 +755,7 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
 
   myFormValues(): void {
     this.form = this.formBuilder.group({
-      clasificacion: ['', Validators.required],
+      clasificacion: [''],
       productoId: [''],
       descripcion: ['', Validators.required],
       numero: [''],
@@ -692,7 +764,6 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
       delivery: [0, [Validators.min(0)]],
       clienteId: [null, Validators.required],
       clienteNombreTexto: [''],
-      multitecnologia: [false],
       guardarClienteEnBd: [false],
 
       nombre: [`PIEZA ${this.piezaCounter}`],
@@ -736,10 +807,8 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
 
     this.form.get('productoId')?.valueChanges.pipe(
       takeUntilDestroyed(this.destroyRef)
-    ).subscribe(prodId => {
-      if (prodId) {
-        this.autoFillFromProduct(Number(prodId));
-      }
+    ).subscribe(() => {
+      this.actualizarItemsFiltrados();
     });
 
     this.form.get('activoId')?.valueChanges.pipe(
@@ -860,10 +929,11 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
       this.addPart();
     }
 
-    if (this.piezas.length === 0) {
+    this.persistirPiezasActivas();
+    if (this.items.length === 0) {
       Swal.fire({
-        title: 'Sin Piezas',
-        text: 'Debe agregar al menos una pieza al presupuesto antes de guardarlo.',
+        title: 'Sin productos',
+        text: 'Debe agregar al menos un producto o servicio al presupuesto.',
         icon: 'warning',
         confirmButtonText: 'Entendido',
         confirmButtonColor: '#4680ff'
@@ -878,23 +948,33 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
 
     this.loading = true;
 
-    const prodVal = this.f['productoId']?.value;
+    const prodVal = this.items[0]?.productoId;
     const cliVal = this.f['clienteId']?.value;
-    const parsedProdId = (prodVal !== null && prodVal !== undefined && prodVal !== '') ? Number(prodVal) : undefined;
+    const parsedProdId = (prodVal !== null && prodVal !== undefined && Number(prodVal) > 0) ? Number(prodVal) : undefined;
     const parsedCliId = (cliVal !== null && cliVal !== undefined && cliVal !== '') ? Number(cliVal) : undefined;
     const clienteTexto = String(this.f['clienteNombreTexto']?.value || '').trim();
 
     const executeSubmit = (effectiveCliId?: number) => {
-      const tiempoPiezas = sumarTiempoPiezas(this.piezas);
+      this.persistirPiezasActivas();
+      const piezasTodas = this.items.flatMap(item => item.piezas);
+      const primer = this.items[0];
+      const tiempoPiezas = sumarTiempoPiezas(piezasTodas);
       const totales = this.getTotales();
       const budgetPayload = buildBudgetPayload({
         id: this.id,
         formValue: {
           ...this.form.value,
+          clasificacion: clasificacionCabecera(this.items),
+          tasaFalloGlobal: primer?.tasaFallo,
+          tiempoSetup: primer?.tiempoSetup,
+          tiempoPostProcesado: primer?.tiempoPostProcesado,
+          margenGanancia: primer?.margenGanancia,
+          cantidadGlobal: primer?.cantidad || 1,
           horasImpresion: tiempoPiezas.horas,
-          minutosImpresion: tiempoPiezas.minutos
+          minutosImpresion: tiempoPiezas.minutos,
+          lineas: serializarLineas(this.items)
         },
-        piezas: this.piezas,
+        piezas: piezasTodas,
         totalCostoFinal: totales.costoTotalFinal,
         isCreandoClienteNuevo: this.isCreandoClienteNuevo,
         tempClienteData: this.tempClienteData,

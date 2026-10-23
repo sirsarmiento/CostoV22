@@ -2,6 +2,7 @@ import { Budget } from '../models/Cost/budge';
 import { Asset } from '../models/Cost/asset';
 import { Product } from '../models/Cost/product';
 import { calculateBudgetTotals, normalizeBudget } from './budget-calculator';
+import { nombresDeLineas } from './budget-items';
 import Swal from 'sweetalert2';
 
 export interface ClientModalData {
@@ -29,6 +30,8 @@ export function parseCedula(rawCedula: string): { nac: string; num: string } {
 /* Obtiene la descripción o nombre del producto asociado a un presupuesto.*/
 export function resolveProductDescription(row: Budget, allProducts: Product[]): string {
   const rawR = row as unknown as Record<string, unknown>;
+  const varios = nombresDeLineas(rawR, allProducts);
+  if (varios) return varios;
   const prodId = Number(row.producto ?? rawR['producto_id'] ?? rawR['productoId']);
   if (prodId && allProducts.length > 0) {
     const found = allProducts.find(p => p.id == prodId);

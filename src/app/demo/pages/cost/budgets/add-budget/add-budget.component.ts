@@ -25,7 +25,6 @@ import {
   resolvePiezasDisplay,
   getNombreMaquina,
   getNombreMaterial,
-  mapProductToPieces,
   buildBudgetPayload
 } from '../../../../../core/utils/budget-mapper';
 import { CatalogConfigService } from '../../../../../core/services/cost/catalog-config.service';
@@ -328,7 +327,7 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
 
   clearClienteNuevo(): void {
     this.isCreandoClienteNuevo = false;
-    this.form.get('clienteId')?.setValidators([Validators.required]);
+    this.form.get('clienteId')?.clearValidators();
     this.form.get('clienteId')?.updateValueAndValidity();
     this.form.get('clienteNombreTexto')?.setValue('');
     this.tempClienteData = {
@@ -368,7 +367,8 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
   }
 
   actualizarItemsFiltrados(): void {
-    this.filteredItemsList = this.productosDisponibles;
+    this.filteredItemsList = [...this.productosDisponibles];
+    this.cdr.markForCheck();
   }
 
   seleccionarItem(clave: string): void {
@@ -376,6 +376,17 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
     this.itemActivoClave = clave;
     this.piezas = [...(this.itemActivo?.piezas || [])];
     this.cdr.detectChanges();
+  }
+
+  toggleItem(clave: string): void {
+    if (this.itemActivoClave === clave) {
+      this.persistirPiezasActivas();
+      this.itemActivoClave = null;
+      this.piezas = [];
+      this.cdr.detectChanges();
+    } else {
+      this.seleccionarItem(clave);
+    }
   }
 
   persistirPiezasActivas(): void {
@@ -762,7 +773,7 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
       fecha: ['', Validators.required],
       cantidadGlobal: [1, [Validators.required, Validators.min(1)]],
       delivery: [0, [Validators.min(0)]],
-      clienteId: [null, Validators.required],
+      clienteId: [null],
       clienteNombreTexto: [''],
       guardarClienteEnBd: [false],
 
@@ -802,12 +813,7 @@ export class AddBudgetComponent implements OnInit, ComponentCanDeactivate {
         numeroControl?.setValue('');
       }
       numeroControl?.updateValueAndValidity();
-      this.actualizarItemsFiltrados();
-    });
-
-    this.form.get('productoId')?.valueChanges.pipe(
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe(() => {
+      this.form.get('productoId')?.setValue('', { emitEvent: false });
       this.actualizarItemsFiltrados();
     });
 

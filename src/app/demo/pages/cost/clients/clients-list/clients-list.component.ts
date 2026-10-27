@@ -9,7 +9,8 @@ import { AssetService } from '../../../../../core/services/cost/asset.service';
 import { ConfigService } from '../../../../../core/services/cost/config.service';
 import { FixeService } from '../../../../../core/services/cost/fixe.service';
 import { Client } from '../../../../../core/models/Cost/client';
-import { calculateBudgetTotals, normalizeBudget } from '../../../../../core/utils/budget-calculator';
+import { calculateBudgetTotals, normalizeBudget, resolverCapacidadHorasMaquina } from '../../../../../core/utils/budget-calculator';
+import { calculateMultiItemTotals, hidratarLineas } from '../../../../../core/utils/budget-items';
 import { AuthService } from '../../../../../core/services/auth.service';
 import Swal from 'sweetalert2';
 
@@ -58,20 +59,8 @@ export class ClientsListComponent implements OnInit {
       fixesList: this.fixeService.getFixes()
     }).subscribe({
       next: ({ clientsList, budgetsList, assetsList, configsList, fixesList }) => {
-        let capacidadHorasMaquina = 160;
+        const capacidadHorasMaquina = resolverCapacidadHorasMaquina((configsList || [])[0], assetsList || []);
         let totalFijoIndirecto = 0;
-
-        const configObj = (configsList || [])[0];
-        if (configObj && configObj.parametros && Array.isArray(configObj.parametros)) {
-          let capacidad = 0;
-          configObj.parametros.forEach((machine) => {
-            const unidad = machine.unidad?.toLowerCase().trim() || '';
-            if (unidad.includes('hora') || unidad.includes('hs') || unidad === '') {
-              capacidad += (Number(machine.horasUso) || 0) * (Number(machine.prodMaxHoras) || 0);
-            }
-          });
-          capacidadHorasMaquina = capacidad > 0 ? capacidad : 160;
-        }
 
         if (fixesList && fixesList.length > 0) {
           const indirectos = fixesList.filter(item => item.clasificacion === 'Indirecto');
@@ -98,6 +87,22 @@ export class ClientsListComponent implements OnInit {
               return acc + storedTotal;
             }
             const norm = normalizeBudget(b);
+            const lineas = hidratarLineas(bRec, norm.piezas || [], {
+              maquinas: assetsList || [],
+              materiales: assetsList || [],
+              circulantes: assetsList || [],
+              mobiliario: assetsList || []
+            });
+            if (lineas.length > 0) {
+              const multi = calculateMultiItemTotals(
+                lineas,
+                Number(norm.delivery) || 0,
+                assetsList || [],
+                totalFijoIndirecto,
+                capacidadHorasMaquina
+              );
+              return acc + multi.costoTotalFinal;
+            }
             const res = calculateBudgetTotals(
               norm,
               assetsList || [],

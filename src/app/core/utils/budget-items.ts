@@ -2,7 +2,7 @@ import { Budget, Parts } from '../models/Cost/budge';
 import { Asset } from '../models/Cost/asset';
 import { Product } from '../models/Cost/product';
 import { BudgetCalculationResult, calculateBudgetTotals } from './budget-calculator';
-import { AssetCatalog, mapProductToPieces } from './budget-mapper';
+import { AssetCatalog, mapProductToPieces, resolvePiezasDisplay } from './budget-mapper';
 
 export interface BudgetLineItem {
   clave: string;
@@ -58,8 +58,9 @@ export function serializarLineas(items: BudgetLineItem[]): Array<Record<string, 
 export function hidratarLineas(
   data: Record<string, unknown>,
   piezas: Parts[],
-  catalog: AssetCatalog
+  catalog?: AssetCatalog
 ): BudgetLineItem[] {
+  const piezasResueltas = catalog ? resolvePiezasDisplay(piezas, catalog) : piezas;
   const crudo = data['lineas'] ?? data['items'];
   let parsed: unknown[] = [];
   if (typeof crudo === 'string' && crudo.trim()) {
@@ -73,13 +74,28 @@ export function hidratarLineas(
   }
 
   if (parsed.length > 0) {
+    const algunaTieneProducto = (piezasResueltas || []).some(p => {
+      const pRec = p as unknown as Record<string, unknown>;
+      const pid = Number(p.producto ?? pRec['producto_id'] ?? pRec['productoId']);
+      return pid > 0;
+    });
+
     return parsed.map((fila, idx) => {
       const rec = fila as Record<string, unknown>;
       const productoId = rec['productoId'] != null ? Number(rec['productoId']) : null;
-      const piezasItem = (piezas || []).filter(p => {
-        const pid = Number(p.producto);
-        return productoId ? pid === productoId : false;
-      });
+      let piezasItem: Parts[] = [];
+      if (algunaTieneProducto) {
+        piezasItem = (piezasResueltas || []).filter(p => {
+          const pRec = p as unknown as Record<string, unknown>;
+          const pid = Number(p.producto ?? pRec['producto_id'] ?? pRec['productoId']);
+          return productoId ? pid === productoId : false;
+        });
+      } else {
+        if (parsed.length === 1 || idx === 0) {
+          piezasItem = piezasResueltas;
+        }
+      }
+
       return {
         clave: String(rec['clave'] || `item-${idx + 1}`),
         productoId,
@@ -90,12 +106,12 @@ export function hidratarLineas(
         tiempoPostProcesado: Number(rec['tiempoPostProcesado']) || 0,
         tasaFallo: Number(rec['tasaFallo']) || 5,
         margenGanancia: Number(rec['margenGanancia']) || 0,
-        piezas: piezasItem.length ? piezasItem : (parsed.length === 1 ? piezas : [])
+        piezas: piezasItem.length ? piezasItem : (parsed.length === 1 ? piezasResueltas : [])
       };
     });
   }
 
-  if ((piezas || []).length === 0 && !data['producto'] && !data['productoId']) {
+  if ((piezasResueltas || []).length === 0 && !data['producto'] && !data['productoId']) {
     return [];
   }
 
@@ -114,7 +130,7 @@ export function hidratarLineas(
     tiempoPostProcesado: Number(data['tiempoPostProcesado'] ?? data['postProcesado']) || 0,
     tasaFallo: Number(data['tasaFalloGlobal'] ?? data['tasaFallo']) || 5,
     margenGanancia: Number(data['margenGanancia']) || 0,
-    piezas: piezas || []
+    piezas: piezasResueltas || []
   }];
 }
 
@@ -134,7 +150,7 @@ export function calculateMultiItemTotals(
   delivery: number,
   allAssets: Asset[] = [],
   totalFijoIndirecto = 0,
-  capacidadHorasMaquina = 160
+  capacidadHorasMaquina = 176
 ): BudgetCalculationResult {
   const vacio = calculateBudgetTotals(
     { piezas: [], cantidadGlobal: 1, margenGanancia: 0, tasaFalloGlobal: 0, tiempoSetup: 0, tiempoPostProcesado: 0, delivery: 0 } as Budget,

@@ -1,5 +1,6 @@
 import { Budget, Parts } from '../models/Cost/budge';
 import { Asset } from '../models/Cost/asset';
+import { Config, Machine } from '../models/Cost/config';
 import { parsearTasasFallo, tasaFalloDePieza } from './family-rules';
 
 export interface BudgetCalculationResult {
@@ -72,6 +73,35 @@ export function depreciacionMensualMaquinas(assets: Asset[] = []): number {
 }
 
 /**
+ * Resuelve la capacidad total de horas máquina mensual estándar del taller (22 días hábiles x horas/día).
+ * Unifica el cálculo entre catálogo, listado y detalle de presupuesto (base por defecto: 176 hs/mes).
+ */
+export function resolverCapacidadHorasMaquina(
+  configObj?: Config | Record<string, unknown> | null,
+  assets: Asset[] = []
+): number {
+  let capacidad = 0;
+  const cfg = configObj as (Config & Record<string, unknown>) | null | undefined;
+  const parametros = cfg?.parametros as Array<Machine | Record<string, unknown>> | undefined;
+  if (parametros && Array.isArray(parametros) && parametros.length > 0) {
+    parametros.forEach((machine) => {
+      const mRec = machine as Record<string, unknown>;
+      const unidad = String(machine.unidad ?? mRec['unidad'] ?? '').toLowerCase().trim();
+      if (unidad.includes('hora') || unidad.includes('hs') || unidad === '') {
+        const hUso = Number(machine.horasUso ?? mRec['horasUso']) || 0;
+        const hMes = (hUso > 0 && hUso <= 24) ? (hUso * 22) : (hUso > 24 ? hUso : 176);
+        capacidad += hMes;
+      }
+    });
+  }
+  if (capacidad <= 0) {
+    const maquinasFijas = (assets || []).filter(a => (a.tipo || '').toLowerCase() === 'fijo' && (a.categoria || '').toLowerCase() === 'equipo');
+    capacidad = maquinasFijas.length > 0 ? (maquinasFijas.length * 176) : 176;
+  }
+  return capacidad > 0 ? capacidad : 176;
+}
+
+/**
  * Normaliza las propiedades numéricas y listas de un objeto Budget.
  */
 export function normalizeBudget(budget: Budget): Budget {
@@ -96,7 +126,7 @@ export function calculateBudgetTotals(
   budgetInput: Budget,
   allAssets: Asset[] = [],
   totalFijoIndirecto: number = 0,
-  capacidadHorasMaquina: number = 160,
+  capacidadHorasMaquina: number = 176,
   overrideCostoMaquina?: number,
   overrideDepreciacionMaquina?: number
 ): BudgetCalculationResult {
@@ -218,7 +248,7 @@ export function calculateBudgetTotals(
     ? totalCostoMaquinaPiezas + (costoMaquinaRate * tiempoExtraHoras)
     : costoMaquinaRate * totalTiempoHoras;
 
-  const capHoras = capacidadHorasMaquina > 0 ? capacidadHorasMaquina : 160;
+  const capHoras = capacidadHorasMaquina > 0 ? capacidadHorasMaquina : 176;
   const tasaCIF = (totalFijoIndirecto || 0) / capHoras;
   const costoIndirectoAsignado = tasaCIF * totalTiempoHoras;
   const depreciacionAsignada = (depreciacionPiezas > 0 && overrideDepreciacionMaquina === undefined)

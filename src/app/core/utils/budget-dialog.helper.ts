@@ -1,8 +1,8 @@
-import { Budget } from '../models/Cost/budge';
+import { Budget, Parts } from '../models/Cost/budge';
 import { Asset } from '../models/Cost/asset';
 import { Product } from '../models/Cost/product';
-import { calculateBudgetTotals, normalizeBudget } from './budget-calculator';
-import { nombresDeLineas } from './budget-items';
+import { calculateBudgetTotals, costoHoraMaquina, normalizeBudget } from './budget-calculator';
+import { calculateMultiItemTotals, hidratarLineas, nombresDeLineas } from './budget-items';
 import Swal from 'sweetalert2';
 
 export interface ClientModalData {
@@ -89,12 +89,28 @@ export function showBudgetStudyModal(
   capacidadHorasMaquina: number
 ): void {
   const norm = normalizeBudget(row);
-  const res = calculateBudgetTotals(
-    norm,
-    allAssets,
-    totalFijoIndirecto,
-    capacidadHorasMaquina
-  );
+  const rowRec = row as unknown as Record<string, unknown>;
+  const lineas = hidratarLineas(rowRec, norm.piezas || [], {
+    maquinas: allAssets,
+    materiales: allAssets,
+    circulantes: allAssets,
+    mobiliario: allAssets
+  });
+
+  const res = lineas.length > 0
+    ? calculateMultiItemTotals(
+        lineas,
+        Number(norm.delivery) || 0,
+        allAssets,
+        totalFijoIndirecto,
+        capacidadHorasMaquina
+      )
+    : calculateBudgetTotals(
+        norm,
+        allAssets,
+        totalFijoIndirecto,
+        capacidadHorasMaquina
+      );
 
   const totalGramos = res.totalGramos;
   const finalHoras = res.totalHoras;
@@ -109,15 +125,19 @@ export function showBudgetStudyModal(
   const deliveryCost = res.delivery;
   const totalBudgetFinal = res.costoTotalFinal;
 
-  const piezasRows = (norm.piezas || []).map(p => {
+  function renderPiezaRow(p: Parts): string {
     const pRec = p as unknown as Record<string, unknown>;
     const cant = Number(pRec['cantidad'] ?? p.cantidad) || 1;
-    const g = (Number(pRec['gramos'] ?? p.gramos) || 0) * cant;
-    const h = Number(pRec['horas'] ?? p.horas) || 0;
-    const min = Number(pRec['minutos'] ?? p.minutos) || 0;
+    const baseG = Number(pRec['gramos'] ?? p.gramos) || 0;
+    const g = baseG * cant;
+    const baseH = Number(pRec['horas'] ?? p.horas) || 0;
+    const baseMin = Number(pRec['minutos'] ?? p.minutos) || 0;
+    const totalMinutos = (baseH * 60 + baseMin) * cant;
+    const h = Math.floor(totalMinutos / 60);
+    const min = totalMinutos % 60;
 
     let matCost: number;
-    const tipo = String(pRec['tipo'] ?? p.tipo ?? '');
+    const tipo = String(pRec['tipo'] ?? p.tipo ?? 'Fabricada');
     if (tipo === 'Del Inventario') {
       const actId = pRec['activo'] ?? pRec['activo_id'] ?? pRec['assetId'] ?? p.activo;
       let unitVal = 0;
@@ -139,24 +159,97 @@ export function showBudgetStudyModal(
       matCost = g * precioMat;
     }
 
-    const maqCost = res.costoMaquinaRate * ((h + (min / 60)) * cant);
+    let maqRate = res.costoMaquinaRate;
+    const maqId = p.maquina ?? pRec['maquina_id'] ?? pRec['activo_id'];
+    if (maqId && allAssets && allAssets.length > 0) {
+      const maq = allAssets.find(a => a.id == maqId);
+      if (maq) {
+        maqRate = costoHoraMaquina(maq).rate;
+      }
+    }
+    const maqCost = (maqRate || 0) * (totalMinutos / 60);
+    const tiempoTxt = (baseH > 0 || baseMin > 0) ? `${h}h ${min}m` : '-';
 
     return `
       <tr>
-        <td class="text-start fw-medium">${p.nombre || 'Pieza'} ${cant > 1 ? `(x${cant})` : ''}</td>
-        <td>${g > 0 ? (cant > 1 ? `<b>${(g * cant).toFixed(2)}g</b> <span class="text-muted d-block" style="font-size: 0.72rem;">(${g.toFixed(2)}g c/u)</span>` : `${g.toFixed(2)}g`) : '-'}</td>
-        <td>${h * cant}</td>
-        <td>${min * cant}</td>
-        <td>$${matCost.toFixed(2)}</td>
-        <td class="fw-bold text-primary">$${maqCost.toFixed(2)}</td>
+        <td class="text-start ps-3 fw-medium text-dark">${p.nombre || 'Pieza'} ${cant > 1 ? `<span class="badge bg-secondary bg-opacity-10 text-secondary ms-1">x${cant}</span>` : ''}</td>
+        <td><span class="badge ${tipo === 'Del Inventario' ? 'bg-info bg-opacity-10 text-info' : 'bg-primary bg-opacity-10 text-primary'}" style="font-size: 0.68rem;">${tipo}</span></td>
+        <td>${g > 0 ? `${g.toFixed(1)}g` : '-'}</td>
+        <td class="text-muted">${tiempoTxt}</td>
+        <td class="fw-semibold text-dark">$${matCost.toFixed(2)}</td>
+        <td class="fw-semibold text-primary pe-3">$${maqCost.toFixed(2)}</td>
       </tr>
+    `;
+  }
+
+  const itemsParaMostrar = lineas.length > 0 ? lineas : [{
+    clave: 'item-default',
+    productoId: null,
+    clasificacion: norm.clasificacion || 'Producto',
+    nombre: norm.descripcion || 'Producto Principal',
+    cantidad: norm.cantidadGlobal || 1,
+    tiempoSetup: res.tiempoSetupMin || 0,
+    tiempoPostProcesado: res.tiempoPostProcesadoMin || 0,
+    tasaFallo: norm.tasaFalloGlobal || 0,
+    margenGanancia: norm.margenGanancia || 0,
+    piezas: norm.piezas || []
+  }];
+
+  const productosHtml = itemsParaMostrar.map((item, idx) => {
+    const itemPiezas = (item.piezas && item.piezas.length > 0) ? item.piezas : (itemsParaMostrar.length === 1 ? (norm.piezas || []) : []);
+    const filasPiezas = itemPiezas.map(renderPiezaRow).join('');
+
+    return `
+      <div class="card border border-secondary border-opacity-15 shadow-none mb-3 bg-white overflow-hidden rounded-3">
+        <div class="card-header bg-light bg-opacity-75 py-2 px-3 border-bottom d-flex flex-wrap justify-content-between align-items-center">
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge ${item.clasificacion === 'Servicio' ? 'bg-success' : 'bg-primary'} bg-opacity-10 ${item.clasificacion === 'Servicio' ? 'text-success' : 'text-primary'} fw-semibold px-2 py-1" style="font-size: 0.7rem;">
+              <i class="ti ${item.clasificacion === 'Servicio' ? 'ti-tools' : 'ti-box'} me-1"></i>${item.clasificacion || 'Producto'}
+            </span>
+            <span class="fw-bold text-dark" style="font-size: 0.88rem;">${item.nombre || `Ítem ${idx + 1}`}</span>
+            <span class="badge bg-light text-muted border px-2 py-1" style="font-size: 0.7rem;">
+              ${item.cantidad > 1 ? `${item.cantidad} unidades` : '1 unidad'}
+            </span>
+          </div>
+          <div class="d-flex align-items-center gap-3 text-muted" style="font-size: 0.72rem;">
+            ${item.margenGanancia ? `<span>Margen: <b class="text-dark">${item.margenGanancia}%</b></span>` : ''}
+            ${item.tasaFallo ? `<span>Merma: <b class="text-danger">${item.tasaFallo}%</b></span>` : ''}
+            ${(item.tiempoSetup || item.tiempoPostProcesado) ? `<span>Setup/Post: <b class="text-dark">${item.tiempoSetup || 0}m / ${item.tiempoPostProcesado || 0}m</b></span>` : ''}
+          </div>
+        </div>
+        <div class="card-body p-0">
+          ${filasPiezas ? `
+            <div class="table-responsive">
+              <table class="table table-sm table-hover align-middle mb-0 text-center" style="font-size: 0.75rem;">
+                <thead class="table-light text-muted" style="font-size: 0.7rem;">
+                  <tr>
+                    <th class="text-start ps-3 py-1 fw-semibold">Pieza / Insumo</th>
+                    <th class="py-1 fw-semibold">Tipo</th>
+                    <th class="py-1 fw-semibold">Gramos</th>
+                    <th class="py-1 fw-semibold">Tiempo</th>
+                    <th class="py-1 fw-semibold">Costo Insumo</th>
+                    <th class="py-1 fw-semibold pe-3">Costo Máq.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${filasPiezas}
+                </tbody>
+              </table>
+            </div>
+          ` : `
+            <div class="text-muted text-center py-2 fst-italic" style="font-size: 0.72rem;">
+              <i class="ti ti-info-circle me-1"></i>Ítem directo sin piezas desglosadas
+            </div>
+          `}
+        </div>
+      </div>
     `;
   }).join('');
 
   Swal.fire({
     title: `<div class="text-start text-primary fw-bold fs-5">Estudio de Presupuesto</div>`,
     html: `
-      <div class="text-start" style="font-family: 'Inter', sans-serif; font-size: 0.85rem;">
+      <div class="text-start" style="font-family: 'Inter', sans-serif; font-size: 0.85rem; max-height: 75vh; overflow-y: auto; padding-right: 4px;">
         <div class="row g-3 mb-3">
           <div class="col-md-7">
             <div class="card border-0 shadow-sm h-100 bg-light">
@@ -229,12 +322,12 @@ export function showBudgetStudyModal(
                 </div>
                 ` : ''}
                 <div class="d-flex justify-content-between mb-2 border-bottom border-white border-opacity-25 pb-2" style="font-size: 0.8rem;">
-                  <span class="text-white-50">Costo Unitario Base:</span>
+                  <span class="text-white-50">${lineas.length > 1 ? 'Costo Base Total (Ítems):' : 'Costo Unitario Base:'}</span>
                   <span class="fw-bold">$${baseCost.toFixed(2)}</span>
                 </div>
                 <div class="mt-2 pt-2 border-top border-white border-opacity-25">
                   <div class="d-flex justify-content-between align-items-center mb-1">
-                    <span class="text-white-50" style="font-size: 0.75rem;">Precio Sugerido Unitario:</span>
+                    <span class="text-white-50" style="font-size: 0.75rem;">${lineas.length > 1 ? 'Subtotal Sugerido (Ítems):' : 'Precio Sugerido Unitario:'}</span>
                     <span class="fw-bold text-white fs-5">$${suggestedPrice.toFixed(2)}</span>
                   </div>
                   ${deliveryCost > 0 ? `
@@ -297,24 +390,13 @@ export function showBudgetStudyModal(
           </div>
         </div>
         <div>
-          <h6 class="fw-bold mb-2 text-dark fs-6"><i class="ti ti-list-details me-2 text-muted"></i>Desglose por Pieza</h6>
-          <div class="table-responsive rounded shadow-sm border border-light">
-            <table class="table table-hover table-striped text-center align-middle mb-0 bg-white" style="font-size: 0.75rem;">
-              <thead style="background-color: #0b3d91;">
-                <tr>
-                  <th class="text-start fw-semibold border-0 text-white py-2 ps-2">Nombre</th>
-                  <th class="fw-semibold border-0 text-white py-2">Gramos</th>
-                  <th class="fw-semibold border-0 text-white py-2">Horas</th>
-                  <th class="fw-semibold border-0 text-white py-2">Minutos</th>
-                  <th class="fw-semibold border-0 text-white py-2">Costo Insumo / Mat.</th>
-                  <th class="fw-semibold border-0 text-white py-2 pe-2">Costo Máquina</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${piezasRows || '<tr><td colspan="6" class="text-muted py-2">No hay piezas en este presupuesto</td></tr>'}
-              </tbody>
-            </table>
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="fw-bold mb-0 text-dark fs-6"><i class="ti ti-box-model-2 me-2 text-muted"></i>Productos y Desglose de Piezas</h6>
+            <span class="badge bg-light text-muted border px-2 py-1" style="font-size: 0.75rem;">
+              ${itemsParaMostrar.length} ${itemsParaMostrar.length === 1 ? 'producto/ítem' : 'productos/ítems'}
+            </span>
           </div>
+          ${productosHtml}
         </div>
       </div>
     `,

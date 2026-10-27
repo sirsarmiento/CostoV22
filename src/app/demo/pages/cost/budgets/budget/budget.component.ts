@@ -11,7 +11,7 @@ import { Asset } from '../../../../../core/models/Cost/asset';
 import { ClientService } from '../../../../../core/services/cost/client.service';
 import { forkJoin } from 'rxjs';
 import Swal from 'sweetalert2';
-import { calculateBudgetTotals, normalizeBudget } from '../../../../../core/utils/budget-calculator';
+import { calculateBudgetTotals, normalizeBudget, resolverCapacidadHorasMaquina } from '../../../../../core/utils/budget-calculator';
 import { calculateMultiItemTotals, hidratarLineas } from '../../../../../core/utils/budget-items';
 import {
   parseCedula,
@@ -67,7 +67,7 @@ export class BudgetComponent implements OnInit {
   paginatedBudgets: Budget[] = [];
   allAssets: Asset[] = [];
   allProducts: Product[] = [];
-  capacidadHorasMaquina = 160;
+  capacidadHorasMaquina = 176;
   totalFijoIndirecto = 0;
 
   searchTerm = '';
@@ -90,27 +90,14 @@ export class BudgetComponent implements OnInit {
       if (data.products) {
         this.allProducts = data.products;
       }
-      if (data.configs && data.configs.length > 0) {
-        const configObj = data.configs[0];
-        let capacidad = 0;
-        if (configObj.parametros && Array.isArray(configObj.parametros)) {
-          configObj.parametros.forEach((machine) => {
-            const unidad = machine.unidad?.toLowerCase().trim() || '';
-            if (unidad.includes('hora') || unidad.includes('hs') || unidad === '') {
-              capacidad += (Number(machine.horasUso) || 0) * (Number(machine.prodMaxHoras) || 0);
-            }
-          });
-        }
-        this.capacidadHorasMaquina = capacidad > 0 ? capacidad : 160;
+      if (data.assets) {
+        this.allAssets = data.assets;
       }
+      this.capacidadHorasMaquina = resolverCapacidadHorasMaquina(data.configs?.[0], this.allAssets);
 
       if (data.fixes && data.fixes.length > 0) {
         const indirectos = data.fixes.filter(item => item.clasificacion === 'Indirecto');
         this.totalFijoIndirecto = indirectos.reduce((total, item) => total + (Number(item.precio) || 0), 0);
-      }
-
-      if (data.assets) {
-        this.allAssets = data.assets;
       }
       this.getBudgets();
     }, () => {
@@ -161,7 +148,7 @@ export class BudgetComponent implements OnInit {
       circulantes: this.allAssets,
       mobiliario: this.allAssets
     });
-    if (lineas.length > 1) {
+    if (lineas.length > 0) {
       return calculateMultiItemTotals(
         lineas,
         Number(row.delivery) || 0,

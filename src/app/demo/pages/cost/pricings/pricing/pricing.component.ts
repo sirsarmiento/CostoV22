@@ -38,7 +38,7 @@ export class PricingComponent implements OnInit {
   
   totalDirectoPrecio = 0;
   indirectoProrrateadoPrecio = 0;
-  capacidadHorasMaquina = 160;
+  capacidadHorasMaquina = 176;
   tasaHorariaMaquina = 0;
   horasTotalesProducto = 0;
 
@@ -115,7 +115,7 @@ export class PricingComponent implements OnInit {
 
         // Costos Fijos Totales Operativos (Generales)
         this.costosFijosTotales = this.totalFijoIndirecto + this.totalDepreciacionMensual;
-        this.tasaHorariaMaquina = this.costosFijosTotales / (this.capacidadHorasMaquina || 160);
+        this.tasaHorariaMaquina = this.costosFijosTotales / (this.capacidadHorasMaquina || 176);
         
         const numProductos = this.productos.length || 1;
         this.fijosIndirectosProrrateados = this.costosFijosTotales / numProductos;

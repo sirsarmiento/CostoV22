@@ -75,4 +75,23 @@ describe('AddProductComponent', () => {
     expect(component.piezasPendientes[0]['horas']).toBe(1);
     expect(component.piezasPendientes[0]['minutos']).toBe(15);
   });
+
+  it('en control numérico pide medidas y no exige polímero', () => {
+    component.form.patchValue({
+      piezaTipo: 'Fabricada',
+      piezaTecnologia: 'CNC',
+      piezaFabricada: 'Placa',
+      piezaCantidad: 2,
+      piezaAnchoCm: 10,
+      piezaLargoCm: 5,
+      piezaCarasPcb: 2,
+      piezaMascaraUvSoldadura: true,
+      piezaMascaraUvTextos: false
+    });
+    component.agregarPieza();
+    expect(component.piezasPendientes.length).toBe(1);
+    expect(component.piezasPendientes[0].anchoCm).toBe(10);
+    expect(component.piezasPendientes[0].areaCm2).toBe(50);
+    expect(component.piezasPendientes[0].carasPcb).toBe(2);
+  });
 });

@@ -55,6 +55,23 @@ El presupuesto sí mantiene margen. Las horas se toman de cada pieza y la merma 
 
 El campo que decía Nacionalidad ahora se llama **Tipo de documento** (V, E, J, G, P).
 
+El cliente puede llevar **varios sectores comerciales** a la vez (alimentos, salud, automotriz, publicidad, y así). El mismo selector está en el alta de clientes y en el modal rápido del presupuesto.
+
+## Qué cambió con los campos nuevos de piezas
+
+El detalle de piezas **cambia según la tecnología**, igual en productos y en presupuestos:
+
+- **Filamento (FDM)**: se queda como está.
+- **Resina (SLA)**: el filtro pasa a llamarse Tipo de resina. Si marca, color y tipo dejan un solo insumo, el sistema lo marca solo. Aparece **Descartables (%)** (toallines, guantes, alcohol, mascarillas y lijas) sobre los gramos, con 8 % de arranque y se puede cambiar.
+- **Control numérico (CNC)**: solo prototipo de circuito impreso, de 1 a 5 unidades. Se ocultan tipo de material y marca. En vez de gramos van **Ancho cm**, **Largo cm** y el área se calcula sola. Hay que decir si la placa es de 1 cara o 2 caras, y si lleva máscara UV de soldadura y de textos (Sí / No).
+- **Corte láser (LSR)**: mismas medidas de área. Se oculta la marca. Materiales permitidos: acrílico negro, cuero, cartón, cartulina y vinilo.
+- **Chocolate (CHO)**: se oculta el color. Si queda un solo insumo, se marca solo. La limpieza de máquina viene con un valor de arranque (0,5) y el empaque se cobra aparte según tamaño y presentación.
+- **Alimentos (ALM)**: no se usa inventario. Se escribe el material a mano y su costo estimado.
+
+Las piezas se agrupan por tecnología y equipo. Las horas de producción de cada bloque van al final de ese bloque.
+
+La venta ahora guarda su **estado** (pendiente, abonado o pagado). Al consultar un presupuesto, el sistema manda el nombre de la máquina y el nombre del material para que se vean al abrir o al editar.
+
 ## Lo que no entra en esta entrega
 
-Bandeja de aprobación, correo de envío, actualización automática de precios de cotizaciones viejas, diccionario de impresoras como dato maestro y el alta de familia según el rol de la persona. Eso queda para otra ronda.
+Bandeja de aprobación, correo de envío, actualización automática de precios de cotizaciones viejas, diccionario de impresoras como dato maestro, el alta de familia según el rol de la persona y la matriz de roles (configuración, presupuesto, aprobación y emisión). Eso queda para otra ronda.

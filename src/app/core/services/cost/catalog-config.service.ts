@@ -14,37 +14,59 @@ export class CatalogConfigService {
   private defaultTecnologias(): TecnologiaCatalogo[] {
     return [
       { id: 1, codigo: 'FDM', nombre: 'Filamento' },
-      { id: 2, codigo: 'SLA', nombre: 'Resina' }
+      { id: 2, codigo: 'SLA', nombre: 'Resina' },
+      { id: 3, codigo: 'CNC', nombre: 'Control numérico' },
+      { id: 4, codigo: 'LSR', nombre: 'Corte láser' },
+      { id: 5, codigo: 'CHO', nombre: 'Chocolate' },
+      { id: 6, codigo: 'ALM', nombre: 'Alimentos' }
     ];
   }
 
   private defaultMateriales(): MaterialCatalogo[] {
+    const fdm = { id: 1, codigo: 'FDM', nombre: 'Filamento' };
+    const sla = { id: 2, codigo: 'SLA', nombre: 'Resina' };
+    const cnc = { id: 3, codigo: 'CNC', nombre: 'Control numérico' };
+    const lsr = { id: 4, codigo: 'LSR', nombre: 'Corte láser' };
+    const cho = { id: 5, codigo: 'CHO', nombre: 'Chocolate' };
     return [
-      { id: 1, codigo: 'PLA', nombre: 'Ácido Poliláctico', tecnologias: [{ id: 1, codigo: 'FDM', nombre: 'Filamento' }] },
-      { id: 2, codigo: 'ABS', nombre: 'Acrilonitrilo Butadieno Estireno', tecnologias: [{ id: 1, codigo: 'FDM', nombre: 'Filamento' }] },
-      { id: 3, codigo: 'PET', nombre: 'Polietileno Tereftalato', tecnologias: [{ id: 1, codigo: 'FDM', nombre: 'Filamento' }] },
-      { id: 4, codigo: 'RES', nombre: 'Resina', tecnologias: [{ id: 2, codigo: 'SLA', nombre: 'Resina' }] }
+      { id: 1, codigo: 'PLA', nombre: 'Ácido Poliláctico', tecnologias: [fdm] },
+      { id: 2, codigo: 'ABS', nombre: 'Acrilonitrilo Butadieno Estireno', tecnologias: [fdm] },
+      { id: 3, codigo: 'PET', nombre: 'Polietileno Tereftalato', tecnologias: [fdm] },
+      { id: 4, codigo: 'RES', nombre: 'Resina', tecnologias: [sla] },
+      { id: 5, codigo: 'PCB', nombre: 'Circuito impreso', tecnologias: [cnc] },
+      { id: 6, codigo: 'ACR', nombre: 'Acrílico negro', tecnologias: [lsr] },
+      { id: 7, codigo: 'CUE', nombre: 'Cuero', tecnologias: [lsr] },
+      { id: 8, codigo: 'CAR', nombre: 'Cartón', tecnologias: [lsr] },
+      { id: 9, codigo: 'CTU', nombre: 'Cartulina', tecnologias: [lsr] },
+      { id: 10, codigo: 'VIN', nombre: 'Vinilo', tecnologias: [lsr] },
+      { id: 11, codigo: 'CHO', nombre: 'Chocolate', tecnologias: [cho] }
     ];
   }
 
   private getMockTecnologias(): TecnologiaCatalogo[] {
     const stored = localStorage.getItem('cost_tecnologias');
-    if (stored) {
-      return JSON.parse(stored);
-    }
-    const initial = this.defaultTecnologias();
-    localStorage.setItem('cost_tecnologias', JSON.stringify(initial));
-    return initial;
+    const actuales: TecnologiaCatalogo[] = stored ? JSON.parse(stored) : [];
+    const fusion = [...actuales];
+    this.defaultTecnologias().forEach(defecto => {
+      if (!fusion.some(item => (item.codigo || '').toUpperCase() === defecto.codigo)) {
+        fusion.push({ ...defecto, id: Math.max(0, ...fusion.map(x => x.id || 0)) + 1 });
+      }
+    });
+    localStorage.setItem('cost_tecnologias', JSON.stringify(fusion.length ? fusion : this.defaultTecnologias()));
+    return fusion.length ? fusion : this.defaultTecnologias();
   }
 
   private getMockMateriales(): MaterialCatalogo[] {
     const stored = localStorage.getItem('cost_materiales_catalogo');
-    if (stored) {
-      return JSON.parse(stored);
-    }
-    const initial = this.defaultMateriales();
-    localStorage.setItem('cost_materiales_catalogo', JSON.stringify(initial));
-    return initial;
+    const actuales: MaterialCatalogo[] = stored ? JSON.parse(stored) : [];
+    const fusion = [...actuales];
+    this.defaultMateriales().forEach(defecto => {
+      if (!fusion.some(item => (item.codigo || '').toUpperCase() === defecto.codigo)) {
+        fusion.push({ ...defecto, id: Math.max(0, ...fusion.map(x => x.id || 0)) + 1 });
+      }
+    });
+    localStorage.setItem('cost_materiales_catalogo', JSON.stringify(fusion.length ? fusion : this.defaultMateriales()));
+    return fusion.length ? fusion : this.defaultMateriales();
   }
 
   getTecnologias(): Observable<TecnologiaCatalogo[]> {

@@ -1,6 +1,7 @@
 import { Asset } from '../models/Cost/asset';
 import { Product, PiezaProducto } from '../models/Cost/product';
 import { resolverNombreMaquina, resolverNombreMaterial } from './piece-builder.helper';
+import { extraerCamposTecnologia, serializarCamposTecnologia } from './piece-tech-rules';
 
 /* Extrae los correlativos ya usados para productos de la misma familia.*/
 export function extractCorrelativosUsadosDeFamilia(
@@ -59,8 +60,10 @@ export function mapDbPiezasToView(
     const actId = (rawAct !== null && rawAct !== undefined && rawAct !== '') ? Number(rawAct) : undefined;
     const matName = resolverNombreMaterial(pRecord, activosMateriales, activosCirculantes, allAssets);
 
+    const extra = extraerCamposTecnologia(pRecord);
     return {
       ...(p as PiezaProducto),
+      ...extra,
       fromDb: true,
       maquina: maqId,
       maquinaNombre: maqName !== '-' ? maqName : (pRecord['maquinaNombre'] as string | undefined),
@@ -104,6 +107,7 @@ export function mapPiezasToPayload(
     const matPrice = Number(pObj.precioMaterial) || 0;
     const cant = Number(pObj.cantidad) || 1;
 
+    const extra = serializarCamposTecnologia(extraerCamposTecnologia(pObj as unknown as Record<string, unknown>));
     const piece: Record<string, unknown> = {
       nombre: nom,
       gramos: gVal,
@@ -118,7 +122,8 @@ export function mapPiezasToPayload(
       activo_id: numAct,
       maquina: numMaq,
       maquina_id: numMaq,
-      tecnologia: pObj.tecnologia || ''
+      tecnologia: pObj.tecnologia || '',
+      ...extra
     };
 
     if (pObj.fromDb && pObj.id && Number(pObj.id) > 0) {

@@ -2,6 +2,7 @@ import { Parts } from '../models/Cost/budge';
 import { Asset } from '../models/Cost/asset';
 import { Product } from '../models/Cost/product';
 import { QuickClientData } from '../../theme/shared/components/quick-client-modal/quick-client-modal.component';
+import { extraerCamposTecnologia, serializarCamposTecnologia } from './piece-tech-rules';
 
 export interface AssetCatalog {
   maquinas: Asset[];
@@ -22,7 +23,7 @@ export function resolvePiezasDisplay(piezasList: Parts[], catalog: AssetCatalog)
     const pObj = p as unknown as Record<string, unknown>;
 
     // 1. Resolver Máquina
-    const directMaqName = (pObj['maquinaNombre'] || pObj['maquina_nombre'] || pObj['nombreMaquina']) as string | undefined;
+    const directMaqName = (pObj['maquinaNombre'] || pObj['MaquinaNombre'] || pObj['maquina_nombre'] || pObj['nombreMaquina']) as string | undefined;
     if (directMaqName && directMaqName !== '-' && directMaqName !== '[object Object]') {
       p.maquinaNombre = directMaqName;
     } else {
@@ -37,7 +38,7 @@ export function resolvePiezasDisplay(piezasList: Parts[], catalog: AssetCatalog)
     }
 
     // 2. Resolver Material / Activo
-    const directMatName = (pObj['materialNombre'] || pObj['material_nombre'] || pObj['nombreMaterial'] || pObj['materialDisplayName']) as string | undefined;
+    const directMatName = (pObj['materialNombre'] || pObj['MaterialNombre'] || pObj['material_nombre'] || pObj['nombreMaterial'] || pObj['materialDisplayName'] || pObj['materialLibre']) as string | undefined;
     if (directMatName && directMatName !== '-' && directMatName !== 'Sin material' && directMatName !== '[object Object]') {
       p.materialDisplayName = directMatName;
     } else {
@@ -73,7 +74,7 @@ export function resolvePiezasDisplay(piezasList: Parts[], catalog: AssetCatalog)
 export function getNombreMaquina(row: Parts | Record<string, unknown> | unknown, maquinasList: Asset[] = []): string {
   if (!row) return '-';
   const r = row as Record<string, unknown>;
-  const directName = r['maquinaNombre'] || r['maquina_nombre'] || r['nombreMaquina'];
+  const directName = r['maquinaNombre'] || r['MaquinaNombre'] || r['maquina_nombre'] || r['nombreMaquina'];
   if (typeof directName === 'string' && directName && directName !== '-' && directName !== '[object Object]') {
     return directName;
   }
@@ -96,7 +97,7 @@ export function getNombreMaquina(row: Parts | Record<string, unknown> | unknown,
 export function getNombreMaterial(row: Parts | Record<string, unknown> | unknown, catalog: AssetCatalog): string {
   if (!row) return '-';
   const r = row as Record<string, unknown>;
-  const directName = r['materialNombre'] || r['material_nombre'] || r['nombreMaterial'] || r['materialDisplayName'];
+  const directName = r['materialNombre'] || r['MaterialNombre'] || r['material_nombre'] || r['nombreMaterial'] || r['materialDisplayName'] || r['materialLibre'];
   if (typeof directName === 'string' && directName && directName !== '-' && directName !== 'Sin material' && directName !== '[object Object]') {
     return directName;
   }
@@ -142,6 +143,7 @@ export function mapProductToPieces(product: Product, catalog: AssetCatalog): Par
     const foundMaq = maqId ? catalog.maquinas.find(m => m.id == maqId) : undefined;
 
     const maqName = (pb['maquinaNombre'] as string)
+      || (pb['MaquinaNombre'] as string)
       || (maqObj?.['nombre'] as string)
       || (foundMaq?.nombre);
 
@@ -150,7 +152,10 @@ export function mapProductToPieces(product: Product, catalog: AssetCatalog): Par
       tipo = (foundAsset && !maqId) ? 'Del Inventario' : 'Fabricada';
     }
 
+    const extra = extraerCamposTecnologia(pb);
     const matName = (pb['materialNombre'] as string)
+      || (pb['MaterialNombre'] as string)
+      || extra.materialLibre
       || (pb['materialDisplayName'] as string)
       || (actObj?.['nombre'] as string)
       || (foundAsset ? foundAsset.nombre : undefined)
@@ -178,7 +183,8 @@ export function mapProductToPieces(product: Product, catalog: AssetCatalog): Par
       maquina: maqId,
       maquinaNombre: maqName,
       tecnologia: (pb['tecnologia'] as string) || '',
-      producto: product.id
+      producto: product.id,
+      ...extra
     };
   });
 }
@@ -217,6 +223,8 @@ export function buildBudgetPayload(params: BudgetPayloadParams): Record<string, 
     const maqId = p.maquina ?? pObj['maquina_id'] ?? pObj['maquinaId'];
     const prodId = p.producto ?? pObj['producto_id'] ?? pObj['productoId'] ?? parsedProdId;
 
+    const campos = extraerCamposTecnologia(pObj);
+    const extra = serializarCamposTecnologia(campos);
     const pieceObj: Record<string, unknown> = {
       nombre: String(p.nombre || `PIEZA ${idx + 1}`).trim(),
       gramos: Number(p.gramos) || 0,
@@ -229,14 +237,17 @@ export function buildBudgetPayload(params: BudgetPayloadParams): Record<string, 
       producto: prodId ? Number(prodId) : null,
       activo: actId ? Number(actId) : null,
       maquina: maqId ? Number(maqId) : null,
-      tecnologia: p.tecnologia || pObj['tecnologia'] || ''
+      tecnologia: p.tecnologia || pObj['tecnologia'] || '',
+      ...extra
     };
 
     if (p.maquinaNombre) {
       pieceObj['maquinaNombre'] = p.maquinaNombre;
+      pieceObj['MaquinaNombre'] = p.maquinaNombre;
     }
-    if (p.materialDisplayName) {
-      pieceObj['materialNombre'] = p.materialDisplayName;
+    if (p.materialDisplayName || campos.materialLibre) {
+      pieceObj['materialNombre'] = p.materialDisplayName || campos.materialLibre;
+      pieceObj['MaterialNombre'] = p.materialDisplayName || campos.materialLibre;
     }
 
     if (pObj['fromDb'] && p.id && Number(p.id) > 0) {
@@ -282,6 +293,7 @@ export function buildBudgetPayload(params: BudgetPayloadParams): Record<string, 
     email: isCreandoClienteNuevo ? tempClienteData.email : undefined,
     direccion: isCreandoClienteNuevo ? tempClienteData.direccion : undefined,
     clienteCategoria: isCreandoClienteNuevo ? tempClienteData.categoria : undefined,
+    sectores: isCreandoClienteNuevo ? (tempClienteData.sectores || []) : undefined,
     producto: parsedProdId,
     lineas: formValue['lineas'] || [],
     piezas: mappedPiezas,

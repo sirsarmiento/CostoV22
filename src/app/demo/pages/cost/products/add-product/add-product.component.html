@@ -108,7 +108,7 @@
                 <label class="form-label">Tipo de tecnología</label>
                 <ng-select
                   formControlName="piezaTecnologia"
-                  placeholder="Filamento o resina"
+                  placeholder="Seleccione la tecnología"
                   [clearable]="false"
                   [searchable]="false"
                   appendTo="body"
@@ -141,76 +141,163 @@
                 </ng-select>
               </div>
 
-              <!-- Fila 2: Filtros e Insumo de Material (12 cols) -->
-              <div class="col-md-2">
-                <label class="form-label">Tipo de polímero</label>
-                <ng-select formControlName="piezaPolimero" placeholder="Polímero (opcional)" [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom">
-                  @for (pol of polimerosPieza; track pol) {
-                    <ng-option [value]="pol">{{ pol }}</ng-option>
-                  }
-                </ng-select>
-              </div>
+              @if (reglasPieza.mostrarTipoMaterial) {
+                <div class="col-md-2">
+                  <label class="form-label">{{ reglasPieza.etiquetaTipoMaterial }}</label>
+                  <ng-select formControlName="piezaPolimero" [placeholder]="reglasPieza.etiquetaTipoMaterial" [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom">
+                    @for (pol of polimerosPieza; track pol) {
+                      <ng-option [value]="pol">{{ pol }}</ng-option>
+                    }
+                  </ng-select>
+                </div>
+              }
 
-              <div class="col-md-2">
-                <label class="form-label">Marca</label>
-                <ng-select formControlName="piezaMarca" placeholder="Marca (opcional)" [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom">
-                  @for (marca of marcasPieza; track marca) {
-                    <ng-option [value]="marca">{{ marca }}</ng-option>
-                  }
-                </ng-select>
-              </div>
+              @if (reglasPieza.mostrarMarca) {
+                <div class="col-md-2">
+                  <label class="form-label">Marca</label>
+                  <ng-select formControlName="piezaMarca" placeholder="Marca (opcional)" [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom">
+                    @for (marca of marcasPieza; track marca) {
+                      <ng-option [value]="marca">{{ marca }}</ng-option>
+                    }
+                  </ng-select>
+                </div>
+              }
 
-              <div class="col-md-2">
-                <label class="form-label">Color</label>
-                <ng-select formControlName="piezaColor" placeholder="Color (opcional)" [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom">
-                  @for (col of coloresPieza; track col) {
-                    <ng-option [value]="col">{{ col }}</ng-option>
-                  }
-                </ng-select>
-              </div>
+              @if (reglasPieza.mostrarColor) {
+                <div class="col-md-2">
+                  <label class="form-label">Color</label>
+                  <ng-select formControlName="piezaColor" placeholder="Color (opcional)" [clearable]="true" [searchable]="true" appendTo="body" dropdownPosition="bottom">
+                    @for (col of coloresPieza; track col) {
+                      <ng-option [value]="col">{{ col }}</ng-option>
+                    }
+                  </ng-select>
+                </div>
+              }
 
-              <div class="col-md-6">
-                <label class="form-label">Material (Insumo)</label>
-                <ng-select
-                  formControlName="piezaMaterialId"
-                  [items]="materialesFiltradosCirculantes"
-                  bindValue="id"
-                  placeholder="Seleccione material..."
-                  [clearable]="true"
-                  [searchable]="true"
-                  appendTo="body"
-                  dropdownPosition="bottom">
-                  <ng-template ng-label-tmp let-item="item">
-                    <span [title]="formatAssetOption(item)" class="text-truncate d-inline-block mw-100">{{ formatAssetOption(item) }}</span>
-                  </ng-template>
-                  <ng-template ng-option-tmp let-item="item">
-                    <span [title]="formatAssetOption(item)">{{ formatAssetOption(item) }}</span>
-                  </ng-template>
-                </ng-select>
-              </div>
+              @if (reglasPieza.mostrarMaterialInsumo) {
+                <div class="col-md-6">
+                  <label class="form-label">Material (Insumo)</label>
+                  <ng-select
+                    formControlName="piezaMaterialId"
+                    [items]="materialesFiltradosCirculantes"
+                    bindValue="id"
+                    placeholder="Seleccione material..."
+                    [clearable]="true"
+                    [searchable]="true"
+                    appendTo="body"
+                    dropdownPosition="bottom">
+                    <ng-template ng-label-tmp let-item="item">
+                      <span [title]="formatAssetOption(item)" class="text-truncate d-inline-block mw-100">{{ formatAssetOption(item) }}</span>
+                    </ng-template>
+                    <ng-template ng-option-tmp let-item="item">
+                      <span [title]="formatAssetOption(item)">{{ formatAssetOption(item) }}</span>
+                    </ng-template>
+                  </ng-select>
+                </div>
+              }
 
-              <!-- Fila 3: Cantidad (2), Gramos (4 = Marca + Color), Horas + Minutos + Botón (6 = Material) -->
+              @if (reglasPieza.mostrarMaterialLibre) {
+                <div class="col-md-6">
+                  <label class="form-label">Material a utilizar</label>
+                  <input type="text" class="form-control" formControlName="piezaMaterialLibre" placeholder="Escriba el material. No se descuenta del inventario.">
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label">Costo estimado ($)</label>
+                  <input type="number" min="0" step="0.01" class="form-control" formControlName="piezaCostoEstimado" placeholder="0.00">
+                </div>
+              }
+
               <div class="col-md-2">
                 <label class="form-label">Cantidad</label>
-                <input type="number" min="1" class="form-control px-2" formControlName="piezaCantidad">
+                <input type="number" min="1" [max]="reglasPieza.cantidadMaxima || null" class="form-control px-2" formControlName="piezaCantidad">
+                @if (reglasPieza.cantidadMaxima) {
+                  <small class="text-muted">Máximo {{ reglasPieza.cantidadMaxima }} unidades (prototipo de circuito impreso)</small>
+                }
               </div>
 
-              <div class="col-md-4">
-                <label class="form-label">Gramos</label>
-                <input type="number" class="form-control px-2" formControlName="piezaGramos" placeholder="0">
-              </div>
+              @if (reglasPieza.mostrarGramos) {
+                <div class="col-md-2">
+                  <label class="form-label">Gramos</label>
+                  <input type="number" class="form-control px-2" formControlName="piezaGramos" placeholder="0">
+                </div>
+              }
 
-              <div class="col-md-6">
-                <div class="row g-3">
-                  <div class="col">
-                    <label class="form-label">Horas</label>
+              @if (reglasPieza.mostrarDimensiones) {
+                <div class="col-md-2">
+                  <label class="form-label">Ancho (cm)</label>
+                  <input type="number" min="0" step="0.01" class="form-control px-2" formControlName="piezaAnchoCm" placeholder="0">
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label">Largo (cm)</label>
+                  <input type="number" min="0" step="0.01" class="form-control px-2" formControlName="piezaLargoCm" placeholder="0">
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label">Área (cm²)</label>
+                  <input type="text" class="form-control px-2" [value]="areaPiezaActual" readonly>
+                </div>
+              }
+
+              @if (reglasPieza.mostrarCarasPcb) {
+                <div class="col-md-2">
+                  <label class="form-label">Caras de la placa</label>
+                  <ng-select formControlName="piezaCarasPcb" [clearable]="false" [searchable]="false" appendTo="body">
+                    <ng-option [value]="1">1 cara</ng-option>
+                    <ng-option [value]="2">2 caras</ng-option>
+                  </ng-select>
+                </div>
+              }
+
+              @if (reglasPieza.mostrarMascarasUv) {
+                <div class="col-md-3">
+                  <label class="form-label">Máscara UV antisoldadura</label>
+                  <ng-select formControlName="piezaMascaraUvSoldadura" [clearable]="false" [searchable]="false" appendTo="body">
+                    <ng-option [value]="false">No</ng-option>
+                    <ng-option [value]="true">Sí</ng-option>
+                  </ng-select>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label">Máscara UV para textos</label>
+                  <ng-select formControlName="piezaMascaraUvTextos" [clearable]="false" [searchable]="false" appendTo="body">
+                    <ng-option [value]="false">No</ng-option>
+                    <ng-option [value]="true">Sí</ng-option>
+                  </ng-select>
+                </div>
+              }
+
+              @if (reglasPieza.mostrarDescartables) {
+                <div class="col-md-3">
+                  <label class="form-label">Descartables (%)</label>
+                  <input type="number" min="0" step="0.1" class="form-control" formControlName="piezaDescartablesPct">
+                  <small class="text-muted">Toallines, guantes, alcohol, mascarillas y lijas. Viene con {{ reglasPieza.descartablesPorDefecto }} % y se puede cambiar.</small>
+                </div>
+              }
+
+              @if (reglasPieza.mostrarLimpieza) {
+                <div class="col-md-3">
+                  <label class="form-label">Limpieza de máquina ($)</label>
+                  <input type="number" min="0" step="0.01" class="form-control" formControlName="piezaLimpiezaMaquina">
+                  <small class="text-muted">Guantes, alcohol y servilletas por impresión. Viene con {{ reglasPieza.limpiezaPorDefecto }} y se puede cambiar.</small>
+                </div>
+              }
+
+              @if (reglasPieza.mostrarEmpaque) {
+                <div class="col-md-3">
+                  <label class="form-label">Empaque del producto ($)</label>
+                  <input type="number" min="0" step="0.01" class="form-control" formControlName="piezaEmpaque" placeholder="Según tamaño y presentación">
+                </div>
+              }
+
+              <div class="col-12">
+                <div class="row g-3 align-items-end">
+                  <div class="col-md-2">
+                    <label class="form-label">Horas de producción</label>
                     <input type="number" min="0" class="form-control px-2" formControlName="piezaHoras" placeholder="0">
                   </div>
-                  <div class="col">
+                  <div class="col-md-2">
                     <label class="form-label">Minutos</label>
                     <input type="number" min="0" max="59" class="form-control px-2" formControlName="piezaMinutos" placeholder="0">
                   </div>
-                  <div class="col-auto d-flex align-items-end">
+                  <div class="col-auto">
                     <button type="button" class="btn btn-primary btn-square-icon" (click)="agregarPieza()" title="Agregar Pieza Fabricada">
                       <i class="ti ti-plus fs-4"></i>
                     </button>
@@ -233,80 +320,67 @@
           </div>
 
           <div class="col-12 mt-4">
-            <div class="table-responsive border rounded-3">
-              <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
-                  <tr>
-                    <th>Tipo</th>
-                    <th>Cantidad</th>
-                    <th>Nombre</th>
-                    <th>Tecnología</th>
-                    <th>Máquina</th>
-                    <th>Material / Detalle</th>
-                    <th>Gramos</th>
-                    <th>Tiempo</th>
-                    <th class="text-center" style="width: 100px;">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (p of piezasPendientes; track $index) {
-                    <tr>
-                      <td>
-                        <span class="badge" [class.bg-light-success]="p.tipo === 'Fabricada'" [class.bg-light-info]="p.tipo === 'Del Inventario'">
-                          {{ p.tipo }}
-                        </span>
-                      </td>
-                      <td class="fw-bold">{{ p.cantidad }}</td>
-                      <td class="fw-medium">{{ p.nombre }}</td>
-                      <td>{{ p.tecnologia || '-' }}</td>
-                      <td>
-                        @if (getNombreMaquina(p) !== '-') {
-                          <span class="badge bg-light-primary text-primary px-2 py-1"><i class="ti ti-printer me-1"></i>{{ getNombreMaquina(p) }}</span>
-                        } @else {
-                          <span class="text-muted">-</span>
-                        }
-                      </td>
-                      <td>{{ getNombreMaterial(p) }}</td>
-                      <td>
-                        @if (p.gramos) {
-                          <span>{{ ((p.gramos || 0) * (p.cantidad || 1)) | number:'1.0-2' }} g</span>
-                        } @else {
-                          <span class="text-muted">-</span>
-                        }
-                      </td>
-                      <td>
-                        @if (p.tipo === 'Fabricada') {
-                          {{ p.horas || 0 }} h {{ p.minutos || 0 }} min
-                        } @else {
-                          <span class="text-muted">-</span>
-                        }
-                      </td>
-                      <td class="text-center">
-                        <button type="button" class="btn btn-sm btn-icon btn-light-danger" (click)="removerPieza($index)" title="Eliminar Pieza">
-                          <i class="ti ti-trash fs-5"></i>
-                        </button>
-                      </td>
-                    </tr>
-                  } @empty {
-                    <tr>
-                      <td colspan="9" class="text-center py-4 text-muted">
-                        No hay piezas configuradas. El formulario no se guarda incompleto.
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-                @if (piezasPendientes.length > 0) {
-                  <tfoot class="table-light">
-                    <tr>
-                      <td colspan="6" class="text-end fw-bold">Totales</td>
-                      <td class="fw-bold">{{ totalGramosPiezas | number:'1.0-2' }} g</td>
-                      <td class="fw-bold">{{ resumenHorasTexto }}</td>
-                      <td></td>
-                    </tr>
-                  </tfoot>
-                }
-              </table>
-            </div>
+            @if (bloquesPiezas.length === 0) {
+              <div class="border rounded-3 py-4 text-center text-muted">
+                No hay piezas configuradas. El formulario no se guarda incompleto.
+              </div>
+            }
+            @for (bloque of bloquesPiezas; track bloque.clave) {
+              <div class="border rounded-3 mb-3">
+                <div class="d-flex justify-content-between align-items-center px-3 py-2 bg-light border-bottom">
+                  <strong>{{ bloque.tecnologia }} · {{ bloque.equipo }}</strong>
+                </div>
+                <div class="table-responsive">
+                  <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Tipo</th>
+                        <th>Cantidad</th>
+                        <th>Nombre</th>
+                        <th>Material / Detalle</th>
+                        <th>Medida</th>
+                        <th>Tiempo</th>
+                        <th class="text-center" style="width: 100px;">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (fila of bloque.piezas; track fila.indice) {
+                        <tr>
+                          <td>
+                            <span class="badge" [class.bg-light-success]="fila.pieza.tipo === 'Fabricada'" [class.bg-light-info]="fila.pieza.tipo === 'Del Inventario'">
+                              {{ fila.pieza.tipo }}
+                            </span>
+                          </td>
+                          <td class="fw-bold">{{ fila.pieza.cantidad }}</td>
+                          <td class="fw-medium">{{ fila.pieza.nombre }}</td>
+                          <td>{{ getNombreMaterial(fila.pieza) }}</td>
+                          <td>{{ medidaDePieza(fila.pieza) }}</td>
+                          <td>
+                            @if (fila.pieza.tipo === 'Fabricada') {
+                              {{ fila.pieza.horas || 0 }} h {{ fila.pieza.minutos || 0 }} min
+                            } @else {
+                              <span class="text-muted">-</span>
+                            }
+                          </td>
+                          <td class="text-center">
+                            <button type="button" class="btn btn-sm btn-icon btn-light-danger" (click)="removerPieza(fila.indice)" title="Eliminar Pieza">
+                              <i class="ti ti-trash fs-5"></i>
+                            </button>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                    <tfoot class="table-light">
+                      <tr>
+                        <td colspan="5" class="text-end fw-bold">Horas de producción de este bloque</td>
+                        <td class="fw-bold">{{ bloque.horas }} h {{ bloque.minutos }} min</td>
+                        <td></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            }
           </div>
 
           <!-- Tiempos y tasas de fabricación -->

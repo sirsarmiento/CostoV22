@@ -2,6 +2,7 @@ import { Budget, Parts } from '../models/Cost/budge';
 import { Asset } from '../models/Cost/asset';
 import { Config, Machine } from '../models/Cost/config';
 import { parsearTasasFallo, tasaFalloDePieza } from './family-rules';
+import { calcularAreaCm2, reglasDePieza } from './piece-tech-rules';
 
 export interface BudgetCalculationResult {
   totalGramos: number;
@@ -158,7 +159,9 @@ export function calculateBudgetTotals(
       }
       totalCostoInventario += val * cant;
     } else {
-      const gramos = Number(pieza.gramos) || 0;
+      const reglas = reglasDePieza(pieza.tecnologia);
+      const tasaPieza = tasaFalloDePieza(pieza, tasasPorTecnologia, tasaFalloGlobal);
+      const merma = 1 + (tasaPieza / 100);
       let precioMaterial = Number(pieza.precioMaterial) || 0;
       if (precioMaterial <= 0 && pieza.activo && allAssets.length > 0) {
         const foundAsset = allAssets.find(a => a.id === pieza.activo);
@@ -166,11 +169,30 @@ export function calculateBudgetTotals(
           precioMaterial = Number(foundAsset.valorUnitario) || Number(foundAsset.costoInicial) || 0;
         }
       }
-      if (precioMaterial >= 1.0) {
-        precioMaterial = precioMaterial / 1000;
+
+      if (reglas.codigo === 'ALM') {
+        const estimado = Number(pieza.costoEstimado) || precioMaterial || 0;
+        rawMaterialCost += estimado * cant;
+      } else if (reglas.usaSuperficie) {
+        const area = Number(pieza.areaCm2) || calcularAreaCm2(pieza.anchoCm, pieza.largoCm);
+        const caras = Number(pieza.carasPcb) > 0 ? Number(pieza.carasPcb) : 1;
+        rawMaterialCost += area * caras * precioMaterial * cant * merma;
+      } else {
+        const gramos = Number(pieza.gramos) || 0;
+        let precioGramo = precioMaterial;
+        if (precioGramo >= 1.0) {
+          precioGramo = precioGramo / 1000;
+        }
+        const descartables = reglas.mostrarDescartables ? (Number(pieza.descartablesPct) || 0) / 100 : 0;
+        rawMaterialCost += (gramos * (1 + descartables) * precioGramo) * cant * merma;
       }
-      const tasaPieza = tasaFalloDePieza(pieza, tasasPorTecnologia, tasaFalloGlobal);
-      rawMaterialCost += (gramos * precioMaterial) * cant * (1 + (tasaPieza / 100));
+
+      if (reglas.mostrarLimpieza) {
+        rawMaterialCost += (Number(pieza.limpiezaMaquina) || 0) * cant;
+      }
+      if (reglas.mostrarEmpaque) {
+        rawMaterialCost += (Number(pieza.empaque) || 0) * cant;
+      }
 
       const horas = Number(pieza.horas) || 0;
       const minutos = Number(pieza.minutos) || 0;

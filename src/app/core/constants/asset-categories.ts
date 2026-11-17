@@ -59,6 +59,10 @@ export function tecnologiaDeActivo(asset: {
   }
   if (directa === 'FILAMENTO' || directa.includes('FDM') || directa.includes('FILAM')) return 'FDM';
   if (directa === 'RESINA' || directa.includes('SLA') || directa.includes('RESIN')) return 'SLA';
+  if (directa.includes('CNC') || directa.includes('PCB')) return 'CNC';
+  if (directa.includes('LSR') || directa.includes('LASER') || directa.includes('LÁSER')) return 'LSR';
+  if (directa.includes('CHO') || directa.includes('CHOCOL')) return 'CHO';
+  if (directa.includes('ALM') || directa.includes('ALIMENT')) return 'ALM';
   return directa;
 }
 
@@ -80,6 +84,18 @@ export function materialCompatibleConTecnologia(
   }
   if (t === 'SLA') {
     return c === 'sla' || c === 'resina' || c === 'resinas' || c.includes('resin');
+  }
+  if (t === 'CNC') {
+    return c.includes('pcb') || c.includes('circuito') || (asset.nombre || '').toLowerCase().includes('pcb');
+  }
+  if (t === 'LSR') {
+    return true;
+  }
+  if (t === 'CHO') {
+    return c.includes('chocol') || (asset.nombre || '').toLowerCase().includes('chocol');
+  }
+  if (t === 'ALM') {
+    return false;
   }
   return true;
 }

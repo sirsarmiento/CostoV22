@@ -17,6 +17,19 @@ export interface PiezaProducto {
     tasaFallo?: number;
     material?: string;
     polimero?: string;
+    marca?: string;
+    color?: string;
+    anchoCm?: number;
+    largoCm?: number;
+    areaCm2?: number;
+    carasPcb?: number;
+    mascaraUvSoldadura?: boolean;
+    mascaraUvTextos?: boolean;
+    descartablesPct?: number;
+    limpiezaMaquina?: number;
+    empaque?: number;
+    materialLibre?: string;
+    costoEstimado?: number;
     fromDb?: boolean;
 }
 

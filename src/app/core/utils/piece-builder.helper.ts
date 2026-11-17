@@ -1,6 +1,7 @@
 import { Asset } from '../models/Cost/asset';
 import { MaterialCatalogo } from '../models/Cost/catalog-config';
 import { materialCompatibleConTecnologia, tecnologiaDeActivo } from '../constants/asset-categories';
+import { materialAprobadoParaCorte, reglasDePieza } from './piece-tech-rules';
 
 /*Calcula el precio unitario por gramo de un material de inventario.*/
 export function calcularPrecioPorGramo(asset?: Asset | null): number {
@@ -128,7 +129,7 @@ export function resolverNombreMaterial(
   return '-';
 }
 
-/* Filtra máquinas estrictamente por tecnología de impresión seleccionada (FDM / SLA).*/
+/* Filtra máquinas por la tecnología de la pieza (filamento, resina, control numérico, láser, chocolate o alimentos).*/
 export function filtrarMaquinasPorTecnologia(maquinas: Asset[], tecnologia: string): Asset[] {
   const tec = (tecnologia || '').toUpperCase().trim();
   if (!tec) return [...maquinas];
@@ -136,7 +137,11 @@ export function filtrarMaquinasPorTecnologia(maquinas: Asset[], tecnologia: stri
     const deMaquina = tecnologiaDeActivo(m);
     return deMaquina === tec
       || (tec === 'FDM' && (deMaquina === 'FILAMENTO' || deMaquina === 'FDM'))
-      || (tec === 'SLA' && (deMaquina === 'RESINA' || deMaquina === 'SLA'));
+      || (tec === 'SLA' && (deMaquina === 'RESINA' || deMaquina === 'SLA'))
+      || (tec === 'CNC' && (deMaquina === 'CNC' || (m.nombre || '').toLowerCase().includes('cnc')))
+      || (tec === 'LSR' && (deMaquina === 'LSR' || (m.nombre || '').toLowerCase().includes('láser') || (m.nombre || '').toLowerCase().includes('laser')))
+      || (tec === 'CHO' && (deMaquina === 'CHO' || (m.nombre || '').toLowerCase().includes('chocol')))
+      || (tec === 'ALM' && (deMaquina === 'ALM' || (m.nombre || '').toLowerCase().includes('aliment')));
   });
 }
 
@@ -177,17 +182,30 @@ export function filtrarMaterialesImpresion(
   activosMateriales: Asset[],
   filtros: { tecnologia?: string; polimero?: string; marca?: string; color?: string }
 ): Asset[] {
+  const reglas = reglasDePieza(filtros.tecnologia);
   return activosMateriales.filter(a => {
+    if (!reglas.mostrarMaterialInsumo || !reglas.descuentaInventario) {
+      if (reglas.codigo === 'ALM') {
+        return false;
+      }
+    }
     if (filtros.tecnologia && !materialCompatibleConTecnologia(a, filtros.tecnologia)) {
       return false;
     }
-    if (filtros.polimero && !coincidenciaTexto(a.subCategoria, filtros.polimero)) {
+    if (reglas.materialesAprobados.length > 0) {
+      const etiqueta = `${a.nombre || ''} ${a.subCategoria || ''} ${a.categoria || ''} ${a.color || ''}`;
+      if (!materialAprobadoParaCorte(etiqueta)) {
+        return false;
+      }
+    }
+    if (filtros.polimero && !coincidenciaTexto(a.subCategoria, filtros.polimero) && !coincidenciaTexto(a.nombre, filtros.polimero)
+      && !(`${a.nombre || ''} ${a.subCategoria || ''}`).toLowerCase().includes(String(filtros.polimero).toLowerCase())) {
       return false;
     }
-    if (filtros.marca && !coincidenciaTexto(a.marca, filtros.marca)) {
+    if (filtros.marca && reglas.mostrarMarca && !coincidenciaTexto(a.marca, filtros.marca)) {
       return false;
     }
-    if (filtros.color && !coincidenciaTexto(a.color, filtros.color)) {
+    if (filtros.color && reglas.mostrarColor && !coincidenciaTexto(a.color, filtros.color)) {
       return false;
     }
     return true;
@@ -223,6 +241,10 @@ export function listarPolimeros(
   tecnologia: string
 ): string[] {
   const tec = (tecnologia || '').toUpperCase().trim();
+  const reglas = reglasDePieza(tec);
+  if (reglas.materialesAprobados.length > 0) {
+    return [...reglas.materialesAprobados];
+  }
   const deActivos = listarUnicosNormalizados(
     filtrarMaterialesImpresion(activosMateriales, { tecnologia: tec }).map(a => a.subCategoria)
   );
@@ -232,7 +254,7 @@ export function listarPolimeros(
   return listarUnicosNormalizados(
     (materialesCatalogo || [])
       .filter(m => !tec || (m.tecnologias || []).some(t => (t.codigo || '').toUpperCase() === tec))
-      .map(m => m.codigo || m.nombre)
+      .map(m => m.nombre || m.codigo)
   );
 }
 
@@ -294,13 +316,26 @@ export function armarFiltrosMaterialPieza(
 
   return {
     polimeros,
-    marcas,
-    colores,
+    marcas: reglasDePieza(tec).mostrarMarca ? marcas : [],
+    colores: reglasDePieza(tec).mostrarColor ? colores : [],
     materiales,
     polimero: polimeroOk,
-    marca: marcaOk,
-    color: colorOk
+    marca: reglasDePieza(tec).mostrarMarca ? marcaOk : '',
+    color: reglasDePieza(tec).mostrarColor ? colorOk : ''
   };
+}
+
+export function autoseleccionarInsumoUnico(materiales: Asset[], actual?: number | string | null): number | null {
+  if (actual) {
+    const idActual = Number(actual);
+    if (materiales.some(m => m.id == idActual)) {
+      return idActual;
+    }
+  }
+  if (materiales.length === 1 && materiales[0].id) {
+    return Number(materiales[0].id);
+  }
+  return actual ? Number(actual) : null;
 }
 
 export function sumarGramosPiezas(piezas: Array<{ gramos?: number; cantidad?: number } | Record<string, unknown>>): number {

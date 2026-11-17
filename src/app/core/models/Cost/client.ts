@@ -5,6 +5,7 @@ export interface Client {
   rifCedula?: string;
   cedula?: string;
   categoria?: string;
+  sectores?: string[] | string;
   email?: string;
   telefono?: string;
   direccion?: string;

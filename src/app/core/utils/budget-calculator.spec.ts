@@ -46,4 +46,68 @@ describe('budget-calculator', () => {
     const totales = calculateBudgetTotals(presupuesto, maquinas, 0, 160);
     expect(totales.totalCostoMaquina).toBeCloseTo(4, 2);
   });
+
+  it('suma descartables de resina sobre los gramos', () => {
+    const presupuesto = {
+      tasaFalloGlobal: 0,
+      tiempoSetup: 0,
+      tiempoPostProcesado: 0,
+      margenGanancia: 0,
+      cantidadGlobal: 1,
+      delivery: 0,
+      piezas: [
+        { tipo: 'Fabricada', tecnologia: 'SLA', cantidad: 1, gramos: 100, precioMaterial: 0.10, descartablesPct: 8, horas: 0, minutos: 0 }
+      ] as Parts[]
+    } as Budget;
+    const totales = calculateBudgetTotals(presupuesto, [], 0, 160, 0, 0);
+    expect(totales.totalCostoMaterial).toBeCloseTo(10.8, 2);
+  });
+
+  it('cuesta control numérico por área y caras', () => {
+    const presupuesto = {
+      tasaFalloGlobal: 0,
+      tiempoSetup: 0,
+      tiempoPostProcesado: 0,
+      margenGanancia: 0,
+      cantidadGlobal: 1,
+      delivery: 0,
+      piezas: [
+        { tipo: 'Fabricada', tecnologia: 'CNC', cantidad: 1, anchoCm: 10, largoCm: 5, areaCm2: 50, carasPcb: 2, precioMaterial: 0.2, horas: 0, minutos: 0 }
+      ] as Parts[]
+    } as Budget;
+    const totales = calculateBudgetTotals(presupuesto, [], 0, 160, 0, 0);
+    expect(totales.totalCostoMaterial).toBeCloseTo(20, 2);
+  });
+
+  it('en chocolate suma limpieza y empaque aparte del material', () => {
+    const presupuesto = {
+      tasaFalloGlobal: 0,
+      tiempoSetup: 0,
+      tiempoPostProcesado: 0,
+      margenGanancia: 0,
+      cantidadGlobal: 1,
+      delivery: 0,
+      piezas: [
+        { tipo: 'Fabricada', tecnologia: 'CHO', cantidad: 2, gramos: 50, precioMaterial: 0.04, limpiezaMaquina: 0.5, empaque: 1, horas: 0, minutos: 0 }
+      ] as Parts[]
+    } as Budget;
+    const totales = calculateBudgetTotals(presupuesto, [], 0, 160, 0, 0);
+    expect(totales.totalCostoMaterial).toBeCloseTo(7, 2);
+  });
+
+  it('en alimentos usa el costo estimado y no pide inventario', () => {
+    const presupuesto = {
+      tasaFalloGlobal: 0,
+      tiempoSetup: 0,
+      tiempoPostProcesado: 0,
+      margenGanancia: 0,
+      cantidadGlobal: 1,
+      delivery: 0,
+      piezas: [
+        { tipo: 'Fabricada', tecnologia: 'ALM', cantidad: 3, costoEstimado: 4, materialLibre: 'Masa de hojaldre', horas: 0, minutos: 0 }
+      ] as Parts[]
+    } as Budget;
+    const totales = calculateBudgetTotals(presupuesto, [], 0, 160, 0, 0);
+    expect(totales.totalCostoMaterial).toBeCloseTo(12, 2);
+  });
 });

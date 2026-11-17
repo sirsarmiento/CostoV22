@@ -74,7 +74,15 @@
                   <td>
                     @if (row.categoria) {
                       <span class="badge bg-light-primary text-primary px-2 py-1" style="font-size: 0.75rem;">{{ row.categoria }}</span>
-                    } @else {
+                    }
+                    @if (listaSectores(row).length > 0) {
+                      <div class="mt-1">
+                        @for (sector of listaSectores(row); track sector) {
+                          <span class="badge bg-light-secondary text-secondary me-1 mb-1" style="font-size: 0.7rem;">{{ sector }}</span>
+                        }
+                      </div>
+                    }
+                    @if (!row.categoria && listaSectores(row).length === 0) {
                       <span class="text-muted fs-7">-</span>
                     }
                   </td>

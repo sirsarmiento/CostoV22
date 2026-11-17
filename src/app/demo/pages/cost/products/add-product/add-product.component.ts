@@ -31,10 +31,19 @@ import {
   resolverNombreMaterial,
   filtrarMaquinasPorTecnologia,
   armarFiltrosMaterialPieza,
+  autoseleccionarInsumoUnico,
   sumarGramosPiezas,
   evaluarDisponibilidadStock,
   StockDisponibilidad
 } from '../../../../../core/utils/piece-builder.helper';
+import {
+  agruparPiezasPorEquipo,
+  calcularAreaCm2,
+  extraerCamposTecnologia,
+  mensajeValidacionPieza,
+  reglasDePieza,
+  textoMedidaPieza
+} from '../../../../../core/utils/piece-tech-rules';
 import {
   extractCorrelativosUsadosDeFamilia,
   mapDbPiezasToView,
@@ -475,7 +484,32 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
     return resolverNombreMaterial(p as Record<string, unknown>, this.activosMateriales, this.activosCirculantes, this.allAssets);
   }
 
+  get reglasPieza() {
+    return reglasDePieza(this.form?.get('piezaTecnologia')?.value);
+  }
+
+  get areaPiezaActual(): number {
+    return calcularAreaCm2(this.form?.get('piezaAnchoCm')?.value, this.form?.get('piezaLargoCm')?.value);
+  }
+
+  get bloquesPiezas() {
+    return agruparPiezasPorEquipo(this.piezasPendientes);
+  }
+
+  medidaDePieza(pieza: PiezaProducto): string {
+    return textoMedidaPieza(pieza);
+  }
+
   get stockPiezaActual(): StockDisponibilidad {
+    if (!this.reglasPieza.descuentaInventario) {
+      return {
+        disponibleGramos: 0,
+        requeridoGramos: 0,
+        faltanteGramos: 0,
+        estado: 'sin_seleccion',
+        mensaje: ''
+      };
+    }
     const matId = this.form.get('piezaMaterialId')?.value;
     if (!matId) {
       return {
@@ -543,6 +577,13 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
     if (matActual && !this.materialesFiltradosCirculantes.some(m => m.id == matActual)) {
       this.form.get('piezaMaterialId')?.setValue(null);
     }
+    const reglas = reglasDePieza(tec);
+    if (reglas.autoseleccionarInsumo) {
+      const unico = autoseleccionarInsumoUnico(this.materialesFiltradosCirculantes, this.form.get('piezaMaterialId')?.value);
+      if (unico && Number(this.form.get('piezaMaterialId')?.value) !== unico) {
+        this.form.get('piezaMaterialId')?.setValue(unico);
+      }
+    }
   }
 
   onPiezaMaterialChange(materialId: number) {
@@ -604,23 +645,32 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
           || this.maquinasList.find(m => m.id == maqVal)?.nombre;
       }
 
-      const matId = this.form.get('piezaMaterialId')?.value;
-      if (!matId) {
-        Swal.fire('Atención', 'Seleccione un material para la pieza fabricada.', 'warning');
+      const extra = extraerCamposTecnologia(this.form.getRawValue());
+      const errorPieza = mensajeValidacionPieza(String(piezaTec), {
+        cantidad,
+        materialId: this.form.get('piezaMaterialId')?.value,
+        gramos,
+        anchoCm: extra.anchoCm,
+        largoCm: extra.largoCm,
+        carasPcb: extra.carasPcb,
+        materialLibre: extra.materialLibre,
+        costoEstimado: extra.costoEstimado,
+        polimero: this.form.get('piezaPolimero')?.value
+      });
+      if (errorPieza) {
+        Swal.fire('Atención', errorPieza, 'warning');
         return;
       }
-      assetId = Number(matId);
-      precioMaterial = Number(this.form.get('piezaPrecioMaterial')?.value) || 0;
+      const matId = this.form.get('piezaMaterialId')?.value;
+      assetId = matId ? Number(matId) : null;
+      precioMaterial = Number(this.form.get('piezaPrecioMaterial')?.value) || Number(extra.costoEstimado) || 0;
       
       const assetCirc = this.activosMateriales.find(a => a.id == matId)
         || this.activosCirculantes.find(a => a.id == matId);
       if (assetCirc) {
         materialDisplayName = assetCirc.nombre;
-      }
-
-      if (gramos === null || isNaN(gramos) || gramos < 0) {
-        Swal.fire('Atención', 'Ingrese los gramos de la pieza.', 'warning');
-        return;
+      } else if (extra.materialLibre) {
+        materialDisplayName = extra.materialLibre;
       }
     }
 
@@ -629,6 +679,7 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       return;
     }
 
+    const extra = extraerCamposTecnologia(this.form.getRawValue());
     this.piezasPendientes.push({ 
       tipo,
       nombre,
@@ -644,6 +695,10 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       tecnologia: tipo === 'Fabricada' ? this.form.get('piezaTecnologia')?.value : '',
       material: tipo === 'Fabricada' ? this.resolverCodigoMaterial(assetId) : '',
       polimero: this.form.get('piezaPolimero')?.value || '',
+      marca: this.form.get('piezaMarca')?.value || '',
+      color: this.form.get('piezaColor')?.value || '',
+      ...extra,
+      areaCm2: this.areaPiezaActual,
       tasaFallo: tipo === 'Fabricada'
         ? (this.tasasFalloPorTecnologia[this.form.get('piezaTecnologia')?.value] || TASAS_FALLO[0])
         : undefined
@@ -664,7 +719,17 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       piezaMarca: '',
       piezaColor: '',
       piezaMaterialId: null,
-      piezaPrecioMaterial: ''
+      piezaPrecioMaterial: '',
+      piezaAnchoCm: '',
+      piezaLargoCm: '',
+      piezaCarasPcb: 1,
+      piezaMascaraUvSoldadura: false,
+      piezaMascaraUvTextos: false,
+      piezaDescartablesPct: this.reglasPieza.descartablesPorDefecto,
+      piezaLimpiezaMaquina: this.reglasPieza.limpiezaPorDefecto,
+      piezaEmpaque: '',
+      piezaMaterialLibre: '',
+      piezaCostoEstimado: ''
     });
     this.cdr.detectChanges();
   }
@@ -778,6 +843,16 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
       piezaColor: [''],
       piezaMaterialId: [{value: null, disabled: false}],
       piezaPrecioMaterial: [''],
+      piezaAnchoCm: [''],
+      piezaLargoCm: [''],
+      piezaCarasPcb: [1],
+      piezaMascaraUvSoldadura: [false],
+      piezaMascaraUvTextos: [false],
+      piezaDescartablesPct: [8],
+      piezaLimpiezaMaquina: [0.5],
+      piezaEmpaque: [''],
+      piezaMaterialLibre: [''],
+      piezaCostoEstimado: [''],
       activoId: [null],
       imagen: ['']
     });
@@ -800,7 +875,20 @@ export class AddProductComponent implements OnInit, ComponentCanDeactivate {
 
     this.form.get('piezaTecnologia')?.valueChanges.pipe(
       takeUntilDestroyed(this.destroyRef)
-    ).subscribe(() => this.aplicarFiltroTecnologiaPieza());
+    ).subscribe(() => {
+      const reglas = this.reglasPieza;
+      this.form.patchValue({
+        piezaDescartablesPct: reglas.mostrarDescartables ? reglas.descartablesPorDefecto : '',
+        piezaLimpiezaMaquina: reglas.mostrarLimpieza ? reglas.limpiezaPorDefecto : '',
+        piezaEmpaque: '',
+        piezaCarasPcb: reglas.mostrarCarasPcb ? 1 : '',
+        piezaMascaraUvSoldadura: false,
+        piezaMascaraUvTextos: false,
+        piezaMaterialLibre: '',
+        piezaCostoEstimado: ''
+      }, { emitEvent: false });
+      this.aplicarFiltroTecnologiaPieza();
+    });
 
     this.form.get('piezaTipo')?.valueChanges.pipe(
       takeUntilDestroyed(this.destroyRef)

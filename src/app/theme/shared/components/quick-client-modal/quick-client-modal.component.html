@@ -38,6 +38,18 @@
                   placeholder="Ej. Frecuente, VIP...">
               </div>
 
+              <div class="col-12">
+                <label class="form-label">Sectores comerciales</label>
+                <ng-select
+                  formControlName="sectores"
+                  [items]="sectoresComerciales"
+                  [multiple]="true"
+                  [closeOnSelect]="false"
+                  placeholder="Puede marcar más de un sector"
+                  appendTo="body">
+                </ng-select>
+              </div>
+
               <div class="col-md-6">
                 <label class="form-label">Teléfono</label>
                 <input 

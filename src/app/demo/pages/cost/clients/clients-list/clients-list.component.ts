@@ -9,6 +9,7 @@ import { AssetService } from '../../../../../core/services/cost/asset.service';
 import { ConfigService } from '../../../../../core/services/cost/config.service';
 import { FixeService } from '../../../../../core/services/cost/fixe.service';
 import { Client } from '../../../../../core/models/Cost/client';
+import { normalizarSectores } from '../../../../../core/utils/client-sectors';
 import { calculateBudgetTotals, normalizeBudget, resolverCapacidadHorasMaquina } from '../../../../../core/utils/budget-calculator';
 import { calculateMultiItemTotals, hidratarLineas } from '../../../../../core/utils/budget-items';
 import { AuthService } from '../../../../../core/services/auth.service';
@@ -44,6 +45,10 @@ export class ClientsListComponent implements OnInit {
   sortDirection: 'asc' | 'desc' = 'asc';
   selectedRow: Client | null = null;
   Math = Math;
+
+  listaSectores(row: Client): string[] {
+    return normalizarSectores(row.sectores);
+  }
 
   ngOnInit(): void {
     this.loadClients();

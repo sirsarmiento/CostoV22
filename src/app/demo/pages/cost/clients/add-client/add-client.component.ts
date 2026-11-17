@@ -5,6 +5,7 @@ import { Router, RouterModule } from '@angular/router';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { ClientService } from '../../../../../core/services/cost/client.service';
 import { Client } from '../../../../../core/models/Cost/client';
+import { SECTORES_COMERCIALES, normalizarSectores } from '../../../../../core/utils/client-sectors';
 import Swal from 'sweetalert2';
 import { ComponentCanDeactivate } from '../../../../../core/guards/pending-changes.guard';
 
@@ -25,6 +26,7 @@ export class AddClientComponent implements OnInit, ComponentCanDeactivate {
   submitted = false;
   id = 0;
   nacionalidadesList = ['V', 'E', 'J', 'G', 'P'];
+  sectoresComerciales = SECTORES_COMERCIALES;
 
   constructor() {
     this.initForm();
@@ -53,6 +55,7 @@ export class AddClientComponent implements OnInit, ComponentCanDeactivate {
         nacionalidad: parsed.nac,
         nroDocumento: parsed.num,
         categoria: editClient.categoria || '',
+        sectores: normalizarSectores(editClient.sectores),
         email: editClient.email || '',
         telefono: editClient.telefono || '',
         direccion: editClient.direccion || ''
@@ -66,6 +69,7 @@ export class AddClientComponent implements OnInit, ComponentCanDeactivate {
       nacionalidad: ['V', Validators.required],
       nroDocumento: [''],
       categoria: [''],
+      sectores: [[] as string[]],
       email: ['', [Validators.email]],
       telefono: [''],
       direccion: ['']
@@ -106,6 +110,7 @@ export class AddClientComponent implements OnInit, ComponentCanDeactivate {
       cedula: fullCedula,
       rifCedula: fullCedula,
       categoria: this.form.get('categoria')?.value || '',
+      sectores: this.form.get('sectores')?.value || [],
       email: this.form.get('email')?.value || '',
       telefono: this.form.get('telefono')?.value || '',
       direccion: this.form.get('direccion')?.value || ''

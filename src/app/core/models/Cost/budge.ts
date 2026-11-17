@@ -49,4 +49,18 @@ export class Parts { // Piezas
     maquinaNombre?: string;
     tecnologia?: string;
     tasaFallo?: number;
+    anchoCm?: number;
+    largoCm?: number;
+    areaCm2?: number;
+    carasPcb?: number;
+    mascaraUvSoldadura?: boolean;
+    mascaraUvTextos?: boolean;
+    descartablesPct?: number;
+    limpiezaMaquina?: number;
+    empaque?: number;
+    materialLibre?: string;
+    costoEstimado?: number;
+    polimero?: string;
+    marca?: string;
+    color?: string;
 }
